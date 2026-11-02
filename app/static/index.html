@@ -8,12 +8,9 @@
     :root {
       --bg: #0b1120;
       --panel-bg: #1e293b;
-      --panel-alt: #0f172a;
-      --accent: #b45309;
       --accent-gold: #d97706;
       --accent-light: #f59e0b;
       --border: #334155;
-      --border-dark: #1e293b;
       --text: #f8fafc;
       --text-muted: #94a3b8;
       --paizo-red: #58180d;
@@ -23,20 +20,20 @@
     body { background: var(--bg); color: var(--text); padding: 1.5rem 1rem; }
     .container { max-width: 1040px; margin: 0 auto; }
 
-    /* Top Action Bar */
     header { text-align: center; margin-bottom: 1.25rem; }
     header h1 { font-size: 2.2rem; color: var(--accent-gold); letter-spacing: 0.05em; }
     header p { color: var(--text-muted); font-size: 0.9rem; }
 
     .controls {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      grid-template-columns: 1.5fr 1.2fr 1.2fr 0.8fr auto;
       gap: 0.75rem;
       background: var(--panel-bg);
       padding: 1.25rem;
       border-radius: 8px;
       border: 1px solid var(--border);
       margin-bottom: 1.5rem;
+      align-items: flex-end;
     }
     .field { display: flex; flex-direction: column; gap: 0.35rem; }
     label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
@@ -48,14 +45,14 @@
       color: var(--text);
       font-size: 0.9rem;
     }
-    .btn-group { display: flex; gap: 0.4rem; align-items: flex-end; }
+    .btn-group { display: flex; gap: 0.4rem; }
     button.primary-btn {
       background: var(--accent-gold);
       color: #000;
       font-weight: 700;
       cursor: pointer;
       border: none;
-      flex: 1.2;
+      padding: 0.6rem 1rem;
     }
     button.primary-btn:hover { background: var(--accent-light); }
     button.action-btn {
@@ -64,14 +61,11 @@
       font-weight: 700;
       cursor: pointer;
       border: 1px solid var(--border);
-      flex: 1;
+      padding: 0.6rem 0.85rem;
       white-space: nowrap;
     }
     button.action-btn:hover { background: #475569; }
 
-    /* ========================================================
-       STANDARD PF2E CHARACTER SHEET LAYOUT
-       ======================================================== */
     .pf2e-sheet {
       background: #ffffff;
       color: #111827;
@@ -81,7 +75,6 @@
       padding: 1.25rem;
     }
 
-    /* SHEET HEADER */
     .sheet-header-banner {
       display: grid;
       grid-template-columns: 2fr 1fr 1fr 1fr 70px;
@@ -97,14 +90,12 @@
     .banner-val { font-size: 1.1rem; font-weight: 800; color: #000000; line-height: 1.2; }
     .banner-val.level-val { font-size: 1.6rem; text-align: center; color: var(--paizo-red); }
 
-    /* TWO COLUMN LAYOUT */
     .sheet-body {
       display: grid;
       grid-template-columns: 310px 1fr;
       gap: 1.25rem;
     }
 
-    /* SECTION BOX STYLES */
     .sheet-box {
       border: 1.5px solid #000000;
       border-radius: 4px;
@@ -126,7 +117,6 @@
     }
     .sheet-box-content { padding: 0.5rem; }
 
-    /* ATTRIBUTES STRIP */
     .attributes-table {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
@@ -142,7 +132,6 @@
     .attr-lbl { font-size: 0.65rem; font-weight: 800; color: #475569; }
     .attr-mod { font-size: 1.25rem; font-weight: 900; color: #000000; }
 
-    /* DEFENSES & PERCEPTION */
     .defense-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -177,12 +166,7 @@
     .save-val { font-size: 1.15rem; font-weight: 900; color: #000000; }
     .save-rank { font-size: 0.65rem; font-weight: 700; color: #0369a1; }
 
-    /* SKILLS LEDGER */
-    .skills-ledger {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-    }
+    .skills-ledger { display: flex; flex-direction: column; gap: 0.25rem; }
     .skill-line {
       display: flex;
       justify-content: space-between;
@@ -209,12 +193,7 @@
     .skill-attr-tag { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
     .skill-mod-val { font-weight: 900; font-size: 0.85rem; color: #000000; min-width: 25px; text-align: right; }
 
-    /* RIGHT COLUMN: STRIKES TABLE */
-    .strikes-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 0.78rem;
-    }
+    .strikes-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
     .strikes-table th {
       background: #f1f5f9;
       text-align: left;
@@ -225,16 +204,12 @@
       font-weight: 800;
       color: #475569;
     }
-    .strikes-table td {
-      padding: 0.4rem 0.4rem;
-      border: 1px solid #cbd5e1;
-    }
+    .strikes-table td { padding: 0.4rem 0.4rem; border: 1px solid #cbd5e1; }
     .w-name { font-weight: 800; color: #000000; font-size: 0.85rem; }
     .w-map { font-family: monospace; font-size: 0.95rem; font-weight: 900; color: #0369a1; }
     .w-dmg { font-weight: 800; color: #991b1b; }
     .w-traits { font-size: 0.7rem; color: #475569; }
 
-    /* SPELLCASTING & FEATS CARDS */
     .detail-card {
       border: 1px solid #cbd5e1;
       background: #f8fafc;
@@ -261,11 +236,53 @@
       color: #334155;
     }
 
-    .gear-summary {
+    /* SPELL SLOT TRACKER */
+    .slot-tracker-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #e2e8f0;
+      padding: 0.3rem 0.5rem;
+      border-radius: 4px;
+      margin: 0.5rem 0 0.3rem;
       font-size: 0.75rem;
-      color: #334155;
-      line-height: 1.4;
+      font-weight: 800;
     }
+    .slot-pips { display: flex; gap: 0.35rem; align-items: center; }
+    .slot-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #0369a1;
+    }
+
+    /* CONSUMABLES CARDS */
+    .consumables-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.5rem;
+    }
+    .consumable-pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.76rem;
+    }
+    .qty-tag {
+      background: #0284c7;
+      color: #ffffff;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-weight: 900;
+      font-size: 0.7rem;
+    }
+
+    .gear-summary { font-size: 0.75rem; color: #334155; line-height: 1.4; }
     .money-row {
       display: flex;
       gap: 0.5rem;
@@ -281,29 +298,16 @@
       border-radius: 3px;
     }
 
-    /* ========================================================
-       PRINT & PDF STYLING (Strict 8.5x11 Portrait Layout)
-       ======================================================== */
     @media print {
-      @page {
-        size: letter portrait;
-        margin: 0.35in;
-      }
-      body {
-        background: #ffffff !important;
-        padding: 0 !important;
-      }
+      @page { size: letter portrait; margin: 0.35in; }
+      body { background: #ffffff !important; padding: 0 !important; }
       .container { max-width: 100% !important; margin: 0 !important; }
       header, .controls { display: none !important; }
-      .pf2e-sheet {
-        border: 2px solid #000000 !important;
-        box-shadow: none !important;
-        padding: 0 !important;
-      }
+      .pf2e-sheet { border: 2px solid #000000 !important; box-shadow: none !important; padding: 0 !important; }
       .sheet-box { page-break-inside: avoid; }
       .sheet-box-title { background: #000000 !important; color: #ffffff !important; }
-      .w-map { color: #000000 !important; }
-      .w-dmg { color: #000000 !important; }
+      .w-map, .w-dmg { color: #000000 !important; }
+      .slot-checkbox { appearance: none; -webkit-appearance: none; border: 1.5px solid #000000; border-radius: 2px; }
     }
   </style>
 </head>
@@ -327,6 +331,13 @@
         <label for="classSelect">Class</label>
         <select id="classSelect"><option value="">Any Class</option></select>
       </div>
+      <div class="field">
+        <label for="levelSelect">Level</label>
+        <select id="levelSelect">
+          <option value="1">Level 1</option>
+          <option value="2">Level 2</option>
+        </select>
+      </div>
       <div class="field btn-group">
         <button class="primary-btn" id="generateBtn" onclick="generate()">Generate</button>
         <button class="action-btn" id="foundryBtn" onclick="downloadFoundryJson()">Foundry JSON</button>
@@ -336,7 +347,6 @@
 
     <!-- STANDARD PF2E CHARACTER SHEET CONTAINER -->
     <div class="pf2e-sheet" id="sheetCard" style="display: none;">
-      <!-- TOP BANNER -->
       <div class="sheet-header-banner">
         <div class="banner-block">
           <span class="banner-label">Character Name</span>
@@ -360,12 +370,9 @@
         </div>
       </div>
 
-      <!-- MAIN 2-COLUMN SHEET BODY -->
       <div class="sheet-body">
-        
         <!-- LEFT COLUMN: ABILITIES, DEFENSES, SKILLS -->
         <div class="left-col">
-          <!-- ATTRIBUTE MODIFIERS -->
           <div class="sheet-box">
             <div class="sheet-box-title">Attributes</div>
             <div class="sheet-box-content">
@@ -380,7 +387,6 @@
             </div>
           </div>
 
-          <!-- HIT POINTS & DEFENSES -->
           <div class="sheet-box">
             <div class="sheet-box-title">Armor Class & Hit Points</div>
             <div class="sheet-box-content">
@@ -407,7 +413,6 @@
             </div>
           </div>
 
-          <!-- SAVING THROWS -->
           <div class="sheet-box">
             <div class="sheet-box-title">Saving Throws</div>
             <div class="sheet-box-content">
@@ -431,7 +436,6 @@
             </div>
           </div>
 
-          <!-- 16 CORE SKILLS + LORE -->
           <div class="sheet-box">
             <div class="sheet-box-title">Skills Ledger</div>
             <div class="sheet-box-content">
@@ -440,9 +444,8 @@
           </div>
         </div>
 
-        <!-- RIGHT COLUMN: STRIKES, SPELLS, FEATS, EQUIPMENT -->
+        <!-- RIGHT COLUMN: STRIKES, SPELLS, FEATS, CONSUMABLES & EQUIPMENT -->
         <div class="right-col">
-          <!-- STRIKES & ATTACKS -->
           <div class="sheet-box">
             <div class="sheet-box-title">Strikes & Attacks</div>
             <div class="sheet-box-content" style="padding: 0;">
@@ -460,7 +463,7 @@
             </div>
           </div>
 
-          <!-- SPELLCASTING (If Caster) -->
+          <!-- SPELLCASTING WITH INTERACTIVE SLOT TRACKER -->
           <div class="sheet-box" id="spellsSection" style="display: none;">
             <div class="sheet-box-title">
               <span>Spellcasting</span>
@@ -478,33 +481,40 @@
                 </div>
               </div>
 
-              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.4rem 0 0.2rem;">Cantrips</div>
+              <!-- Spell Slot Pips Container -->
+              <div id="slotTrackerContainer"></div>
+
+              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Cantrips</div>
               <div id="cantripsContainer"></div>
 
-              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.4rem 0 0.2rem;">Rank 1 Spells</div>
+              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 1 Spells</div>
               <div id="rank1Container"></div>
             </div>
           </div>
 
-          <!-- FEATS & ABILITIES -->
           <div class="sheet-box">
             <div class="sheet-box-title">Feats & Special Abilities</div>
             <div class="sheet-box-content" id="featsContainer"></div>
           </div>
 
-          <!-- INVENTORY & GEAR -->
+          <!-- INVENTORY & TRACKED CONSUMABLES -->
           <div class="sheet-box">
-            <div class="sheet-box-title">Inventory & Wealth</div>
+            <div class="sheet-box-title">Consumables & Gear Tracker</div>
             <div class="sheet-box-content">
               <div class="money-row" id="moneyContainer"></div>
-              <div style="font-weight: 700; font-size: 0.75rem; margin-bottom: 0.2rem;">
+              
+              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.4rem 0 0.25rem;">
+                Tracked Consumables (Potions / Elixirs / Ammo)
+              </div>
+              <div class="consumables-list" id="consumablesContainer"></div>
+
+              <div style="font-weight: 700; font-size: 0.75rem; margin-top: 0.4rem; margin-bottom: 0.2rem;">
                 Armor & Shield: <span id="armorSpan" style="font-weight: 400; color: #334155;"></span>
               </div>
               <div class="gear-summary" id="gearContainer"></div>
             </div>
           </div>
         </div>
-
       </div>
     </div>
   </div>
@@ -561,15 +571,61 @@
       });
     }
 
+    function renderSlotTrackers(slots) {
+      const container = document.getElementById('slotTrackerContainer');
+      container.innerHTML = '';
+      if (!Array.isArray(slots) || slots.length === 0) return;
+
+      slots.forEach(slot => {
+        const bar = document.createElement('div');
+        bar.className = 'slot-tracker-bar';
+        
+        let pipsHtml = '';
+        for (let i = 0; i < slot.max_slots; i++) {
+          pipsHtml += `<input type="checkbox" class="slot-checkbox" title="Check when spell slot is cast">`;
+        }
+
+        bar.innerHTML = `
+          <span>RANK ${slot.rank} SPELL SLOTS (${slot.max_slots} MAX)</span>
+          <div class="slot-pips">${pipsHtml}</div>
+        `;
+        container.appendChild(bar);
+      });
+    }
+
+    function renderConsumables(consumables) {
+      const container = document.getElementById('consumablesContainer');
+      container.innerHTML = '';
+      if (!Array.isArray(consumables) || consumables.length === 0) {
+        container.innerHTML = '<span style="font-size: 0.75rem; color: #64748b;">None</span>';
+        return;
+      }
+
+      consumables.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'consumable-pill';
+        item.innerHTML = `
+          <div>
+            <strong>${c.name}</strong>
+            <span style="font-size: 0.7rem; color: #475569; display: block;">${c.description}</span>
+          </div>
+          <span class="qty-tag">QTY: ${c.quantity}</span>
+        `;
+        container.appendChild(item);
+      });
+    }
+
     async function generate() {
       const nameInput = document.getElementById('charName').value.trim();
       const anc = document.getElementById('ancestrySelect').value;
       const cls = document.getElementById('classSelect').value;
+      const lvl = document.getElementById('levelSelect').value || 1;
 
       const params = new URLSearchParams();
       if (nameInput) params.append('name', nameInput);
       if (anc) params.append('ancestry', anc);
       if (cls) params.append('class_name', cls);
+      params.append('level', lvl);
 
       const res = await fetch('/api/generate?' + params.toString());
       const data = await res.json();
@@ -624,7 +680,7 @@
         strikesTbody.appendChild(row);
       });
 
-      // Skills Ledger (Full alphabetical list)
+      // Skills Ledger
       const skillsContainer = document.getElementById('skillsContainer');
       skillsContainer.innerHTML = '';
       const rawSkills = Array.isArray(data.all_skills) ? data.all_skills : (Array.isArray(data.trained_skills) ? data.trained_skills : []);
@@ -651,6 +707,8 @@
         document.getElementById('spellTraditionMeta').textContent = `${data.spellcasting.tradition} Tradition (${data.spellcasting.casting_attribute})`;
         document.getElementById('spellDc').textContent = data.spellcasting.spell_dc || 10;
         document.getElementById('spellAttack').textContent = formatMod(data.spellcasting.spell_attack);
+        
+        renderSlotTrackers(data.spellcasting.slots);
         renderSpellList('cantripsContainer', data.spellcasting.cantrips);
         renderSpellList('rank1Container', data.spellcasting.rank_1_spells);
       } else {
@@ -674,7 +732,7 @@
         featsBox.appendChild(card);
       });
 
-      // Currency & Equipment
+      // Currency, Consumables & Equipment
       const moneyBox = document.getElementById('moneyContainer');
       moneyBox.innerHTML = '';
       if (data.equipment?.money) {
@@ -685,6 +743,8 @@
         `;
       }
       
+      renderConsumables(data.equipment?.consumables || []);
+
       const armorParts = [];
       if (data.equipment?.armor) armorParts.push(data.equipment.armor.name);
       if (data.equipment?.shield) armorParts.push(data.equipment.shield.name);
@@ -698,6 +758,7 @@
       params.append('name', currentCharacterData.name);
       params.append('ancestry', currentCharacterData.ancestry);
       params.append('class_name', currentCharacterData.character_class);
+      params.append('level', currentCharacterData.level || 1);
       window.location.href = '/api/export/foundry?' + params.toString();
     }
 

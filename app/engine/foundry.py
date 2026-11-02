@@ -1,7 +1,6 @@
 from typing import Dict, Any, List
 from app.engine.models import CharacterSheet
 
-# Map core skill names to Foundry PF2e short slugs
 FOUNDRY_SKILL_SLUGS: Dict[str, str] = {
     "Acrobatics": "acr",
     "Arcana": "arc",
@@ -21,7 +20,6 @@ FOUNDRY_SKILL_SLUGS: Dict[str, str] = {
     "Thievery": "thi",
 }
 
-# Foundry PF2e ranks: 0=Untrained, 1=Trained, 2=Expert, 3=Master, 4=Legendary
 RANK_LETTER_TO_NUM: Dict[str, int] = {
     "U": 0,
     "T": 1,
@@ -31,7 +29,6 @@ RANK_LETTER_TO_NUM: Dict[str, int] = {
 }
 
 def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
-    # 1. Attributes & Abilities
     abilities = {
         "str": {"mod": sheet.attributes.strength},
         "dex": {"mod": sheet.attributes.dexterity},
@@ -41,7 +38,6 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
         "cha": {"mod": sheet.attributes.charisma},
     }
 
-    # 2. Skills
     skills_data: Dict[str, Any] = {}
     lore_items: List[Dict[str, Any]] = []
 
@@ -61,17 +57,15 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
                 }
             })
 
-    # 3. Saves & Perception
     saves = {
         "fortitude": {"rank": RANK_LETTER_TO_NUM.get(sheet.defenses.fortitude.rank_letter, 1)},
         "reflex": {"rank": RANK_LETTER_TO_NUM.get(sheet.defenses.reflex.rank_letter, 1)},
         "will": {"rank": RANK_LETTER_TO_NUM.get(sheet.defenses.will.rank_letter, 1)},
     }
 
-    # 4. Embedded Items (Weapons, Armor, Feats, Spells)
     items: List[Dict[str, Any]] = list(lore_items)
 
-    # Armor
+    # Armor & Shield
     if sheet.equipment.armor:
         items.append({
             "name": sheet.equipment.armor.name,
@@ -84,7 +78,6 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             }
         })
 
-    # Shield
     if sheet.equipment.shield:
         items.append({
             "name": sheet.equipment.shield.name,
@@ -96,7 +89,7 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             }
         })
 
-    # Weapons / Strikes
+    # Weapons
     for w in sheet.equipment.weapons:
         traits_list = []
         matching_strike = next((s for s in sheet.equipment.strikes if s.name == w.name), None)
@@ -115,6 +108,19 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             }
         })
 
+    # Consumables
+    for c in sheet.equipment.consumables:
+        items.append({
+            "name": c.name,
+            "type": "consumable",
+            "system": {
+                "category": c.item_type,
+                "quantity": c.quantity,
+                "bulk": {"value": c.bulk},
+                "description": {"value": c.description}
+            }
+        })
+
     # Feats
     for f in sheet.feats:
         items.append({
@@ -129,8 +135,15 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             }
         })
 
-    # Spells (if spellcaster)
+    # Spells & Slot Configuration
+    spells_slots_data = {}
     if sheet.spellcasting:
+        for slot in sheet.spellcasting.slots:
+            spells_slots_data[f"slot{slot.rank}"] = {
+                "max": slot.max_slots,
+                "value": slot.max_slots - slot.used_slots
+            }
+
         for sp in sheet.spellcasting.cantrips + sheet.spellcasting.rank_1_spells:
             items.append({
                 "name": sp.name,
@@ -146,15 +159,13 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
                 }
             })
 
-    # 5. Currency Items
     coins = {
-        "pp": 0,
+        "pp": sheet.equipment.money.pp,
         "gp": sheet.equipment.money.gp,
         "sp": sheet.equipment.money.sp,
         "cp": sheet.equipment.money.cp
     }
 
-    # Complete Foundry VTT PF2e Actor JSON structure
     actor_document = {
         "name": sheet.name,
         "type": "character",
@@ -170,7 +181,8 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             "attributes": {
                 "hp": {"value": sheet.defenses.hp, "max": sheet.defenses.hp},
                 "speed": {"value": sheet.speed, "otherSpeeds": []},
-                "perception": {"rank": RANK_LETTER_TO_NUM.get(sheet.perception.rank_letter, 1)}
+                "perception": {"rank": RANK_LETTER_TO_NUM.get(sheet.perception.rank_letter, 1)},
+                "spellcasting": {"slots": spells_slots_data}
             },
             "skills": skills_data,
             "saves": saves,

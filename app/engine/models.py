@@ -50,6 +50,13 @@ class Item(BaseModel):
 
 ItemEntry = Item
 
+class ConsumableItem(BaseModel):
+    name: str
+    quantity: int = 1
+    item_type: str = "potion"  # potion, elixir, scroll, talisman
+    bulk: Union[str, float, int] = "L"
+    description: str = ""
+
 class Wealth(BaseModel):
     pp: int = 0
     gp: int = 0
@@ -64,6 +71,7 @@ class EquipmentLoadout(BaseModel):
     armor: Optional[Item] = None
     shield: Optional[Item] = None
     gear: List[str] = []
+    consumables: List[ConsumableItem] = []
     money: Wealth = Wealth()
     strikes: List[Strike] = []
 
@@ -79,6 +87,11 @@ class SpellSummary(BaseModel):
 
 SpellEntry = SpellSummary
 
+class SpellSlotTracker(BaseModel):
+    rank: int
+    max_slots: int
+    used_slots: int = 0
+
 class SpellcastingData(BaseModel):
     tradition: str
     casting_attribute: str
@@ -86,6 +99,7 @@ class SpellcastingData(BaseModel):
     spell_attack: int
     cantrips: List[SpellSummary] = []
     rank_1_spells: List[SpellSummary] = []
+    slots: List[SpellSlotTracker] = []
 
 SpellcastingLoadout = SpellcastingData
 
