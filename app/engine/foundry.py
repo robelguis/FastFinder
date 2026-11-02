@@ -58,6 +58,7 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             sheet.spellcasting.cantrips
             + sheet.spellcasting.rank_1_spells
             + sheet.spellcasting.rank_2_spells
+            + sheet.spellcasting.rank_3_spells
         )
         for sp in all_spells:
             items.append({

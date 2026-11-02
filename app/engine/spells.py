@@ -1,159 +1,153 @@
-import json
-import re
 import random
-from pathlib import Path
-from typing import Dict, Any, Optional, List
-from app.engine.models import SpellSummary, SpellcastingData, SpellSlotTracker
+from typing import Dict, Any, List, Optional
+from app.engine.models import SpellSummary, SpellSlotTracker, SpellcastingData
 
-DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
-
-SPELLCASTING_CLASSES = {
-    "wizard": {"tradition": "Arcane", "attribute": "int"},
-    "cleric": {"tradition": "Divine", "attribute": "wis"},
-    "druid": {"tradition": "Primal", "attribute": "wis"},
-    "bard": {"tradition": "Occult", "attribute": "cha"},
-    "sorcerer": {"tradition": "Arcane", "attribute": "cha"},
-    "witch": {"tradition": "Occult", "attribute": "int"},
-    "oracle": {"tradition": "Divine", "attribute": "cha"},
-    "psychic": {"tradition": "Occult", "attribute": "int"},
-    "animist": {"tradition": "Divine", "attribute": "wis"},
-    "magus": {"tradition": "Arcane", "attribute": "int"},
-    "summoner": {"tradition": "Arcane", "attribute": "cha"},
+SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
+    "arcane": {
+        "cantrips": [
+            {"name": "Ignition", "actions": "2 actions", "traits": ["Arcane", "Attack", "Concentrate", "Fire", "Manipulate"], "range": "30 feet", "defense": "AC", "description": "You ignite a flame in your hand and hurl it at a foe for 2d4 fire damage (critical hit deals persistent fire)."},
+            {"name": "Telekinetic Projectile", "actions": "2 actions", "traits": ["Arcane", "Attack", "Concentrate", "Manipulate"], "range": "30 feet", "defense": "AC", "description": "You hurl a loose object at a target for 2d6 bludgeoning, piercing, or slashing damage."},
+            {"name": "Shield", "actions": "1 action", "traits": ["Arcane", "Cantrip", "Concentrate", "Force"], "range": "Self", "defense": "None", "description": "You raise a magical shield granting a +1 circumstance bonus to AC and the Shield Block reaction."},
+            {"name": "Light", "actions": "2 actions", "traits": ["Arcane", "Cantrip", "Concentrate", "Light", "Manipulate"], "range": "Touch", "defense": "None", "description": "An object sheds bright light in a 20-foot radius for 1 hour."}
+        ],
+        "rank_1": [
+            {"name": "Force Barrage", "actions": "1 to 3 actions", "traits": ["Arcane", "Force"], "range": "120 feet", "defense": "None", "description": "You fire unerring darts of magical force dealing 1d4+1 force damage per shard."},
+            {"name": "Breathe Fire", "actions": "2 actions", "traits": ["Arcane", "Fire"], "range": "15-foot cone", "defense": "Basic Reflex", "description": "A torrent of flame deals 2d6 fire damage to all creatures in the area."},
+            {"name": "Runic Weapon", "actions": "2 actions", "traits": ["Arcane", "Manipulate"], "range": "Touch", "defense": "None", "description": "A weapon becomes a +1 striking weapon (+1 attack, extra weapon damage die)."}
+        ],
+        "rank_2": [
+            {"name": "Mist", "actions": "2 actions", "traits": ["Arcane", "Water"], "range": "120 feet", "defense": "None", "description": "A 20-foot burst of vapor grants concealment to all creatures within."},
+            {"name": "Acid Grip", "actions": "2 actions", "traits": ["Arcane", "Acid"], "range": "30 feet", "defense": "Basic Reflex", "description": "Acidic claws grapple a target dealing 2d8 acid damage and moving them up to 20 feet."},
+            {"name": "Laughing Fit", "actions": "2 actions", "traits": ["Arcane", "Emotion", "Mental"], "range": "30 feet", "defense": "Will", "description": "The target laughs uncontrollably, becoming clumsy 1 and unable to use reactions."}
+        ],
+        "rank_3": [
+            {"name": "Fireball", "actions": "2 actions", "traits": ["Arcane", "Fire"], "range": "500 feet", "defense": "Basic Reflex", "description": "A roaring blast of flame erupts in a 20-foot burst, dealing 6d6 fire damage."},
+            {"name": "Slow", "actions": "2 actions", "traits": ["Arcane", "Transmutation"], "range": "30 feet", "defense": "Fortitude", "description": "Dilates time around the target. On a failure, the target is slowed 1 for 1 minute; on a critical failure, slowed 2."},
+            {"name": "Lightning Bolt", "actions": "2 actions", "traits": ["Arcane", "Electricity"], "range": "120-foot line", "defense": "Basic Reflex", "description": "A bolt of lightning arcs in a line dealing 4d12 electricity damage."}
+        ]
+    },
+    "divine": {
+        "cantrips": [
+            {"name": "Divine Lance", "actions": "2 actions", "traits": ["Attack", "Divine", "Holy"], "range": "30 feet", "defense": "AC", "description": "You launch a beam of sanctified divine energy dealing 2d4 spirit damage."},
+            {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to one attack roll, Perception check, saving throw, or skill check."},
+            {"name": "Forbidding Ward", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Target ally gains a +1 status bonus to AC and saves against attacks from a designated enemy."},
+            {"name": "Vitality Lash", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Vitality"], "range": "30 feet", "defense": "Basic Fortitude", "description": "A lash of radiant energy deals 2d6 vitality damage to an undead target."}
+        ],
+        "rank_1": [
+            {"name": "Heal", "actions": "1 to 3 actions", "traits": ["Divine", "Healing", "Vitality"], "range": "Varies", "defense": "None", "description": "Channels positive energy to heal living creatures or harm undead (1d8 HP per action/rank)."},
+            {"name": "Sanctuary", "actions": "2 actions", "traits": ["Divine", "Abjuration"], "range": "Touch", "defense": "Will", "description": "Wards a creature. Foes attempting to attack the target must succeed at a Will save."},
+            {"name": "Bless", "actions": "2 actions", "traits": ["Divine", "Concentrate"], "range": "15-foot emanation", "defense": "None", "description": "You and allies in the area gain a +1 status bonus to attack rolls. Can be sustained to expand."}
+        ],
+        "rank_2": [
+            {"name": "Cleanse Affliction", "actions": "2 actions", "traits": ["Divine", "Healing"], "range": "Touch", "defense": "None", "description": "Attempt a counteract check to remove a poison, disease, or curse affecting the target."},
+            {"name": "Spiritual Armament", "actions": "2 actions", "traits": ["Divine", "Force"], "range": "120 feet", "defense": "AC", "description": "Summons a glowing ghostly weapon of your deity dealing 2d8 damage on command."},
+            {"name": "Warrior's Regret", "actions": "2 actions", "traits": ["Divine", "Emotion", "Mental"], "range": "30 feet", "defense": "Will", "description": "Striking the target forces it to feel psychic remorse, taking damage whenever it attacks."}
+        ],
+        "rank_3": [
+            {"name": "Heroism", "actions": "2 actions", "traits": ["Divine", "Mental"], "range": "Touch", "defense": "None", "description": "A willingness to face danger infuses the target, granting a +1 status bonus to attack rolls, Perception, saving throws, and skill checks for 10 minutes."},
+            {"name": "Crisis of Faith", "actions": "2 actions", "traits": ["Divine", "Mental"], "range": "30 feet", "defense": "Will", "description": "You assault the target's convictions, dealing 6d6 mental damage and stupefying them."},
+            {"name": "Vampiric Feast", "actions": "2 actions", "traits": ["Divine", "Void"], "range": "Touch", "defense": "Basic Fortitude", "description": "You drink vitality from a foe, dealing 6d6 void damage and gaining temporary HP equal to half."}
+        ]
+    },
+    "primal": {
+        "cantrips": [
+            {"name": "Gale Blast", "actions": "2 actions", "traits": ["Air", "Cantrip", "Primal"], "range": "5-foot emanation", "defense": "Fortitude", "description": "A burst of wind pushes adjacent enemies back 5 feet and deals 2d6 bludgeoning damage."},
+            {"name": "Frostbite", "actions": "2 actions", "traits": ["Cantrip", "Cold", "Primal"], "range": "60 feet", "defense": "Basic Fortitude", "description": "Bitter cold deals 2d4 cold damage (fatigued on a critical failure)."},
+            {"name": "Tangle Vine", "actions": "2 actions", "traits": ["Attack", "Cantrip", "Plant", "Primal"], "range": "30 feet", "defense": "AC", "description": "Vines entangle the target, imposing a -10 foot circumstance penalty to Speeds."},
+            {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Primal"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to an attack roll, save, or skill check."}
+        ],
+        "rank_1": [
+            {"name": "Heal", "actions": "1 to 3 actions", "traits": ["Healing", "Primal", "Vitality"], "range": "Varies", "defense": "None", "description": "Channels vital energy restoring 1d8 HP per action/rank."},
+            {"name": "Thunderstrike", "actions": "2 actions", "traits": ["Electricity", "Primal", "Sonic"], "range": "120 feet", "defense": "Basic Reflex", "description": "A thunderous bolt calls down 1d12 electricity and 1d4 sonic damage."},
+            {"name": "Pummeling Rubble", "actions": "2 actions", "traits": ["Earth", "Primal"], "range": "15-foot cone", "defense": "Basic Reflex", "description": "A spray of dirt and stone deals 2d4 bludgeoning damage and pushes targets back."}
+        ],
+        "rank_2": [
+            {"name": "Entangling Flora", "actions": "2 actions", "traits": ["Plant", "Primal"], "range": "120 feet", "defense": "Reflex", "description": "Plants burst forth in a 20-foot burst, turning the area into difficult terrain and immobilizing foes."},
+            {"name": "Blazing Dive", "actions": "2 actions", "traits": ["Fire", "Primal"], "range": "Fly up to Speed", "defense": "Basic Reflex", "description": "You fly in a blazing trail and detonate on impact for 3d4 fire damage."},
+            {"name": "Mist", "actions": "2 actions", "traits": ["Primal", "Water"], "range": "120 feet", "defense": "None", "description": "Creates a thick cloud of fog granting concealment to creatures inside."}
+        ],
+        "rank_3": [
+            {"name": "Lightning Bolt", "actions": "2 actions", "traits": ["Electricity", "Primal"], "range": "120-foot line", "defense": "Basic Reflex", "description": "A bolt of lightning arcs in a line dealing 4d12 electricity damage."},
+            {"name": "Wall of Thorns", "actions": "3 actions", "traits": ["Plant", "Primal"], "range": "60 feet", "defense": "None", "description": "You create a dense barrier of briars. Creatures pushing through take 3d4 piercing damage."},
+            {"name": "Cave Fangs", "actions": "2 actions", "traits": ["Earth", "Primal"], "range": "30 feet", "defense": "Basic Reflex", "description": "Stalagmites burst from the ground dealing 6d6 piercing damage and creating difficult terrain."}
+        ]
+    },
+    "occult": {
+        "cantrips": [
+            {"name": "Daze", "actions": "2 actions", "traits": ["Cantrip", "Mental", "Occult"], "range": "60 feet", "defense": "Will", "description": "Jolts the target's mind with mental feedback dealing 2d6 mental damage (stupefied 1 on crit fail)."},
+            {"name": "Telekinetic Projectile", "actions": "2 actions", "traits": ["Attack", "Cantrip", "Manipulate", "Occult"], "range": "30 feet", "defense": "AC", "description": "Hurls a loose object dealing 2d6 damage."},
+            {"name": "Shield", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Force", "Occult"], "range": "Self", "defense": "None", "description": "Grants +1 circumstance bonus to AC and Shield Block."},
+            {"name": "Void Warp", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Occult", "Void"], "range": "30 feet", "defense": "Basic Fortitude", "description": "Assaults the target with entropic void energy dealing 2d4 void damage."}
+        ],
+        "rank_1": [
+            {"name": "Soothe", "actions": "2 actions", "traits": ["Emotion", "Healing", "Mental", "Occult"], "range": "30 feet", "defense": "None", "description": "Soothes the mind to restore 1d10+4 HP and grant +2 status bonus to saves vs mental effects."},
+            {"name": "Phantasmal Minion", "actions": "3 actions", "traits": ["Illusion", "Occult"], "range": "60 feet", "defense": "None", "description": "Creates an illusory servant capable of simple physical tasks."},
+            {"name": "Sure Strike", "actions": "1 action", "traits": ["Concentrate", "Fortune", "Occult"], "range": "Self", "defense": "None", "description": "Roll twice on your next attack roll this turn and take the better result."}
+        ],
+        "rank_2": [
+            {"name": "Invisibility", "actions": "2 actions", "traits": ["Illusion", "Occult"], "range": "Touch", "defense": "None", "description": "The target becomes invisible until it makes an attack or hostile action."},
+            {"name": "Paranoia", "actions": "2 actions", "traits": ["Emotion", "Mental", "Occult"], "range": "30 feet", "defense": "Will", "description": "Target believes all creatures are its mortal enemies, treating everyone as foes."},
+            {"name": "Sound Burst", "actions": "2 actions", "traits": ["Occult", "Sonic"], "range": "30 feet", "defense": "Fortitude", "description": "A cacophony deals 2d10 sonic damage in a 10-foot burst (deafened on failure)."}
+        ],
+        "rank_3": [
+            {"name": "Heroism", "actions": "2 actions", "traits": ["Mental", "Occult"], "range": "Touch", "defense": "None", "description": "Infuses target with confidence, granting +1 status bonus to attacks, Perception, saves, and skills for 10 minutes."},
+            {"name": "Slow", "actions": "2 actions", "traits": ["Occult", "Transmutation"], "range": "30 feet", "defense": "Fortitude", "description": "Target becomes slowed 1 for 1 minute on a failed Fortitude save."},
+            {"name": "Vampiric Feast", "actions": "2 actions", "traits": ["Occult", "Void"], "range": "Touch", "defense": "Basic Fortitude", "description": "Deals 6d6 void damage and grants temporary HP equal to half."}
+        ]
+    }
 }
 
-EXCLUDED_TRAITS = {
-    "focus", "hex", "composition", "conflux", "devotion",
-    "cleric", "druid", "bard", "witch", "oracle", "psychic", "magus", "sorcerer", "wizard"
+CLASS_TRADITION_MAP = {
+    "wizard": {"tradition": "Arcane", "attr": "int", "catalog": "arcane"},
+    "sorcerer": {"tradition": "Primal", "attr": "cha", "catalog": "primal"},
+    "druid": {"tradition": "Primal", "attr": "wis", "catalog": "primal"},
+    "cleric": {"tradition": "Divine", "attr": "wis", "catalog": "divine"},
+    "bard": {"tradition": "Occult", "attr": "cha", "catalog": "occult"},
+    "witch": {"tradition": "Occult", "attr": "int", "catalog": "occult"},
+    "oracle": {"tradition": "Divine", "attr": "cha", "catalog": "divine"},
+    "animist": {"tradition": "Divine", "attr": "wis", "catalog": "divine"},
+    "psychic": {"tradition": "Occult", "attr": "int", "catalog": "occult"}
 }
 
-def clean_pf2e_markup(text: str) -> str:
-    if not text:
-        return ""
-    text = re.sub(r"<[^>]+>", "", text)
-    text = re.sub(r"@UUID\[[^\]]+\]\{([^}]+)\}", r"\1", text)
-    text = re.sub(r"@UUID\[(?:.*?\.)?([^\]\.]+?)\]", r"\1", text)
-    text = re.sub(r"@Check\[[^\]]+\]\{([^}]+)\}", r"\1", text)
-    text = re.sub(r"@Check\[[^\]]*type:([a-zA-Z]+)[^\]]*\]", r"\1 check", text)
-    text = re.sub(r"@Damage\[[^\]]+\]\{([^}]+)\}", r"\1", text)
-    text = re.sub(r"@Damage\[([^\]]+)\]", r"\1", text)
-    text = re.sub(r"@[A-Za-z]+\[[^\]]+\]\{([^}]+)\}", r"\1", text)
-    text = re.sub(r"@[A-Za-z]+\[[^\]]+\]", "", text)
-    text = text.replace("[[", "").replace("]]", "")
-    text = re.sub(r"[ \t]+", " ", text)
-    text = re.sub(r"\n\s*\n+", "\n\n", text)
-    return text.strip()
-
-def load_spells() -> List[Dict[str, Any]]:
-    path = DATA_DIR / "spells.json"
-    if not path.exists():
-        return []
-    with open(path, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-def build_summary(sp: Dict[str, Any], default_rank: int) -> SpellSummary:
-    raw_traits = sp.get("traits", [])
-    if isinstance(raw_traits, dict):
-        raw_traits = raw_traits.get("value", [])
-    traits = [t.title() for t in raw_traits if isinstance(t, str)]
-    desc = sp.get("summary") or sp.get("description", "")
-    if not desc and isinstance(sp.get("system"), dict):
-        desc = sp["system"].get("description", {}).get("value", "")
-
-    return SpellSummary(
-        name=sp["name"],
-        rank=default_rank,
-        actions=sp.get("actions", "2 actions"),
-        traits=traits,
-        range=sp.get("range", "30 feet"),
-        targets=sp.get("targets", "1 creature"),
-        defense=sp.get("defense", "None"),
-        description=clean_pf2e_markup(desc)
-    )
-
-def resolve_spellcasting(class_name: str, attribute_mods: Dict[str, int], level: int = 1) -> Optional[SpellcastingData]:
+def resolve_spellcasting(
+    class_name: str,
+    attribute_mods: Dict[str, int],
+    level: int = 1
+) -> Optional[SpellcastingData]:
     cls_key = class_name.lower()
-    if cls_key not in SPELLCASTING_CLASSES:
+    if cls_key not in CLASS_TRADITION_MAP:
         return None
 
-    cfg = SPELLCASTING_CLASSES[cls_key]
-    key_attr = cfg["attribute"]
-    attr_mod = attribute_mods.get(key_attr, 0)
-    tradition = cfg["tradition"]
-    tradition_lower = tradition.lower()
+    cfg = CLASS_TRADITION_MAP[cls_key]
+    trad_key = cfg["catalog"]
+    attr_key = cfg["attr"]
 
-    prof_bonus = 2 + level  # Trained + Level
+    attr_mod = attribute_mods.get(attr_key, 0)
+    prof_bonus = 2 + level
     spell_dc = 10 + prof_bonus + attr_mod
     spell_attack = prof_bonus + attr_mod
 
-    raw_spells = load_spells()
-    
-    matching_cantrips: List[Dict[str, Any]] = []
-    matching_rank1: List[Dict[str, Any]] = []
-    matching_rank2: List[Dict[str, Any]] = []
+    cat_data = SPELL_CATALOG[trad_key]
 
-    for sp in raw_spells:
-        raw_traits = sp.get("traits", [])
-        if isinstance(raw_traits, dict):
-            raw_traits = raw_traits.get("value", [])
-        traits_lower = set(str(t).lower() for t in raw_traits)
+    cantrips = [SpellSummary(rank=0, **s) for s in cat_data["cantrips"]]
+    rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
+    rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])] if level >= 3 else []
+    rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if level >= 5 else []
 
-        if any(bad_trait in traits_lower for bad_trait in EXCLUDED_TRAITS):
-            continue
-
-        traditions = sp.get("traditions", [])
-        if not traditions and isinstance(sp.get("system"), dict):
-            trad_data = sp["system"].get("traits", {}).get("traditions", [])
-            if isinstance(trad_data, list):
-                traditions = trad_data
-        traditions_lower = set(str(t).lower() for t in traditions)
-
-        has_tradition = (tradition_lower in traditions_lower) or (tradition_lower in traits_lower)
-        if not has_tradition:
-            continue
-
-        rank = sp.get("rank")
-        if rank is None and isinstance(sp.get("system"), dict):
-            rank = sp["system"].get("level", {}).get("value", 1)
-        if rank is None:
-            rank = sp.get("level", 1)
-
-        try:
-            rank = int(rank)
-        except (ValueError, TypeError):
-            rank = 1
-
-        is_cantrip = "cantrip" in traits_lower or rank == 0
-
-        if is_cantrip:
-            matching_cantrips.append(sp)
-        elif rank == 1:
-            matching_rank1.append(sp)
-        elif rank == 2:
-            matching_rank2.append(sp)
-
-    random.shuffle(matching_cantrips)
-    random.shuffle(matching_rank1)
-    random.shuffle(matching_rank2)
-
-    cantrip_list = [build_summary(s, 0) for s in matching_cantrips[:5]]
-    rank1_count = 3 if level >= 2 else 2
-    rank1_list = [build_summary(s, 1) for s in matching_rank1[:rank1_count]]
-
-    rank2_list: List[SpellSummary] = []
-    slots = [SpellSlotTracker(rank=1, max_slots=rank1_count, used_slots=0)]
-
+    slots = [SpellSlotTracker(rank=1, max_slots=3 if level >= 3 else 2)]
     if level >= 3:
-        rank2_count = 3 if level >= 4 else 2
-        rank2_list = [build_summary(s, 2) for s in matching_rank2[:rank2_count]]
-        slots.append(SpellSlotTracker(rank=2, max_slots=rank2_count, used_slots=0))
+        slots.append(SpellSlotTracker(rank=2, max_slots=3 if level >= 5 else 2))
+    if level >= 5:
+        slots.append(SpellSlotTracker(rank=3, max_slots=2))
 
     return SpellcastingData(
-        tradition=tradition,
-        casting_attribute=key_attr.upper(),
+        tradition=cfg["tradition"],
+        casting_attribute=attr_key.upper(),
         spell_dc=spell_dc,
         spell_attack=spell_attack,
-        cantrips=cantrip_list,
-        rank_1_spells=rank1_list,
-        rank_2_spells=rank2_list,
+        cantrips=cantrips,
+        rank_1_spells=rank_1,
+        rank_2_spells=rank_2,
+        rank_3_spells=rank_3,
         slots=slots
     )

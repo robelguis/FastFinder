@@ -16,13 +16,13 @@ from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
+from app.engine.subclasses import resolve_heritage, resolve_subclass
+from app.engine.archetypes import pick_archetype
 from app.engine.companions import resolve_companion
 from app.engine.eidolons import resolve_eidolon
 from app.engine.familiars import resolve_familiar
 from app.engine.constructs_undead import resolve_construct_companion, resolve_undead_companion
-from app.engine.plants_familiars_summons import resolve_plant_companion, resolve_specific_familiar, resolve_summon_snapshot
-from app.engine.subclasses import resolve_heritage, resolve_subclass
-from app.engine.archetypes import pick_archetype
+from app.engine.plants_familiars_summons import resolve_plant_companion, resolve_specific_familiar
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -52,6 +52,35 @@ CLASS_FEATURES_LVL3 = {
     "champion": {"name": "Divine Smite", "description": "Your champion reaction deals persistent damage equal to your Charisma modifier."},
     "ranger": {"name": "Iron Will", "description": "Your proficiency rank for Will saves increases to expert."},
     "monk": {"name": "Incredible Movement", "description": "You gain a +10-foot status bonus to your Speed whenever you're not wearing armor."},
+}
+
+CLASS_FEATURES_LVL5 = {
+    "fighter": {"name": "Fighter Weapon Mastery", "description": "Your proficiency rank increases to Master in simple and martial weapons of your chosen group (+6). Critical hits apply the critical specialization effect."},
+    "barbarian": {"name": "Brutal Bulwark", "description": "Your proficiency rank for Fortitude saves increases to Master. Your melee strikes deal extra specialization damage."},
+    "rogue": {"name": "Weapon Tricks", "description": "Your proficiency rank for simple weapons and martial finesse weapons increases to Expert (+4). You deal sneak attack with critical specialization."},
+    "champion": {"name": "Weapon Expertise", "description": "Your proficiency rank increases to Expert in simple and martial weapons (+4). You inflict critical specialization effects on foes affected by your cause."},
+    "ranger": {"name": "Ranger Weapon Expertise", "description": "Your proficiency rank for simple and martial weapons increases to Expert (+4). Critical hits trigger the weapon's critical specialization effect."},
+    "monk": {"name": "Expert Strikes", "description": "Your proficiency rank for unarmed attacks increases to Expert (+4). You gain critical specialization effects with unarmed strikes."},
+    "wizard": {"name": "Reflex Expertise", "description": "Your proficiency rank for Reflex saves increases to Expert (+4)."},
+    "cleric": {"name": "Alertness", "description": "Your proficiency rank for Perception increases to Expert (+4)."},
+    "druid": {"name": "Alertness", "description": "Your proficiency rank for Perception increases to Expert (+4)."},
+    "sorcerer": {"name": "Alertness", "description": "Your proficiency rank for Perception increases to Expert (+4)."},
+    "witch": {"name": "Reflex Expertise", "description": "Your proficiency rank for Reflex saves increases to Expert (+4)."},
+    "bard": {"name": "Lightning Reflexes", "description": "Your proficiency rank for Reflex saves increases to Expert (+4)."}
+}
+
+CURATED_ANCESTRY_FEATS_LVL5 = {
+    "dwarf": {"name": "Dwarven Reinforcement", "description": "You can strengthen mundane materials, increasing their Hardness and HP, and gain a +1 bonus to Crafting checks."},
+    "elf": {"name": "Agile Escort", "description": "Your Speed increases by 5 feet, and you can Step twice when taking an action to escort an ally."},
+    "human": {"name": "Sense Allies", "description": "You instinctively know the location of allies within 30 feet, ignoring concealment against them."},
+    "goblin": {"name": "Kneecap", "description": "When you hit an off-guard foe with a Strike, the target takes a -10-foot circumstance penalty to its Speeds."},
+    "gnome": {"name": "Animal Elocutionist", "description": "You can speak to all animals using Speak with Animals as an innate primal spell."},
+    "halfling": {"name": "Halfling Ingenuity", "description": "You can attempt any skill check that requires trained proficiency even if you are untrained."},
+    "orc": {"name": "Ferocious Charge", "description": "Stride up to twice your Speed and make a Strike with a +1 circumstance bonus to the attack roll."},
+    "leshy": {"name": "Solar Nourishment", "description": "You can draw all your nourishment from sunlight and water, gaining resistance to negative effects."},
+    "anadi": {"name": "Hybrid Shape", "description": "You can assume a hybrid form combining humanoid stance with spider climbing and fangs."},
+    "automaton": {"name": "Reinforced Chassis", "description": "Your internal plating hardens, granting you resistance to physical damage."},
+    "kobold": {"name": "Kobold Breath", "description": "You channel dragon blood to exhale an elemental blast in a 15-foot cone for 3d4 damage."}
 }
 
 def clean_pf2e_text(text: str) -> str:
@@ -97,7 +126,7 @@ class PF2eGenerator:
         level: int = 1,
         use_dedication: bool = False
     ) -> CharacterSheet:
-        level = max(1, min(4, level))
+        level = max(1, min(5, int(level)))
 
         # 1. Select Ancestry, Class, Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
@@ -117,7 +146,7 @@ class PF2eGenerator:
 
         archetype_data = pick_archetype(cls["name"]) if use_dedication else None
 
-        # 2. Track Attribute Boosts
+        # 2. Track Attribute Boosts (Level 1)
         mods = {attr: 0 for attr in ATTRIBUTES}
 
         applied_anc_boosts: Set[str] = set()
@@ -171,14 +200,31 @@ class PF2eGenerator:
             if mods[attr] > 4:
                 mods[attr] = 4
 
+        # 2b. Level 5 Attribute Boosts (Apply 4 distinct boosts to top attributes)
+        if level >= 5:
+            lvl5_boosts_applied: Set[str] = set()
+            lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl5_priority:
+                if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
+                    mods[attr] += 1
+                    lvl5_boosts_applied.add(attr)
+
         # 3. Defenses & Proficiencies
         fort_rank = cls.get("saving_throws", {}).get("fortitude", 1)
         ref_rank = cls.get("saving_throws", {}).get("reflex", 1)
         will_rank = cls.get("saving_throws", {}).get("will", 1)
         perception_rank = cls.get("perception", 1)
 
+        # Level 3 & Level 5 Save / Perception upgrades
         if level >= 3 and cls["name"].lower() in ["fighter", "ranger"] and will_rank < 2:
             will_rank = 2
+        if level >= 5:
+            if cls["name"].lower() == "barbarian" and fort_rank < 3:
+                fort_rank = 3
+            elif cls["name"].lower() in ["cleric", "druid", "sorcerer"] and perception_rank < 2:
+                perception_rank = 2
+            elif cls["name"].lower() in ["wizard", "witch", "bard"] and ref_rank < 2:
+                ref_rank = 2
 
         fort_prof = self._calc_prof(fort_rank, level, mods["con"])
         ref_prof = self._calc_prof(ref_rank, level, mods["dex"])
@@ -193,6 +239,16 @@ class PF2eGenerator:
             level=level
         )
 
+        # Scale Strikes for Level 5 Weapon Mastery / Expertise
+        if level >= 5:
+            for strike in equipment_loadout.strikes:
+                # Fighters reach Master (+6 prof bonus, +2 over level 1-4 Expert); other martials reach Expert (+4, +2 over Trained)
+                is_fighter = cls["name"].lower() == "fighter"
+                extra_prof = 2  # Progression increment at 5th level
+                strike.attack_bonus += extra_prof
+                strike.map_second += extra_prof
+                strike.map_third += extra_prof
+
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * level)
@@ -202,7 +258,7 @@ class PF2eGenerator:
         cls_name_lower = cls["name"].lower()
         chosen_feats: List[FeatSummary] = []
 
-        # Heritage Feature with auto-resolved Versatile Heritage
+        # Heritage Feature
         h_name = heritage_data["name"]
         h_desc = clean_pf2e_text(heritage_data["description"])
         if "Versatile" in h_name:
@@ -369,6 +425,51 @@ class PF2eGenerator:
                     description=clean_pf2e_text(sf4.get("description", ""))
                 ))
 
+        # Level 5 Progression
+        if level >= 5:
+            anc_name_lower = anc["name"].lower()
+            lvl5_anc_feats = [
+                f for f in self.feats
+                if f.get("category") == "ancestry"
+                and f.get("level") == 5
+                and anc_name_lower in [t.lower() for t in f.get("traits", [])]
+            ]
+
+            if lvl5_anc_feats:
+                af5 = random.choice(lvl5_anc_feats)
+                chosen_feats.append(FeatSummary(
+                    id=af5["id"],
+                    name=af5["name"],
+                    category="Ancestry (Level 5)",
+                    action_cost=af5.get("action_cost"),
+                    traits=af5.get("traits", []),
+                    description=clean_pf2e_text(af5.get("description", ""))
+                ))
+            else:
+                fallback_af = CURATED_ANCESTRY_FEATS_LVL5.get(
+                    anc_name_lower,
+                    {"name": f"{anc['name']} Resiliency", "description": "You draw deep upon your heritage to endure hardships, gaining a +1 circumstance bonus to saving throws."}
+                )
+                chosen_feats.append(FeatSummary(
+                    id=f"anc-feat-{anc_name_lower}-5",
+                    name=fallback_af["name"],
+                    category="Ancestry (Level 5)",
+                    action_cost=None,
+                    traits=[anc_name_lower],
+                    description=clean_pf2e_text(fallback_af["description"])
+                ))
+
+            if cls_name_lower in CLASS_FEATURES_LVL5:
+                cf5 = CLASS_FEATURES_LVL5[cls_name_lower]
+                chosen_feats.append(FeatSummary(
+                    id=f"class-feat-{cf5['name'].lower().replace(' ', '-')}",
+                    name=cf5["name"],
+                    category="Class Feature (Level 5)",
+                    action_cost=None,
+                    traits=[cls_name_lower],
+                    description=clean_pf2e_text(cf5["description"])
+                ))
+
         # 6. Skills
         all_skills = resolve_character_skills(
             class_name=cls["name"],
@@ -377,7 +478,7 @@ class PF2eGenerator:
             level=level
         )
 
-        # 7. Spellcasting
+        # 7. Spellcasting (Level 5 unlocks Rank 3 spells)
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
@@ -392,7 +493,7 @@ class PF2eGenerator:
             level=level
         )
 
-        # 9. Partner Creature (Eidolon, Construct, Undead, Plant, Familiar, or Animal Companion)
+        # 9. Partner Creature
         companion_data = None
         arch_name = archetype_data["name"].lower() if archetype_data else ""
         all_feat_str = " ".join([f.name.lower() for f in chosen_feats])
@@ -406,7 +507,6 @@ class PF2eGenerator:
         elif "plant companion" in all_feat_str or (cls_name_lower == "druid" and "leaf" in all_feat_str):
             companion_data = resolve_plant_companion(level=level)
         elif cls_name_lower == "witch" or "familiar" in all_feat_str:
-            # At level 4+, roll a Specific Familiar upgrade 50% of the time
             if level >= 4 and random.random() < 0.5:
                 companion_data = resolve_specific_familiar(
                     master_ac=calculated_ac,

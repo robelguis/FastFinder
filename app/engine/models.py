@@ -100,6 +100,7 @@ class SpellcastingData(BaseModel):
     cantrips: List[SpellSummary] = []
     rank_1_spells: List[SpellSummary] = []
     rank_2_spells: List[SpellSummary] = []
+    rank_3_spells: List[SpellSummary] = []
     slots: List[SpellSlotTracker] = []
 
 SpellcastingLoadout = SpellcastingData
@@ -115,20 +116,20 @@ class FocusSpellData(BaseModel):
 
 class PartnerCreatureData(BaseModel):
     name: str
-    creature_type: str # "Animal Companion", "Eidolon", "Familiar", "Thrall / Minion"
-    sub_type: str      # e.g., "Wolf", "Dragon Eidolon", "Raven Familiar"
-    stage: str         # "Young", "Mature", "Standard"
+    creature_type: str
+    sub_type: str
+    stage: str
     size: str
     speed: str
     ac: int
-    hp: Union[int, str] # Supports integer HP or "Shared with Master"
+    hp: Union[int, str]
     fortitude: int
     reflex: int
     will: int
     perception: int
     strikes: List[Strike] = []
-    primary_ability: str # Support Benefit, Eidolon Feature, or Familiar Abilities
-    secondary_ability: Optional[str] = None # Advanced Maneuver or Command Action
+    primary_ability: str
+    secondary_ability: Optional[str] = None
     traits: List[str] = []
 
 AnimalCompanionData = PartnerCreatureData
