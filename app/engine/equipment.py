@@ -1,35 +1,50 @@
 from typing import Dict, Any, List, Tuple
-from app.engine.models import Item, Strike, EquipmentLoadout
+from app.engine.models import Item, Strike, EquipmentLoadout, Wealth
 
+# Official Remaster Level 1 Costs in silver pieces (sp)
+# (10 sp = 1 gp)
 WEAPONS_DB: Dict[str, Dict[str, Any]] = {
-    "Longsword": {"damage": "1d8", "type": "slashing", "traits": ["versatile P"], "bulk": "1"},
-    "Greatsword": {"damage": "1d12", "type": "slashing", "traits": ["two-hand d12", "versatile P"], "bulk": "2"},
-    "Shortsword": {"damage": "1d6", "type": "piercing", "traits": ["agile", "finesse", "versatile S"], "bulk": "L"},
-    "Rapier": {"damage": "1d6", "type": "piercing", "traits": ["deadly d8", "disarm", "finesse"], "bulk": "1"},
-    "Dagger": {"damage": "1d4", "type": "piercing", "traits": ["agile", "finesse", "thrown 10ft", "versatile S"], "bulk": "L"},
-    "Shortbow": {"damage": "1d6", "type": "piercing", "traits": ["deadly d10", "range 60ft", "reload 0"], "bulk": "1"},
-    "Heavy Crossbow": {"damage": "1d10", "type": "piercing", "traits": ["range 120ft", "reload 2"], "bulk": "2"},
-    "Greataxe": {"damage": "1d12", "type": "slashing", "traits": ["sweep", "two-hand"], "bulk": "2"},
-    "Staff": {"damage": "1d4", "type": "bludgeoning", "traits": ["two-hand d8"], "bulk": "1"},
-    "Warhammer": {"damage": "1d8", "type": "bludgeoning", "traits": ["shove"], "bulk": "1"},
-    "Shield Boss": {"damage": "1d6", "type": "bludgeoning", "traits": ["attached to shield"], "bulk": "-"}
+    "Longsword": {"damage": "1d8", "type": "slashing", "traits": ["versatile P"], "bulk": "1", "cost_sp": 10},
+    "Greatsword": {"damage": "1d12", "type": "slashing", "traits": ["two-hand d12", "versatile P"], "bulk": "2", "cost_sp": 20},
+    "Shortsword": {"damage": "1d6", "type": "piercing", "traits": ["agile", "finesse", "versatile S"], "bulk": "L", "cost_sp": 9},
+    "Rapier": {"damage": "1d6", "type": "piercing", "traits": ["deadly d8", "disarm", "finesse"], "bulk": "1", "cost_sp": 20},
+    "Dagger": {"damage": "1d4", "type": "piercing", "traits": ["agile", "finesse", "thrown 10ft", "versatile S"], "bulk": "L", "cost_sp": 2},
+    "Shortbow": {"damage": "1d6", "type": "piercing", "traits": ["deadly d10", "range 60ft", "reload 0"], "bulk": "1", "cost_sp": 30},
+    "Heavy Crossbow": {"damage": "1d10", "type": "piercing", "traits": ["range 120ft", "reload 2"], "bulk": "2", "cost_sp": 40},
+    "Greataxe": {"damage": "1d12", "type": "slashing", "traits": ["sweep", "two-hand"], "bulk": "2", "cost_sp": 20},
+    "Staff": {"damage": "1d4", "type": "bludgeoning", "traits": ["two-hand d8"], "bulk": "1", "cost_sp": 0},
+    "Warhammer": {"damage": "1d8", "type": "bludgeoning", "traits": ["shove"], "bulk": "1", "cost_sp": 10},
+    "Shield Boss": {"damage": "1d6", "type": "bludgeoning", "traits": ["attached to shield"], "bulk": "-", "cost_sp": 5}
 }
 
 ARMOR_DB: Dict[str, Dict[str, Any]] = {
-    "Unarmored": {"ac_bonus": 0, "dex_cap": 5, "bulk": "-"},
-    "Explorer's Clothing": {"ac_bonus": 0, "dex_cap": 5, "bulk": "L"},
-    "Leather Armor": {"ac_bonus": 1, "dex_cap": 4, "bulk": "1"},
-    "Studded Leather": {"ac_bonus": 2, "dex_cap": 3, "bulk": "1"},
-    "Chain Shirt": {"ac_bonus": 2, "dex_cap": 3, "bulk": "1"},
-    "Hide Armor": {"ac_bonus": 3, "dex_cap": 2, "bulk": "2"},
-    "Breastplate": {"ac_bonus": 4, "dex_cap": 1, "bulk": "2"},
-    "Chain Mail": {"ac_bonus": 4, "dex_cap": 1, "bulk": "2"}
+    "Unarmored": {"ac_bonus": 0, "dex_cap": 5, "bulk": "-", "cost_sp": 0},
+    "Explorer's Clothing": {"ac_bonus": 0, "dex_cap": 5, "bulk": "L", "cost_sp": 1},
+    "Leather Armor": {"ac_bonus": 1, "dex_cap": 4, "bulk": "1", "cost_sp": 20},
+    "Studded Leather": {"ac_bonus": 2, "dex_cap": 3, "bulk": "1", "cost_sp": 30},
+    "Chain Shirt": {"ac_bonus": 2, "dex_cap": 3, "bulk": "1", "cost_sp": 50},
+    "Hide Armor": {"ac_bonus": 3, "dex_cap": 2, "bulk": "2", "cost_sp": 20},
+    "Breastplate": {"ac_bonus": 4, "dex_cap": 1, "bulk": "2", "cost_sp": 80},
+    "Chain Mail": {"ac_bonus": 4, "dex_cap": 1, "bulk": "2", "cost_sp": 60}
 }
 
+ADVENTURER_PACK_COST_SP = 15  # Adventurer's Pack is 1 gp 5 sp (15 sp)
 ADVENTURER_PACK = [
     "Backpack", "Bedroll", "10x Chalk", "Flint and Steel", "50ft Rope",
     "2 weeks Rations", "Soap", "5x Torches", "Waterskin"
 ]
+
+def format_wealth(total_sp: int) -> Wealth:
+    if total_sp < 0:
+        total_sp = 0
+    gp = total_sp // 10
+    sp = total_sp % 10
+    parts = []
+    if gp > 0:
+        parts.append(f"{gp} gp")
+    if sp > 0 or not parts:
+        parts.append(f"{sp} sp")
+    return Wealth(gp=gp, sp=sp, cp=0, formatted=", ".join(parts))
 
 def resolve_equipment(
     class_name: str,
@@ -93,24 +108,53 @@ def resolve_equipment(
         armor_name = "Leather Armor"
         weapons_to_give = ["Longsword", "Dagger"]
 
-    # 2. Build Item Models
-    armor_spec = ARMOR_DB.get(armor_name, ARMOR_DB["Leather Armor"])
-    armor_item = Item(name=armor_name, category="armor", bulk=armor_spec["bulk"])
-    
-    shield_item = Item(name="Steel Shield", category="shield", bulk="1") if has_shield else None
-    weapon_items = [
-        Item(name=w, category="weapon", bulk=WEAPONS_DB.get(w, {}).get("bulk", "1"))
-        for w in weapons_to_give
-    ]
+    # 2. Build Item Models and Track Expenses
+    starting_allowance_sp = 150  # 15 gp = 150 sp
+    spent_sp = ADVENTURER_PACK_COST_SP
 
-    # 3. Calculate AC (10 + Trained Proficiency (2 + Level) + Item Bonus + Min(Dex, Dex Cap))
-    prof_bonus = 2 + level  # Standard starting Trained proficiency in armor/unarmored
+    armor_spec = ARMOR_DB.get(armor_name, ARMOR_DB["Leather Armor"])
+    spent_sp += armor_spec.get("cost_sp", 0)
+    armor_item = Item(
+        name=armor_name,
+        category="armor",
+        bulk=armor_spec["bulk"],
+        cost_sp=armor_spec.get("cost_sp", 0)
+    )
+
+    shield_item = None
+    if has_shield:
+        shield_cost_sp = 20  # Steel Shield = 2 gp (20 sp)
+        spent_sp += shield_cost_sp
+        shield_item = Item(name="Steel Shield", category="shield", bulk="1", cost_sp=shield_cost_sp)
+
+    weapon_items = []
+    for w in weapons_to_give:
+        spec = WEAPONS_DB.get(w, {})
+        w_cost = spec.get("cost_sp", 0)
+        spent_sp += w_cost
+        weapon_items.append(Item(
+            name=w,
+            category="weapon",
+            bulk=spec.get("bulk", "1"),
+            cost_sp=w_cost
+        ))
+
+    gear_list = list(ADVENTURER_PACK)
+    if any("Shortbow" in w or "Crossbow" in w for w in weapons_to_give):
+        quiver_cost_sp = 2  # Quiver + 20 ammo = 2 sp
+        spent_sp += quiver_cost_sp
+        gear_list.append("Quiver with 20 Arrows/Bolts")
+
+    # Remaining Wealth
+    remaining_wealth = format_wealth(starting_allowance_sp - spent_sp)
+
+    # 3. Calculate AC
+    prof_bonus = 2 + level
     ac_dex = min(dex_mod, armor_spec["dex_cap"])
     calculated_ac = 10 + prof_bonus + armor_spec["ac_bonus"] + ac_dex
 
     # 4. Generate Calculated Strikes
     strikes: List[Strike] = []
-    # Most Level 1 martial classes are Trained (Expert for Fighters)
     weapon_prof_rank = 4 if cls == "fighter" else 2
     attack_base = weapon_prof_rank + level
 
@@ -118,7 +162,6 @@ def resolve_equipment(
         spec = WEAPONS_DB.get(w_name, {"damage": "1d4", "type": "bludgeoning", "traits": []})
         traits = spec["traits"]
 
-        # Attack modifier calculation (Dex for ranged, Finesse chooses best of Str/Dex, Str for others)
         is_ranged = any("range" in t for t in traits)
         is_finesse = "finesse" in traits
 
@@ -130,13 +173,8 @@ def resolve_equipment(
             atk_mod = str_mod
 
         total_attack = attack_base + atk_mod
-
-        # Damage calculation: Ranged without propulsive adds +0 Str, Melee adds full Str
         dmg_dice = spec["damage"]
-        if is_ranged:
-            dmg_formula = dmg_dice
-        else:
-            dmg_formula = f"{dmg_dice}+{str_mod}" if str_mod != 0 else dmg_dice
+        dmg_formula = dmg_dice if is_ranged else (f"{dmg_dice}+{str_mod}" if str_mod != 0 else dmg_dice)
 
         strikes.append(Strike(
             name=w_name,
@@ -146,15 +184,12 @@ def resolve_equipment(
             traits=traits
         ))
 
-    gear_list = list(ADVENTURER_PACK)
-    if any("Shortbow" in w or "Crossbow" in w for w in weapons_to_give):
-        gear_list.append("Quiver with 20 Arrows/Bolts")
-
     loadout = EquipmentLoadout(
         armor=armor_item,
         shield=shield_item,
         weapons=weapon_items,
         gear=gear_list,
+        money=remaining_wealth,
         strikes=strikes
     )
 

@@ -17,9 +17,9 @@ class Proficiency(BaseModel):
 
 class SkillEntry(BaseModel):
     name: str
-    attribute: str      # e.g., "dex", "int"
-    rank: int = 2       # Remaster Trained = 2
-    modifier: int = 0   # rank + level + attribute_mod
+    attribute: str
+    rank: int = 2
+    modifier: int = 0
 
 class Defenses(BaseModel):
     ac: int = 10
@@ -38,27 +38,35 @@ class Strike(BaseModel):
 
 class Item(BaseModel):
     name: str
-    category: str
+    category: str       # "weapon", "armor", "shield", "gear"
     bulk: str = "L"
+    cost_sp: int = 0    # cost in silver pieces
+
+class Wealth(BaseModel):
+    gp: int = 0
+    sp: int = 0
+    cp: int = 0
+    formatted: str = "0 gp"
 
 class EquipmentLoadout(BaseModel):
     armor: Optional[Item] = None
     shield: Optional[Item] = None
     weapons: List[Item] = []
     gear: List[str] = []
+    money: Wealth = Field(default_factory=Wealth)
     strikes: List[Strike] = []
 
 class SpellEntry(BaseModel):
     name: str
-    rank: int               # 0 = Cantrip, 1 = Rank 1
+    rank: int
     actions: str = "2 actions"
     range: str = "30 feet"
     summary: str
     traits: List[str] = []
 
 class SpellcastingLoadout(BaseModel):
-    tradition: str          # "Arcane", "Divine", "Occult", "Primal"
-    casting_attribute: str  # "int", "wis", "cha"
+    tradition: str
+    casting_attribute: str
     spell_dc: int
     spell_attack: int
     cantrips: List[SpellEntry] = []

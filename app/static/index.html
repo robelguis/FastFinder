@@ -10,6 +10,7 @@
       --card-bg: #1e293b;
       --accent: #d97706;
       --accent-hover: #b45309;
+      --gold: #fbbf24;
       --text: #f8fafc;
       --muted: #94a3b8;
       --border: #334155;
@@ -119,7 +120,7 @@
     }
     .skill-mod { font-weight: 700; color: #38bdf8; }
     
-    .strike-row, .spell-row {
+    .strike-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -129,9 +130,9 @@
       border-radius: 6px;
       margin-top: 0.5rem;
     }
-    .strike-main, .spell-main { display: flex; align-items: baseline; gap: 0.75rem; }
-    .strike-name, .spell-name { font-weight: 700; font-size: 1rem; color: #f8fafc; }
-    .strike-atk, .spell-meta { font-weight: 800; color: #38bdf8; font-size: 0.9rem; }
+    .strike-main { display: flex; align-items: baseline; gap: 0.75rem; }
+    .strike-name { font-weight: 700; font-size: 1rem; color: #f8fafc; }
+    .strike-atk { font-weight: 800; color: #38bdf8; font-size: 1.1rem; }
     .strike-dmg { font-weight: 700; color: #f87171; }
     .strike-traits { font-size: 0.8rem; color: var(--muted); }
 
@@ -155,6 +156,15 @@
       padding: 0.85rem;
       border-radius: 6px;
       border: 1px solid var(--border);
+    }
+    .money-pill {
+      background: rgba(251, 191, 36, 0.1);
+      border: 1px solid var(--gold);
+      color: var(--gold);
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 0.85rem;
     }
 
     .feat-box {
@@ -224,7 +234,7 @@
         <div class="vital-item"><span>PERCEPTION</span><strong id="vitalPerception">+0</strong></div>
       </div>
 
-      <!-- Spellcasting Section (Displayed only for casters) -->
+      <!-- Spellcasting Section -->
       <div id="spellsSection" style="display: none;">
         <div class="section-title">SPELLCASTING</div>
         <div class="vitals-grid" style="margin-top: 0.5rem;">
@@ -244,7 +254,7 @@
       <div class="section-title">STRIKES & WEAPONS</div>
       <div id="strikesContainer"></div>
 
-      <div class="section-title">EQUIPMENT & ARMOR</div>
+      <div class="section-title">EQUIPMENT, WEALTH & ARMOR</div>
       <div class="tag-container" id="armorContainer"></div>
       <div class="gear-box" id="gearContainer"></div>
 
@@ -338,7 +348,7 @@
       document.getElementById('vitalWill').textContent = formatMod(data.defenses.will.modifier);
       document.getElementById('vitalPerception').textContent = formatMod(data.perception.modifier);
 
-      // Spellcasting section
+      // Spellcasting
       const spellsSection = document.getElementById('spellsSection');
       if (data.spellcasting) {
         spellsSection.style.display = 'block';
@@ -369,9 +379,12 @@
         strikesBox.appendChild(row);
       });
 
-      // Armor & Gear
+      // Armor, Wealth & Gear
       const armorBox = document.getElementById('armorContainer');
       armorBox.innerHTML = '';
+      if (data.equipment.money) {
+        armorBox.innerHTML += `<span class="money-pill">Remaining Coins: ${data.equipment.money.formatted}</span>`;
+      }
       if (data.equipment.armor) {
         armorBox.innerHTML += `<span class="skill-tag">${data.equipment.armor.name}</span>`;
       }
