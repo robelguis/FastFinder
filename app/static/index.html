@@ -3,38 +3,43 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FastFinder - PF2e Level 1 Character Generator</title>
+  <title>FastFinder - PF2e Remaster Character Generator</title>
   <style>
     :root {
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --accent: #d97706;
-      --accent-hover: #b45309;
-      --gold: #fbbf24;
-      --text: #f8fafc;
-      --muted: #94a3b8;
+      --bg: #0b1120;
+      --panel-bg: #1e293b;
+      --panel-alt: #0f172a;
+      --accent: #b45309;
+      --accent-gold: #d97706;
+      --accent-light: #f59e0b;
       --border: #334155;
+      --border-dark: #1e293b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --paizo-red: #58180d;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
     body { background: var(--bg); color: var(--text); padding: 1.5rem 1rem; }
-    .container { max-width: 960px; margin: 0 auto; }
-    
-    header { text-align: center; margin-bottom: 1.5rem; }
-    header h1 { font-size: 2.2rem; color: var(--accent); }
-    header p { color: var(--muted); margin-top: 0.25rem; font-size: 0.95rem; }
-    
+    .container { max-width: 1040px; margin: 0 auto; }
+
+    /* Top Action Bar */
+    header { text-align: center; margin-bottom: 1.25rem; }
+    header h1 { font-size: 2.2rem; color: var(--accent-gold); letter-spacing: 0.05em; }
+    header p { color: var(--text-muted); font-size: 0.9rem; }
+
     .controls {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
       gap: 0.75rem;
-      background: var(--card-bg);
+      background: var(--panel-bg);
       padding: 1.25rem;
       border-radius: 8px;
       border: 1px solid var(--border);
       margin-bottom: 1.5rem;
     }
     .field { display: flex; flex-direction: column; gap: 0.35rem; }
-    label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; }
+    label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
     select, input, button {
       padding: 0.6rem 0.75rem;
       background: #0f172a;
@@ -45,14 +50,14 @@
     }
     .btn-group { display: flex; gap: 0.4rem; align-items: flex-end; }
     button.primary-btn {
-      background: var(--accent);
+      background: var(--accent-gold);
       color: #000;
       font-weight: 700;
       cursor: pointer;
       border: none;
-      flex: 1;
+      flex: 1.2;
     }
-    button.primary-btn:hover { background: var(--accent-hover); }
+    button.primary-btn:hover { background: var(--accent-light); }
     button.action-btn {
       background: #334155;
       color: #f8fafc;
@@ -64,179 +69,221 @@
     }
     button.action-btn:hover { background: #475569; }
 
-    .sheet-card {
-      background: var(--card-bg);
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      padding: 1.75rem;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    /* ========================================================
+       STANDARD PF2E CHARACTER SHEET LAYOUT
+       ======================================================== */
+    .pf2e-sheet {
+      background: #ffffff;
+      color: #111827;
+      border-radius: 6px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      border: 2px solid #000000;
+      padding: 1.25rem;
     }
-    .sheet-header {
-      border-bottom: 2px solid var(--border);
-      padding-bottom: 0.75rem;
-      margin-bottom: 1.25rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-    .char-title h2 { font-size: 1.75rem; color: var(--accent); }
-    .char-sub { color: var(--muted); font-size: 0.95rem; margin-top: 0.2rem; }
 
-    .stats-grid {
+    /* SHEET HEADER */
+    .sheet-header-banner {
       display: grid;
-      grid-template-columns: repeat(6, 1fr);
+      grid-template-columns: 2fr 1fr 1fr 1fr 70px;
       gap: 0.5rem;
+      background: #f1f5f9;
+      border: 1.5px solid #000000;
+      padding: 0.6rem 0.8rem;
+      border-radius: 4px;
       margin-bottom: 1rem;
-      text-align: center;
     }
-    .stat-box {
-      background: #0f172a;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.5rem 0.25rem;
-    }
-    .stat-name { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 700; }
-    .stat-val { font-size: 1.4rem; font-weight: 800; color: #38bdf8; }
+    .banner-block { display: flex; flex-direction: column; }
+    .banner-label { font-size: 0.65rem; font-weight: 800; color: #475569; text-transform: uppercase; }
+    .banner-val { font-size: 1.1rem; font-weight: 800; color: #000000; line-height: 1.2; }
+    .banner-val.level-val { font-size: 1.6rem; text-align: center; color: var(--paizo-red); }
 
-    .vitals-grid {
+    /* TWO COLUMN LAYOUT */
+    .sheet-body {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      gap: 0.5rem;
-      margin-bottom: 1.25rem;
+      grid-template-columns: 310px 1fr;
+      gap: 1.25rem;
     }
-    .vital-item {
-      background: #0f172a;
-      border: 1px solid var(--border);
-      padding: 0.6rem;
-      border-radius: 6px;
-      text-align: center;
-    }
-    .vital-item span { display: block; font-size: 0.7rem; color: var(--muted); font-weight: 600; }
-    .vital-item strong { font-size: 1.15rem; color: #4ade80; }
 
-    .section-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin: 1.25rem 0 0.5rem;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 0.25rem;
+    /* SECTION BOX STYLES */
+    .sheet-box {
+      border: 1.5px solid #000000;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+      background: #ffffff;
+      overflow: hidden;
+    }
+    .sheet-box-title {
+      background: #1e293b;
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 800;
       text-transform: uppercase;
       letter-spacing: 0.05em;
-    }
-
-    .strikes-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 0.5rem;
-      font-size: 0.85rem;
-    }
-    .strikes-table th {
-      text-align: left;
-      padding: 0.4rem 0.6rem;
-      background: #0f172a;
-      color: var(--muted);
-      border: 1px solid var(--border);
-      font-size: 0.75rem;
-      text-transform: uppercase;
-    }
-    .strikes-table td {
-      padding: 0.5rem 0.6rem;
-      border: 1px solid var(--border);
-      background: #0f172a;
-    }
-    .strike-weapon { font-weight: 700; color: #f8fafc; }
-    .strike-map { font-weight: 800; color: #38bdf8; font-family: monospace; font-size: 0.95rem; }
-    .strike-dmg { font-weight: 700; color: #f87171; }
-    .strike-traits { font-size: 0.75rem; color: var(--muted); }
-
-    .skills-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.4rem 1.25rem;
-      margin-top: 0.5rem;
-    }
-    .skill-row {
+      padding: 0.3rem 0.5rem;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      background: #0f172a;
-      border: 1px solid var(--border);
-      padding: 0.35rem 0.6rem;
-      border-radius: 4px;
-      font-size: 0.85rem;
     }
-    .skill-left { display: flex; align-items: center; gap: 0.5rem; }
-    .skill-badge {
-      font-size: 0.65rem;
-      font-weight: 800;
-      padding: 0.15rem 0.35rem;
-      border-radius: 3px;
-      text-transform: uppercase;
-    }
-    .badge-t { background: #0369a1; color: #e0f2fe; }
-    .badge-u { background: #334155; color: #94a3b8; }
-    .skill-name { font-weight: 600; color: #e2e8f0; }
-    .skill-attr { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
-    .skill-total { font-weight: 800; color: #38bdf8; font-size: 0.95rem; }
+    .sheet-box-content { padding: 0.5rem; }
 
-    .detail-card {
-      background: #0f172a;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      padding: 0.75rem;
-      margin-top: 0.5rem;
+    /* ATTRIBUTES STRIP */
+    .attributes-table {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.25rem;
+      text-align: center;
     }
-    .detail-header {
+    .attr-cell {
+      border: 1px solid #94a3b8;
+      border-radius: 3px;
+      padding: 0.25rem 0.1rem;
+      background: #f8fafc;
+    }
+    .attr-lbl { font-size: 0.65rem; font-weight: 800; color: #475569; }
+    .attr-mod { font-size: 1.25rem; font-weight: 900; color: #000000; }
+
+    /* DEFENSES & PERCEPTION */
+    .defense-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .defense-metric {
+      border: 1px solid #94a3b8;
+      border-radius: 4px;
+      padding: 0.4rem 0.5rem;
+      background: #f8fafc;
       display: flex;
       justify-content: space-between;
-      align-items: baseline;
+      align-items: center;
+    }
+    .defense-metric .lbl { font-size: 0.7rem; font-weight: 800; color: #475569; text-transform: uppercase; }
+    .defense-metric .val { font-size: 1.25rem; font-weight: 900; color: #000000; }
+
+    .saves-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.35rem;
+      text-align: center;
+    }
+    .save-box {
+      border: 1px solid #94a3b8;
+      background: #f8fafc;
+      border-radius: 4px;
+      padding: 0.3rem 0.2rem;
+    }
+    .save-lbl { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #475569; }
+    .save-val { font-size: 1.15rem; font-weight: 900; color: #000000; }
+    .save-rank { font-size: 0.65rem; font-weight: 700; color: #0369a1; }
+
+    /* SKILLS LEDGER */
+    .skills-ledger {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+    .skill-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.2rem 0.4rem;
+      border-bottom: 1px dotted #cbd5e1;
+      font-size: 0.78rem;
+    }
+    .skill-line:last-child { border-bottom: none; }
+    .skill-meta { display: flex; align-items: center; gap: 0.35rem; }
+    .skill-badge {
+      display: inline-block;
+      width: 17px;
+      height: 17px;
+      line-height: 17px;
+      text-align: center;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-weight: 900;
+    }
+    .badge-t { background: #000000; color: #ffffff; }
+    .badge-u { background: #e2e8f0; color: #64748b; border: 1px solid #94a3b8; }
+    .skill-title { font-weight: 700; }
+    .skill-attr-tag { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
+    .skill-mod-val { font-weight: 900; font-size: 0.85rem; color: #000000; min-width: 25px; text-align: right; }
+
+    /* RIGHT COLUMN: STRIKES TABLE */
+    .strikes-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.78rem;
+    }
+    .strikes-table th {
+      background: #f1f5f9;
+      text-align: left;
+      padding: 0.3rem 0.4rem;
+      border: 1px solid #cbd5e1;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #475569;
+    }
+    .strikes-table td {
+      padding: 0.4rem 0.4rem;
+      border: 1px solid #cbd5e1;
+    }
+    .w-name { font-weight: 800; color: #000000; font-size: 0.85rem; }
+    .w-map { font-family: monospace; font-size: 0.95rem; font-weight: 900; color: #0369a1; }
+    .w-dmg { font-weight: 800; color: #991b1b; }
+    .w-traits { font-size: 0.7rem; color: #475569; }
+
+    /* SPELLCASTING & FEATS CARDS */
+    .detail-card {
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      border-radius: 4px;
+      padding: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .detail-card-head {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+      font-size: 0.82rem;
+      margin-bottom: 0.15rem;
+    }
+    .detail-card-meta {
+      font-size: 0.7rem;
       font-weight: 700;
-      color: #f8fafc;
+      color: #0369a1;
       margin-bottom: 0.25rem;
     }
-    .detail-meta {
+    .detail-card-body {
       font-size: 0.75rem;
-      color: #38bdf8;
-      margin-bottom: 0.4rem;
-      font-weight: 600;
-    }
-    .detail-desc {
-      font-size: 0.85rem;
-      color: #cbd5e1;
-      line-height: 1.45;
-      white-space: pre-line;
+      line-height: 1.35;
+      color: #334155;
     }
 
-    .tag-container { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
-    .item-tag {
-      background: #0f172a;
-      border: 1px solid var(--border);
-      color: #e2e8f0;
-      padding: 0.3rem 0.6rem;
-      border-radius: 4px;
-      font-size: 0.8rem;
+    .gear-summary {
+      font-size: 0.75rem;
+      color: #334155;
+      line-height: 1.4;
     }
-    .gear-box {
-      font-size: 0.8rem;
-      color: var(--muted);
-      line-height: 1.5;
-      margin-top: 0.5rem;
-      background: #0f172a;
-      padding: 0.65rem;
-      border-radius: 6px;
-      border: 1px solid var(--border);
+    .money-row {
+      display: flex;
+      gap: 0.5rem;
+      font-weight: 800;
+      font-size: 0.78rem;
+      margin-bottom: 0.35rem;
     }
-    .money-pill {
-      background: rgba(251, 191, 36, 0.1);
-      border: 1px solid var(--gold);
-      color: var(--gold);
-      padding: 0.3rem 0.6rem;
-      border-radius: 4px;
-      font-weight: 700;
-      font-size: 0.8rem;
+    .coin-badge {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      color: #92400e;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
     }
 
+    /* ========================================================
+       PRINT & PDF STYLING (Strict 8.5x11 Portrait Layout)
+       ======================================================== */
     @media print {
       @page {
         size: letter portrait;
@@ -244,52 +291,19 @@
       }
       body {
         background: #ffffff !important;
-        color: #000000 !important;
         padding: 0 !important;
-        font-size: 8pt;
       }
       .container { max-width: 100% !important; margin: 0 !important; }
       header, .controls { display: none !important; }
-      .sheet-card {
-        background: #ffffff !important;
-        border: none !important;
+      .pf2e-sheet {
+        border: 2px solid #000000 !important;
         box-shadow: none !important;
         padding: 0 !important;
       }
-      .sheet-header {
-        border-bottom: 2px solid #000000 !important;
-        margin-bottom: 0.4rem !important;
-        padding-bottom: 0.2rem !important;
-      }
-      .char-title h2 { font-size: 1.4rem !important; color: #000000 !important; }
-      .char-sub { color: #222222 !important; font-size: 0.85rem !important; font-weight: 600; }
-      .section-title {
-        color: #000000 !important;
-        border-bottom: 1.5px solid #000000 !important;
-        font-size: 0.85rem !important;
-        margin: 0.6rem 0 0.25rem 0 !important;
-      }
-      .stat-box, .vital-item, .strikes-table td, .strikes-table th, .skill-row, .detail-card, .gear-box {
-        background: #ffffff !important;
-        border: 1px solid #444444 !important;
-        color: #000000 !important;
-        page-break-inside: avoid;
-      }
-      .stat-name, .vital-item span { color: #222222 !important; font-size: 0.65rem !important; }
-      .stat-val, .vital-item strong { color: #000000 !important; font-size: 1rem !important; }
-      .strike-weapon, .strike-map, .strike-dmg, .skill-name, .skill-total, .detail-header {
-        color: #000000 !important;
-      }
-      .strike-traits, .skill-attr, .detail-meta, .detail-desc {
-        color: #333333 !important;
-      }
-      .badge-t { background: #000000 !important; color: #ffffff !important; }
-      .badge-u { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000; }
-      .item-tag, .money-pill {
-        border: 1px solid #000000 !important;
-        color: #000000 !important;
-        background: #ffffff !important;
-      }
+      .sheet-box { page-break-inside: avoid; }
+      .sheet-box-title { background: #000000 !important; color: #ffffff !important; }
+      .w-map { color: #000000 !important; }
+      .w-dmg { color: #000000 !important; }
     }
   </style>
 </head>
@@ -297,7 +311,7 @@
   <div class="container">
     <header>
       <h1>FastFinder</h1>
-      <p>Instant PF2e Remaster Character Generator</p>
+      <p>Instant PF2e Remaster Character Generator & Tabletop Sheet</p>
     </header>
 
     <div class="controls">
@@ -320,75 +334,178 @@
       </div>
     </div>
 
-    <div class="sheet-card" id="sheetCard" style="display: none;">
-      <div class="sheet-header">
-        <div class="char-title">
-          <h2 id="sheetName"></h2>
-          <div class="char-sub" id="sheetSub"></div>
+    <!-- STANDARD PF2E CHARACTER SHEET CONTAINER -->
+    <div class="pf2e-sheet" id="sheetCard" style="display: none;">
+      <!-- TOP BANNER -->
+      <div class="sheet-header-banner">
+        <div class="banner-block">
+          <span class="banner-label">Character Name</span>
+          <span class="banner-val" id="sheetName">Valeros</span>
         </div>
-        <div class="vital-item" style="min-width: 80px;">
-          <span>LEVEL</span>
-          <strong id="sheetLevel" style="color: #f8fafc;">1</strong>
+        <div class="banner-block">
+          <span class="banner-label">Ancestry & Heritage</span>
+          <span class="banner-val" id="sheetAncestry">Human</span>
+        </div>
+        <div class="banner-block">
+          <span class="banner-label">Background</span>
+          <span class="banner-val" id="sheetBackground">Farmhand</span>
+        </div>
+        <div class="banner-block">
+          <span class="banner-label">Class</span>
+          <span class="banner-val" id="sheetClass">Fighter</span>
+        </div>
+        <div class="banner-block" style="text-align: center;">
+          <span class="banner-label">Level</span>
+          <span class="banner-val level-val" id="sheetLevel">1</span>
         </div>
       </div>
 
-      <div class="stats-grid">
-        <div class="stat-box"><div class="stat-name">STR</div><div class="stat-val" id="statStr">+0</div></div>
-        <div class="stat-box"><div class="stat-name">DEX</div><div class="stat-val" id="statDex">+0</div></div>
-        <div class="stat-box"><div class="stat-name">CON</div><div class="stat-val" id="statCon">+0</div></div>
-        <div class="stat-box"><div class="stat-name">INT</div><div class="stat-val" id="statInt">+0</div></div>
-        <div class="stat-box"><div class="stat-name">WIS</div><div class="stat-val" id="statWis">+0</div></div>
-        <div class="stat-box"><div class="stat-name">CHA</div><div class="stat-val" id="statCha">+0</div></div>
-      </div>
+      <!-- MAIN 2-COLUMN SHEET BODY -->
+      <div class="sheet-body">
+        
+        <!-- LEFT COLUMN: ABILITIES, DEFENSES, SKILLS -->
+        <div class="left-col">
+          <!-- ATTRIBUTE MODIFIERS -->
+          <div class="sheet-box">
+            <div class="sheet-box-title">Attributes</div>
+            <div class="sheet-box-content">
+              <div class="attributes-table">
+                <div class="attr-cell"><span class="attr-lbl">STR</span><div class="attr-mod" id="statStr">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">DEX</span><div class="attr-mod" id="statDex">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">CON</span><div class="attr-mod" id="statCon">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">INT</span><div class="attr-mod" id="statInt">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">WIS</span><div class="attr-mod" id="statWis">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">CHA</span><div class="attr-mod" id="statCha">+0</div></div>
+              </div>
+            </div>
+          </div>
 
-      <div class="vitals-grid">
-        <div class="vital-item"><span>MAX HP</span><strong id="vitalHp">0</strong></div>
-        <div class="vital-item"><span>ARMOR CLASS</span><strong id="vitalAc">0</strong></div>
-        <div class="vital-item"><span>SPEED</span><strong id="vitalSpeed">25 ft</strong></div>
-        <div class="vital-item"><span>FORTITUDE</span><strong id="vitalFort">+0</strong></div>
-        <div class="vital-item"><span>REFLEX</span><strong id="vitalRef">+0</strong></div>
-        <div class="vital-item"><span>WILL</span><strong id="vitalWill">+0</strong></div>
-        <div class="vital-item"><span>PERCEPTION</span><strong id="vitalPerception">+0</strong></div>
-      </div>
+          <!-- HIT POINTS & DEFENSES -->
+          <div class="sheet-box">
+            <div class="sheet-box-title">Armor Class & Hit Points</div>
+            <div class="sheet-box-content">
+              <div class="defense-row">
+                <div class="defense-metric">
+                  <span class="lbl">Armor Class</span>
+                  <span class="val" id="vitalAc">18</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Max HP</span>
+                  <span class="val" id="vitalHp" style="color: #15803d;">20</span>
+                </div>
+              </div>
+              <div class="defense-row">
+                <div class="defense-metric">
+                  <span class="lbl">Speed</span>
+                  <span class="val" id="vitalSpeed">25 ft</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Perception</span>
+                  <span class="val" id="vitalPerception">+6</span>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div class="section-title">STRIKES & WEAPON ATTACKS (MAP)</div>
-      <table class="strikes-table">
-        <thead>
-          <tr>
-            <th>Weapon</th>
-            <th>Attacks (1st / 2nd / 3rd)</th>
-            <th>Damage</th>
-            <th>Traits</th>
-          </tr>
-        </thead>
-        <tbody id="strikesTbody"></tbody>
-      </table>
+          <!-- SAVING THROWS -->
+          <div class="sheet-box">
+            <div class="sheet-box-title">Saving Throws</div>
+            <div class="sheet-box-content">
+              <div class="saves-grid">
+                <div class="save-box">
+                  <div class="save-lbl">Fortitude</div>
+                  <div class="save-val" id="vitalFort">+7</div>
+                  <div class="save-rank" id="rankFort">Trained</div>
+                </div>
+                <div class="save-box">
+                  <div class="save-lbl">Reflex</div>
+                  <div class="save-val" id="vitalRef">+6</div>
+                  <div class="save-rank" id="rankRef">Trained</div>
+                </div>
+                <div class="save-box">
+                  <div class="save-lbl">Will</div>
+                  <div class="save-val" id="vitalWill">+5</div>
+                  <div class="save-rank" id="rankWill">Trained</div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div class="section-title">SKILLS (ALL 16 CORE SKILLS & LORE)</div>
-      <div class="skills-grid" id="skillsContainer"></div>
-
-      <div id="spellsSection" style="display: none;">
-        <div class="section-title">SPELLCASTING</div>
-        <div class="vitals-grid" style="margin-top: 0.5rem;">
-          <div class="vital-item"><span>TRADITION</span><strong id="spellTradition" style="color: #a855f7;">-</strong></div>
-          <div class="vital-item"><span>KEY ATTRIBUTE</span><strong id="spellAttr" style="color: #38bdf8;">-</strong></div>
-          <div class="vital-item"><span>SPELL DC</span><strong id="spellDc">10</strong></div>
-          <div class="vital-item"><span>SPELL ATTACK</span><strong id="spellAttack">+0</strong></div>
+          <!-- 16 CORE SKILLS + LORE -->
+          <div class="sheet-box">
+            <div class="sheet-box-title">Skills Ledger</div>
+            <div class="sheet-box-content">
+              <div class="skills-ledger" id="skillsContainer"></div>
+            </div>
+          </div>
         </div>
 
-        <div style="font-weight: 700; color: #a855f7; margin-top: 0.75rem; font-size: 0.85rem; text-transform: uppercase;">Cantrips (Rank 1)</div>
-        <div id="cantripsContainer"></div>
+        <!-- RIGHT COLUMN: STRIKES, SPELLS, FEATS, EQUIPMENT -->
+        <div class="right-col">
+          <!-- STRIKES & ATTACKS -->
+          <div class="sheet-box">
+            <div class="sheet-box-title">Strikes & Attacks</div>
+            <div class="sheet-box-content" style="padding: 0;">
+              <table class="strikes-table">
+                <thead>
+                  <tr>
+                    <th>Weapon</th>
+                    <th>Strikes (1st / 2nd / 3rd)</th>
+                    <th>Damage</th>
+                    <th>Traits</th>
+                  </tr>
+                </thead>
+                <tbody id="strikesTbody"></tbody>
+              </table>
+            </div>
+          </div>
 
-        <div style="font-weight: 700; color: #a855f7; margin-top: 0.75rem; font-size: 0.85rem; text-transform: uppercase;">Rank 1 Prepared / Known Spells</div>
-        <div id="rank1Container"></div>
+          <!-- SPELLCASTING (If Caster) -->
+          <div class="sheet-box" id="spellsSection" style="display: none;">
+            <div class="sheet-box-title">
+              <span>Spellcasting</span>
+              <span id="spellTraditionMeta" style="font-size: 0.65rem; color: #fef08a;"></span>
+            </div>
+            <div class="sheet-box-content">
+              <div class="defense-row" style="margin-bottom: 0.4rem;">
+                <div class="defense-metric">
+                  <span class="lbl">Spell DC</span>
+                  <span class="val" id="spellDc">17</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Spell Attack</span>
+                  <span class="val" id="spellAttack">+7</span>
+                </div>
+              </div>
+
+              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.4rem 0 0.2rem;">Cantrips</div>
+              <div id="cantripsContainer"></div>
+
+              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.4rem 0 0.2rem;">Rank 1 Spells</div>
+              <div id="rank1Container"></div>
+            </div>
+          </div>
+
+          <!-- FEATS & ABILITIES -->
+          <div class="sheet-box">
+            <div class="sheet-box-title">Feats & Special Abilities</div>
+            <div class="sheet-box-content" id="featsContainer"></div>
+          </div>
+
+          <!-- INVENTORY & GEAR -->
+          <div class="sheet-box">
+            <div class="sheet-box-title">Inventory & Wealth</div>
+            <div class="sheet-box-content">
+              <div class="money-row" id="moneyContainer"></div>
+              <div style="font-weight: 700; font-size: 0.75rem; margin-bottom: 0.2rem;">
+                Armor & Shield: <span id="armorSpan" style="font-weight: 400; color: #334155;"></span>
+              </div>
+              <div class="gear-summary" id="gearContainer"></div>
+            </div>
+          </div>
+        </div>
+
       </div>
-
-      <div class="section-title">FEATS & ABILITIES (FULL DESCRIPTIONS)</div>
-      <div id="featsContainer"></div>
-
-      <div class="section-title">EQUIPMENT & WEALTH</div>
-      <div class="tag-container" id="armorContainer"></div>
-      <div class="gear-box" id="gearContainer"></div>
     </div>
   </div>
 
@@ -433,12 +550,12 @@
         const card = document.createElement('div');
         card.className = 'detail-card';
         card.innerHTML = `
-          <div class="detail-header">
+          <div class="detail-card-head">
             <span>${s.name}</span>
-            <span style="font-size: 0.8rem; color: var(--muted);">${s.actions || ''}</span>
+            <span style="font-size: 0.7rem; color: #64748b;">${s.actions || ''}</span>
           </div>
-          <div class="detail-meta">Range: ${s.range || 'Touch'} | ${s.targets ? 'Targets: ' + s.targets + ' | ' : ''}${s.defense ? 'Defense: ' + s.defense + ' | ' : ''}Traits: [${(s.traits || []).join(', ')}]</div>
-          <div class="detail-desc">${s.description || s.summary || ''}</div>
+          <div class="detail-card-meta">Range: ${s.range || 'Touch'} | ${s.targets ? 'Targets: ' + s.targets + ' | ' : ''}${s.defense ? 'Defense: ' + s.defense + ' | ' : ''}Traits: [${(s.traits || []).join(', ')}]</div>
+          <div class="detail-card-body">${s.description || s.summary || ''}</div>
         `;
         box.appendChild(card);
       });
@@ -460,8 +577,12 @@
 
       document.getElementById('sheetCard').style.display = 'block';
       document.getElementById('sheetName').textContent = data.name;
-      document.getElementById('sheetSub').textContent = `${data.ancestry} ${data.character_class} | ${data.background}`;
-      
+      document.getElementById('sheetAncestry').textContent = data.ancestry;
+      document.getElementById('sheetBackground').textContent = data.background;
+      document.getElementById('sheetClass').textContent = data.character_class;
+      document.getElementById('sheetLevel').textContent = data.level || 1;
+
+      // Attributes
       const attrs = data.attributes || {};
       document.getElementById('statStr').textContent = formatMod(attrs.str ?? attrs.strength);
       document.getElementById('statDex').textContent = formatMod(attrs.dex ?? attrs.dexterity);
@@ -470,60 +591,64 @@
       document.getElementById('statWis').textContent = formatMod(attrs.wis ?? attrs.wisdom);
       document.getElementById('statCha').textContent = formatMod(attrs.cha ?? attrs.charisma);
 
+      // Defenses & HP
       document.getElementById('vitalHp').textContent = data.defenses?.hp ?? 0;
       const shieldBonus = data.defenses?.shield_bonus ?? 0;
       const acBase = data.defenses?.ac ?? 10;
       document.getElementById('vitalAc').textContent = shieldBonus > 0 ? `${acBase} (+${shieldBonus} Shield)` : acBase;
       document.getElementById('vitalSpeed').textContent = `${data.speed ?? 25} ft`;
-      document.getElementById('vitalFort').textContent = formatMod(data.defenses?.fortitude?.modifier);
-      document.getElementById('vitalRef').textContent = formatMod(data.defenses?.reflex?.modifier);
-      document.getElementById('vitalWill').textContent = formatMod(data.defenses?.will?.modifier);
       document.getElementById('vitalPerception').textContent = formatMod(data.perception?.modifier);
+
+      // Saves
+      document.getElementById('vitalFort').textContent = formatMod(data.defenses?.fortitude?.modifier);
+      document.getElementById('rankFort').textContent = data.defenses?.fortitude?.rank_letter === 'E' ? 'Expert' : 'Trained';
+      document.getElementById('vitalRef').textContent = formatMod(data.defenses?.reflex?.modifier);
+      document.getElementById('rankRef').textContent = data.defenses?.reflex?.rank_letter === 'E' ? 'Expert' : 'Trained';
+      document.getElementById('vitalWill').textContent = formatMod(data.defenses?.will?.modifier);
+      document.getElementById('rankWill').textContent = data.defenses?.will?.rank_letter === 'E' ? 'Expert' : 'Trained';
 
       // Strikes & MAP
       const strikesTbody = document.getElementById('strikesTbody');
       strikesTbody.innerHTML = '';
-      const strikesList = data.equipment?.strikes || [];
-      strikesList.forEach(s => {
+      (data.equipment?.strikes || []).forEach(s => {
         const row = document.createElement('tr');
         const mapSec = s.map_second !== undefined ? formatMod(s.map_second) : formatMod(s.attack_bonus - 5);
         const mapThird = s.map_third !== undefined ? formatMod(s.map_third) : formatMod(s.attack_bonus - 10);
         const mapDisplay = `${formatMod(s.attack_bonus)} / ${mapSec} / ${mapThird}`;
         row.innerHTML = `
-          <td class="strike-weapon">${s.name}</td>
-          <td class="strike-map">${mapDisplay}</td>
-          <td class="strike-dmg">${s.damage_dice} ${s.damage_type}</td>
-          <td class="strike-traits">${(s.traits || []).join(', ')}</td>
+          <td><span class="w-name">${s.name}</span></td>
+          <td class="w-map">${mapDisplay}</td>
+          <td class="w-dmg">${s.damage_dice} ${s.damage_type}</td>
+          <td class="w-traits">${(s.traits || []).join(', ')}</td>
         `;
         strikesTbody.appendChild(row);
       });
 
-      // All 16 Skills
+      // Skills Ledger (Full alphabetical list)
       const skillsContainer = document.getElementById('skillsContainer');
       skillsContainer.innerHTML = '';
       const rawSkills = Array.isArray(data.all_skills) ? data.all_skills : (Array.isArray(data.trained_skills) ? data.trained_skills : []);
       rawSkills.forEach(sk => {
         const row = document.createElement('div');
-        row.className = 'skill-row';
+        row.className = 'skill-line';
         const rankLetter = sk.rank_letter || (sk.rank >= 2 ? 'T' : 'U');
         const badgeClass = rankLetter === 'T' ? 'badge-t' : 'badge-u';
         row.innerHTML = `
-          <div class="skill-left">
+          <div class="skill-meta">
             <span class="skill-badge ${badgeClass}">${rankLetter}</span>
-            <span class="skill-name">${sk.name}</span>
-            <span class="skill-attr">(${sk.attribute || 'mod'})</span>
+            <span class="skill-title">${sk.name}</span>
+            <span class="skill-attr-tag">(${sk.attribute || 'mod'})</span>
           </div>
-          <span class="skill-total">${formatMod(sk.modifier)}</span>
+          <span class="skill-mod-val">${formatMod(sk.modifier)}</span>
         `;
         skillsContainer.appendChild(row);
       });
 
-      // Spellcasting
+      // Spellcasting Section
       const spellsSection = document.getElementById('spellsSection');
       if (data.spellcasting) {
         spellsSection.style.display = 'block';
-        document.getElementById('spellTradition').textContent = data.spellcasting.tradition || '-';
-        document.getElementById('spellAttr').textContent = data.spellcasting.casting_attribute || '-';
+        document.getElementById('spellTraditionMeta').textContent = `${data.spellcasting.tradition} Tradition (${data.spellcasting.casting_attribute})`;
         document.getElementById('spellDc').textContent = data.spellcasting.spell_dc || 10;
         document.getElementById('spellAttack').textContent = formatMod(data.spellcasting.spell_attack);
         renderSpellList('cantripsContainer', data.spellcasting.cantrips);
@@ -535,49 +660,44 @@
       // Feats
       const featsBox = document.getElementById('featsContainer');
       featsBox.innerHTML = '';
-      const featsList = data.feats || [];
-      featsList.forEach(f => {
+      (data.feats || []).forEach(f => {
         const card = document.createElement('div');
         card.className = 'detail-card';
         card.innerHTML = `
-          <div class="detail-header">
+          <div class="detail-card-head">
             <span>${f.name}</span>
-            <span style="font-size: 0.8rem; color: var(--muted);">${f.action_cost ? f.action_cost + ' Action(s)' : 'Passive'}</span>
+            <span style="font-size: 0.7rem; color: #64748b;">${f.action_cost ? f.action_cost + ' Action(s)' : 'Passive'}</span>
           </div>
-          <div class="detail-meta">Traits: [${(f.traits || []).join(', ')}]</div>
-          <div class="detail-desc">${f.description || ''}</div>
+          <div class="detail-card-meta">Traits: [${(f.traits || []).join(', ')}]</div>
+          <div class="detail-card-body">${f.description || ''}</div>
         `;
         featsBox.appendChild(card);
       });
 
-      // Equipment & Wealth
-      const armorBox = document.getElementById('armorContainer');
-      armorBox.innerHTML = '';
-      if (data.equipment?.money?.formatted) {
-        armorBox.innerHTML += `<span class="money-pill">Pouch: ${data.equipment.money.formatted}</span>`;
+      // Currency & Equipment
+      const moneyBox = document.getElementById('moneyContainer');
+      moneyBox.innerHTML = '';
+      if (data.equipment?.money) {
+        moneyBox.innerHTML = `
+          <span class="coin-badge">${data.equipment.money.gp || 0} GP</span>
+          <span class="coin-badge">${data.equipment.money.sp || 0} SP</span>
+          <span class="coin-badge">${data.equipment.money.cp || 0} CP</span>
+        `;
       }
-      if (data.equipment?.armor) {
-        armorBox.innerHTML += `<span class="item-tag">Armor: ${data.equipment.armor.name}</span>`;
-      }
-      if (data.equipment?.shield) {
-        armorBox.innerHTML += `<span class="item-tag">Shield: ${data.equipment.shield.name}</span>`;
-      }
-      document.getElementById('gearContainer').textContent = "Gear Pack: " + (data.equipment?.gear || []).join(', ');
+      
+      const armorParts = [];
+      if (data.equipment?.armor) armorParts.push(data.equipment.armor.name);
+      if (data.equipment?.shield) armorParts.push(data.equipment.shield.name);
+      document.getElementById('armorSpan').textContent = armorParts.length ? armorParts.join(', ') : 'None';
+      document.getElementById('gearContainer').textContent = "Pack: " + (data.equipment?.gear || []).join(', ');
     }
 
-    // Direct Foundry VTT Actor JSON download
     function downloadFoundryJson() {
       if (!currentCharacterData) return;
-
-      const name = currentCharacterData.name;
-      const anc = currentCharacterData.ancestry;
-      const cls = currentCharacterData.character_class;
-
       const params = new URLSearchParams();
-      params.append('name', name);
-      params.append('ancestry', anc);
-      params.append('class_name', cls);
-
+      params.append('name', currentCharacterData.name);
+      params.append('ancestry', currentCharacterData.ancestry);
+      params.append('class_name', currentCharacterData.character_class);
       window.location.href = '/api/export/foundry?' + params.toString();
     }
 
