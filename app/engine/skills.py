@@ -27,7 +27,7 @@ CLASS_SKILL_PROFILES: Dict[str, Dict[str, Any]] = {
     "barbarian": {
         "mandatory": ["Athletics"],
         "base_count": 3,
-        "priority": ["Intimidation", "Survival", "Acrobatics", "Perception"]
+        "priority": ["Intimidation", "Survival", "Acrobatics"]
     },
     "bard": {
         "mandatory": ["Occultism", "Performance"],
@@ -50,7 +50,7 @@ CLASS_SKILL_PROFILES: Dict[str, Dict[str, Any]] = {
         "priority": ["Survival", "Medicine", "Athletics", "Crafting"]
     },
     "fighter": {
-        "mandatory": [],  # Choice of Acrobatics or Athletics
+        "mandatory": [],
         "choice_pick": ["Acrobatics", "Athletics"],
         "base_count": 3,
         "priority": ["Athletics", "Acrobatics", "Intimidation", "Crafting"]
@@ -68,11 +68,11 @@ CLASS_SKILL_PROFILES: Dict[str, Dict[str, Any]] = {
     },
     "rogue": {
         "mandatory": ["Stealth"],
-        "base_count": 7,  # Rogues get 7 + Int!
+        "base_count": 7,
         "priority": ["Thievery", "Deception", "Acrobatics", "Diplomacy", "Intimidation", "Society"]
     },
     "sorcerer": {
-        "mandatory": [],  # Determined by bloodline, fallback to cha/magical
+        "mandatory": [],
         "base_count": 2,
         "priority": ["Deception", "Diplomacy", "Intimidation", "Arcana", "Occultism"]
     },
@@ -94,14 +94,11 @@ def resolve_character_skills(
     attribute_mods: Dict[str, int],
     level: int = 1
 ) -> List[SkillEntry]:
-    """
-    Calculates trained skills according to Background + Class Mandatory + (Class Base + Int Mod).
-    """
     cls_key = class_name.lower()
     profile = CLASS_SKILL_PROFILES.get(cls_key, {
         "mandatory": [],
         "base_count": 3,
-        "priority": ["Athletics", "Acrobatics", "Stealth", "Perception"]
+        "priority": ["Athletics", "Acrobatics", "Stealth"]
     })
 
     trained_set: Set[str] = set()
@@ -128,34 +125,34 @@ def resolve_character_skills(
 
     # 2. Mandatory Class Skills
     for s in profile.get("mandatory", []):
-        trained_set.add(s)
+        if s in CORE_SKILLS:
+            trained_set.add(s)
 
-    # Choice picks (e.g. Fighter/Monk choosing between Acrobatics or Athletics)
+    # Choice picks
     if "choice_pick" in profile:
-        choices = profile["choice_pick"]
-        # Pick whichever attribute is higher
-        choice = max(choices, key=lambda c: attribute_mods.get(CORE_SKILLS.get(c, "str"), 0))
-        trained_set.add(choice)
+        choices = [c for c in profile["choice_pick"] if c in CORE_SKILLS]
+        if choices:
+            choice = max(choices, key=lambda c: attribute_mods.get(CORE_SKILLS.get(c, "str"), 0))
+            trained_set.add(choice)
 
     # 3. Class Free Skill Budget = Base Count + Int Modifier (minimum 1 free skill)
     int_mod = attribute_mods.get("int", 0)
     budget = max(1, profile.get("base_count", 3) + int_mod)
 
-    # Candidate pool: preferred class skills first, then remaining core skills
-    candidates = [s for s in profile.get("priority", []) if s not in trained_set]
+    # Candidate pool: preferred skills first, then rest of core skills
+    candidates = [s for s in profile.get("priority", []) if s in CORE_SKILLS and s not in trained_set]
     remaining_core = [s for s in CORE_SKILLS.keys() if s not in trained_set and s not in candidates]
     random.shuffle(remaining_core)
     pool = candidates + remaining_core
 
-    # Allocate up to budget
     for skill in pool:
         if budget <= 0:
             break
-        if skill not in trained_set:
+        if skill not in trained_set and skill in CORE_SKILLS:
             trained_set.add(skill)
             budget -= 1
 
-    # 4. Build SkillEntry objects with accurate Remaster modifiers
+    # 4. Build SkillEntry objects
     skill_entries: List[SkillEntry] = []
     for skill in sorted(list(trained_set)):
         attr = CORE_SKILLS[skill]

@@ -1,7 +1,7 @@
 import json
 import random
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
 from app.engine.models import (
     CharacterSheet,
     AttributeModifiers,
@@ -67,11 +67,11 @@ class PF2eGenerator:
         bg = random.choice(list(self.backgrounds.values()))
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
 
-        # 2. Track Attribute Boosts
+        # 2. Track Attribute Boosts (Remaster rules: +1 modifier per boost, max +4 at Level 1)
         mods = {attr: 0 for attr in ATTRIBUTES}
 
-        # A: Ancestry Boosts & Flaws
-        applied_anc_boosts = set()
+        # Step A: Ancestry Boosts & Flaws
+        applied_anc_boosts: Set[str] = set()
         for boost_option in anc.get("boosts", []):
             valid_targets = [b.lower() for b in boost_option if b.lower() in ATTRIBUTES and b.lower() not in applied_anc_boosts]
             if not valid_targets:
@@ -86,28 +86,54 @@ class PF2eGenerator:
                 if fl in mods:
                     mods[fl] -= 1
 
-        # B: Background Boosts
-        applied_bg_boosts = set()
+        # Step B: Background Boosts (Must be distinct attributes within the step)
+        applied_bg_boosts: Set[str] = set()
         for boost_option in bg.get("boosts", []):
-            valid_targets = [b.lower() for b in boost_option if b.lower() in ATTRIBUTES and b.lower() not in applied_bg_boosts]
+            valid_targets = [
+                b.lower() for b in boost_option 
+                if b.lower() in ATTRIBUTES 
+                and b.lower() not in applied_bg_boosts 
+                and mods[b.lower()] < 4
+            ]
             if not valid_targets:
-                valid_targets = [a for a in ATTRIBUTES if a not in applied_bg_boosts]
-            chosen_target = random.choice(valid_targets)
-            mods[chosen_target] += 1
-            applied_bg_boosts.add(chosen_target)
+                valid_targets = [a for a in ATTRIBUTES if a not in applied_bg_boosts and mods[a] < 4]
+            if valid_targets:
+                chosen_target = random.choice(valid_targets)
+                mods[chosen_target] += 1
+                applied_bg_boosts.add(chosen_target)
 
-        # C: Class Key Attribute Boost
-        key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
+        # Step C: Class Key Attribute Boost (Cap at +4)
+        key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES and mods[k.lower()] < 4]
+        if not key_options:
+            key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
         key_attr = random.choice(key_options) if key_options else "str"
-        mods[key_attr] += 1
+        if mods[key_attr] < 4:
+            mods[key_attr] += 1
 
-        # D: 4 Free Boosts
+        # Step D: 4 Free Boosts
+        # Rules: Exactly 4 distinct attributes, each boosted at most once, none exceeding +4
+        free_boosts_applied: Set[str] = set()
+        
+        # Priority order tailored to the class archetype
         priority = [key_attr, "con", "dex", "wis", "str", "cha", "int"]
-        free_boosts_applied = 0
+        
         for attr in priority:
-            if free_boosts_applied < 4:
-                mods[attr] += 1
-                free_boosts_applied += 1
+            if len(free_boosts_applied) < 4:
+                if attr not in free_boosts_applied and mods[attr] < 4:
+                    mods[attr] += 1
+                    free_boosts_applied.add(attr)
+
+        # Fallback if any priority stat was already capped at +4
+        if len(free_boosts_applied) < 4:
+            for attr in ATTRIBUTES:
+                if len(free_boosts_applied) < 4 and attr not in free_boosts_applied and mods[attr] < 4:
+                    mods[attr] += 1
+                    free_boosts_applied.add(attr)
+
+        # Hard guardrail to guarantee no modifier ever exceeds +4 at Level 1
+        for attr in ATTRIBUTES:
+            if mods[attr] > 4:
+                mods[attr] = 4
 
         # 3. Defenses & Proficiencies
         level = 1
