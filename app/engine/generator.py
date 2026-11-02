@@ -29,23 +29,15 @@ RANK_MAP = {
 def clean_pf2e_text(text: str) -> str:
     if not text:
         return ""
-    # Strip HTML tags
     text = re.sub(r"<[^>]+>", "", text)
-    # 1. Matches labeled @UUID[...]{Display Name} -> Display Name
     text = re.sub(r"@UUID\[[^\]]+\]\{([^}]+)\}", r"\1", text)
-    # 2. Matches unlabeled @UUID[Compendium.pf2e.actionspf2e.Item.Recall Knowledge] -> Recall Knowledge
     text = re.sub(r"@UUID\[(?:.*?\.)?([^\]\.]+?)\]", r"\1", text)
-    # 3. Matches @Check[type:athletics|dc:15]{Athletics} -> Athletics
     text = re.sub(r"@Check\[[^\]]+\]\{([^}]+)\}", r"\1", text)
-    # 4. Matches unlabeled @Check[type:athletics...] -> athletics check
     text = re.sub(r"@Check\[[^\]]*type:([a-zA-Z]+)[^\]]*\]", r"\1 check", text)
-    # 5. Clean @Damage[1d6[fire]] or @Damage[1d6]{1d6 fire} -> 1d6 fire
     text = re.sub(r"@Damage\[[^\]]+\]\{([^}]+)\}", r"\1", text)
     text = re.sub(r"@Damage\[([^\]]+)\]", r"\1", text)
-    # 6. Clean generic Foundry tags (@Template, @Compendium)
     text = re.sub(r"@[A-Za-z]+\[[^\]]+\]\{([^}]+)\}", r"\1", text)
     text = re.sub(r"@[A-Za-z]+\[[^\]]+\]", "", text)
-    # Clean nested brackets & whitespace
     text = text.replace("[[", "").replace("]]", "")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n+", "\n\n", text)
@@ -73,8 +65,11 @@ class PF2eGenerator:
         self,
         ancestry_name: Optional[str] = None,
         class_name: Optional[str] = None,
-        char_name: Optional[str] = None
+        char_name: Optional[str] = None,
+        level: int = 1
     ) -> CharacterSheet:
+        level = max(1, min(2, level))
+
         # 1. Select Ancestry, Class, Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
@@ -93,10 +88,9 @@ class PF2eGenerator:
         bg = random.choice(list(self.backgrounds.values()))
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
 
-        # 2. Track Attribute Boosts (Max +4 at Level 1)
+        # 2. Track Attribute Boosts (Max +4 at Levels 1-2)
         mods = {attr: 0 for attr in ATTRIBUTES}
 
-        # Step A: Ancestry Boosts & Flaws
         applied_anc_boosts: Set[str] = set()
         for boost_option in anc.get("boosts", []):
             valid_targets = [b.lower() for b in boost_option if b.lower() in ATTRIBUTES and b.lower() not in applied_anc_boosts]
@@ -112,7 +106,6 @@ class PF2eGenerator:
                 if fl in mods:
                     mods[fl] -= 1
 
-        # Step B: Background Boosts
         applied_bg_boosts: Set[str] = set()
         for boost_option in bg.get("boosts", []):
             valid_targets = [
@@ -128,7 +121,6 @@ class PF2eGenerator:
                 mods[chosen_target] += 1
                 applied_bg_boosts.add(chosen_target)
 
-        # Step C: Class Key Attribute Boost
         key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES and mods[k.lower()] < 4]
         if not key_options:
             key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
@@ -136,28 +128,21 @@ class PF2eGenerator:
         if mods[key_attr] < 4:
             mods[key_attr] += 1
 
-        # Step D: 4 Free Boosts
         free_boosts_applied: Set[str] = set()
         priority = [key_attr, "con", "dex", "wis", "str", "cha", "int"]
-        
         for attr in priority:
-            if len(free_boosts_applied) < 4:
-                if attr not in free_boosts_applied and mods[attr] < 4:
-                    mods[attr] += 1
-                    free_boosts_applied.add(attr)
-
-        if len(free_boosts_applied) < 4:
-            for attr in ATTRIBUTES:
-                if len(free_boosts_applied) < 4 and attr not in free_boosts_applied and mods[attr] < 4:
-                    mods[attr] += 1
-                    free_boosts_applied.add(attr)
+            if len(free_boosts_applied) < 4 and attr not in free_boosts_applied and mods[attr] < 4:
+                mods[attr] += 1
+                free_boosts_applied.add(attr)
 
         for attr in ATTRIBUTES:
+            if len(free_boosts_applied) < 4 and attr not in free_boosts_applied and mods[attr] < 4:
+                mods[attr] += 1
+                free_boosts_applied.add(attr)
             if mods[attr] > 4:
                 mods[attr] = 4
 
         # 3. Defenses & Proficiencies
-        level = 1
         fort_rank = cls.get("saving_throws", {}).get("fortitude", 1)
         ref_rank = cls.get("saving_throws", {}).get("reflex", 1)
         will_rank = cls.get("saving_throws", {}).get("will", 1)
@@ -168,7 +153,7 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
-        # 4. Resolve Equipment & AC (with MAP)
+        # 4. Resolve Equipment & AC (incorporating character level)
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -176,31 +161,73 @@ class PF2eGenerator:
             level=level
         )
 
-        total_hp = max(1, anc.get("hp", 8) + cls.get("hp_per_level", 8) + mods["con"])
+        # Hit Points: Ancestry + (Class HP + CON) * level
+        con_mod = mods["con"]
+        class_hp_per_lvl = cls.get("hp_per_level", 8)
+        base_hp = anc.get("hp", 8) + (class_hp_per_lvl + con_mod)
+        if level == 2:
+            base_hp += (class_hp_per_lvl + con_mod)
+        total_hp = max(1, base_hp)
 
-        # 5. Starting Feat Selection (Comprehensive cleaning)
+        # 5. Feat Selection for Level 1 and Level 2
         cls_name_lower = cls["name"].lower()
-        eligible_feats = [
+        chosen_feats: List[FeatSummary] = []
+
+        # Level 1 Class Feat
+        lvl1_feats = [
             f for f in self.feats
             if f.get("category") == "class"
             and f.get("level") == 1
             and cls_name_lower in [t.lower() for t in f.get("traits", [])]
         ]
-        
-        chosen_feats = []
-        if eligible_feats:
-            feat_pick = random.choice(eligible_feats)
-            cleaned_desc = clean_pf2e_text(feat_pick.get("description", ""))
+        if lvl1_feats:
+            f1 = random.choice(lvl1_feats)
             chosen_feats.append(FeatSummary(
-                id=feat_pick["id"],
-                name=feat_pick["name"],
-                category="class",
-                action_cost=feat_pick.get("action_cost"),
-                traits=feat_pick.get("traits", []),
-                description=cleaned_desc
+                id=f1["id"],
+                name=f1["name"],
+                category="Class (Level 1)",
+                action_cost=f1.get("action_cost"),
+                traits=f1.get("traits", []),
+                description=clean_pf2e_text(f1.get("description", ""))
             ))
 
-        # 6. Full 16 Core Skills List
+        # Level 2 Additions: Class Feat (Lvl 2) + Skill Feat (Lvl 2 or 1)
+        if level >= 2:
+            lvl2_feats = [
+                f for f in self.feats
+                if f.get("category") == "class"
+                and f.get("level") == 2
+                and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+            ]
+            if lvl2_feats:
+                f2 = random.choice(lvl2_feats)
+                chosen_feats.append(FeatSummary(
+                    id=f2["id"],
+                    name=f2["name"],
+                    category="Class (Level 2)",
+                    action_cost=f2.get("action_cost"),
+                    traits=f2.get("traits", []),
+                    description=clean_pf2e_text(f2.get("description", ""))
+                ))
+
+            # Skill Feat (Level 1 or 2 skill feat)
+            skill_feats = [
+                f for f in self.feats
+                if f.get("category") == "skill"
+                and f.get("level") in [1, 2]
+            ]
+            if skill_feats:
+                sf = random.choice(skill_feats)
+                chosen_feats.append(FeatSummary(
+                    id=sf["id"],
+                    name=sf["name"],
+                    category="Skill (Level 2)",
+                    action_cost=sf.get("action_cost"),
+                    traits=sf.get("traits", []),
+                    description=clean_pf2e_text(sf.get("description", ""))
+                ))
+
+        # 6. Skills List with Level Scaling
         all_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
@@ -208,7 +235,7 @@ class PF2eGenerator:
             level=level
         )
 
-        # 7. Spellcasting
+        # 7. Spellcasting with Level Scaling
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,

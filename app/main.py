@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Query, HTTPException, Response
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse
 from pathlib import Path
 from typing import Optional
 import json
@@ -30,10 +30,16 @@ def get_options():
 def generate_character(
     ancestry: Optional[str] = Query(None),
     class_name: Optional[str] = Query(None),
-    name: Optional[str] = Query(None)
+    name: Optional[str] = Query(None),
+    level: int = Query(1, ge=1, le=2)
 ):
     try:
-        sheet = generator.generate(ancestry_name=ancestry, class_name=class_name, char_name=name)
+        sheet = generator.generate(
+            ancestry_name=ancestry,
+            class_name=class_name,
+            char_name=name,
+            level=level
+        )
         return sheet
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -42,13 +48,19 @@ def generate_character(
 def export_foundry(
     ancestry: Optional[str] = Query(None),
     class_name: Optional[str] = Query(None),
-    name: Optional[str] = Query(None)
+    name: Optional[str] = Query(None),
+    level: int = Query(1, ge=1, le=2)
 ):
     try:
-        sheet = generator.generate(ancestry_name=ancestry, class_name=class_name, char_name=name)
+        sheet = generator.generate(
+            ancestry_name=ancestry,
+            class_name=class_name,
+            char_name=name,
+            level=level
+        )
         actor_data = export_to_foundry_actor(sheet)
         
-        filename = f"{sheet.name.replace(' ', '_')}_PF2e_Actor.json"
+        filename = f"{sheet.name.replace(' ', '_')}_Lvl{sheet.level}_PF2e.json"
         content = json.dumps(actor_data, indent=2)
 
         return Response(

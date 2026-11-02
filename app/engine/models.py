@@ -1,82 +1,93 @@
-from typing import List, Optional
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field
+from typing import List, Optional, Dict, Any, Union
 
 class AttributeModifiers(BaseModel):
-    model_config = ConfigDict(populate_by_name=True)
+    strength: int = Field(..., alias="str")
+    dexterity: int = Field(..., alias="dex")
+    constitution: int = Field(..., alias="con")
+    intelligence: int = Field(..., alias="int")
+    wisdom: int = Field(..., alias="wis")
+    charisma: int = Field(..., alias="cha")
 
-    strength: int = Field(default=0, alias="str")
-    dexterity: int = Field(default=0, alias="dex")
-    constitution: int = Field(default=0, alias="con")
-    intelligence: int = Field(default=0, alias="int")
-    wisdom: int = Field(default=0, alias="wis")
-    charisma: int = Field(default=0, alias="cha")
+    class Config:
+        populate_by_name = True
 
 class Proficiency(BaseModel):
-    rank: int = 0       # 0=Untrained, 2=Trained, 4=Expert, 6=Master, 8=Legendary
-    rank_letter: str = "U" # "U", "T", "E", "M", "L"
-    modifier: int = 0   # rank + level + attribute_mod
+    rank: int          # 0=Untrained, 2=Trained, 4=Expert, 6=Master, 8=Legendary
+    rank_letter: str   # U, T, E, M, L
+    modifier: int
+
+class Defenses(BaseModel):
+    ac: int
+    shield_bonus: int = 0
+    hp: int
+    fortitude: Proficiency
+    reflex: Proficiency
+    will: Proficiency
 
 class SkillEntry(BaseModel):
     name: str
-    attribute: str      # "str", "dex", "con", "int", "wis", "cha"
-    rank: int = 0       # 0=Untrained, 2=Trained
-    rank_letter: str = "U" # "U" or "T"
-    modifier: int = 0
-
-class Defenses(BaseModel):
-    ac: int = 10
-    hp: int = 0
-    shield_bonus: int = 0
-    fortitude: Proficiency = Field(default_factory=Proficiency)
-    reflex: Proficiency = Field(default_factory=Proficiency)
-    will: Proficiency = Field(default_factory=Proficiency)
+    attribute: str
+    rank: int
+    rank_letter: str
+    modifier: int
 
 class Strike(BaseModel):
     name: str
     attack_bonus: int
-    map_second: int     # -5 standard (-4 agile)
-    map_third: int      # -10 standard (-8 agile)
+    map_second: int
+    map_third: int
     damage_dice: str
     damage_type: str
     traits: List[str] = []
 
+StrikeOption = Strike
+
 class Item(BaseModel):
     name: str
-    category: str
-    bulk: str = "L"
-    cost_sp: int = 0
+    bulk: Union[str, float, int] = "0"
+    cost_sp: Optional[int] = 0
+
+ItemEntry = Item
 
 class Wealth(BaseModel):
+    pp: int = 0
     gp: int = 0
     sp: int = 0
     cp: int = 0
-    formatted: str = "0 gp"
+    formatted: str = ""
+
+CurrencyPurse = Wealth
 
 class EquipmentLoadout(BaseModel):
+    weapons: List[Item] = []
     armor: Optional[Item] = None
     shield: Optional[Item] = None
-    weapons: List[Item] = []
     gear: List[str] = []
-    money: Wealth = Field(default_factory=Wealth)
+    money: Wealth = Wealth()
     strikes: List[Strike] = []
 
-class SpellEntry(BaseModel):
+class SpellSummary(BaseModel):
     name: str
     rank: int
-    actions: str = "2 actions"
-    range: str = "30 feet"
+    actions: str
+    traits: List[str] = []
+    range: Optional[str] = None
     targets: Optional[str] = None
     defense: Optional[str] = None
     description: str
-    traits: List[str] = []
 
-class SpellcastingLoadout(BaseModel):
+SpellEntry = SpellSummary
+
+class SpellcastingData(BaseModel):
     tradition: str
     casting_attribute: str
     spell_dc: int
     spell_attack: int
-    cantrips: List[SpellEntry] = []
-    rank_1_spells: List[SpellEntry] = []
+    cantrips: List[SpellSummary] = []
+    rank_1_spells: List[SpellSummary] = []
+
+SpellcastingLoadout = SpellcastingData
 
 class FeatSummary(BaseModel):
     id: str
@@ -92,13 +103,13 @@ class CharacterSheet(BaseModel):
     ancestry: str
     background: str
     character_class: str
-    size: str = "med"
-    speed: int = 25
+    size: str
+    speed: int
     attributes: AttributeModifiers
     defenses: Defenses
     perception: Proficiency
-    all_skills: List[SkillEntry]
+    all_skills: List[SkillEntry] = []
     equipment: EquipmentLoadout
-    spellcasting: Optional[SpellcastingLoadout] = None
+    spellcasting: Optional[SpellcastingData] = None
     feats: List[FeatSummary] = []
     traits: List[str] = []
