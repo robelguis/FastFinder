@@ -18,6 +18,7 @@ from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
 from app.engine.companions import resolve_companion
 from app.engine.eidolons import resolve_eidolon
+from app.engine.familiars import resolve_familiar
 from app.engine.subclasses import resolve_heritage, resolve_subclass
 from app.engine.archetypes import pick_archetype
 
@@ -389,10 +390,20 @@ class PF2eGenerator:
             level=level
         )
 
-        # 9. Partner Creature (Eidolon or Animal Companion)
+        # 9. Partner Creature (Eidolon, Familiar, or Animal Companion)
         companion_data = None
         if cls_name_lower == "summoner":
             companion_data = resolve_eidolon(master_hp=total_hp, level=level)
+        elif cls_name_lower == "witch" or any("familiar" in f.name.lower() for f in chosen_feats):
+            companion_data = resolve_familiar(
+                master_ac=calculated_ac,
+                master_fort=fort_prof.modifier,
+                master_ref=ref_prof.modifier,
+                master_will=will_prof.modifier,
+                master_perception=perception_prof.modifier,
+                class_name=cls["name"],
+                level=level
+            )
         else:
             companion_data = resolve_companion(
                 class_name=cls["name"],
