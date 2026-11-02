@@ -15,6 +15,7 @@ from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
 from app.engine.spells import resolve_spellcasting
+from app.engine.focus import resolve_focus_spells
 from app.engine.subclasses import resolve_heritage, resolve_subclass
 from app.engine.archetypes import pick_archetype
 
@@ -23,10 +24,10 @@ DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 ATTRIBUTES = ["str", "dex", "con", "int", "wis", "cha"]
 
 RANK_MAP = {
-    1: (2, "T"),  # Trained
-    2: (4, "E"),  # Expert
-    3: (6, "M"),  # Master
-    4: (8, "L"),  # Legendary
+    1: (2, "T"),
+    2: (4, "E"),
+    3: (6, "M"),
+    4: (8, "L"),
 }
 
 GENERAL_FEATS_LVL3 = [
@@ -68,7 +69,7 @@ def clean_pf2e_text(text: str) -> str:
 def load_data(filename: str) -> Any:
     path = DATA_DIR / filename
     if not path.exists():
-        raise FileNotFoundError(f"Missing {filename}. Ensure scripts have been run.")
+        raise FileNotFoundError(f"Missing {filename}.")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -109,7 +110,6 @@ class PF2eGenerator:
         subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
 
-        # Resolve archetype if enabled
         archetype_data = pick_archetype(cls["name"]) if use_dedication else None
 
         # 2. Track Attribute Boosts
@@ -197,14 +197,26 @@ class PF2eGenerator:
         cls_name_lower = cls["name"].lower()
         chosen_feats: List[FeatSummary] = []
 
-        # Heritage Feature
+        # Heritage Feature with auto-resolved Versatile Heritage
+        h_name = heritage_data["name"]
+        h_desc = clean_pf2e_text(heritage_data["description"])
+        if "Versatile" in h_name:
+            v_choice = random.choice([
+                {"name": "Fleet", "desc": "Your Speed increases by 5 feet."},
+                {"name": "Toughness", "desc": "Your maximum HP increases by your level. Recovery check DC is 9 + dying value."},
+                {"name": "Diehard", "desc": "You die from the dying condition at dying 5, rather than dying 4."},
+                {"name": "Fast Recovery", "desc": "You regain twice as many HP from resting and gain a +2 bonus against poison/disease."}
+            ])
+            h_name = f"Versatile Heritage: {v_choice['name']}"
+            h_desc = f"Selected General Feat: {v_choice['name']}. {v_choice['desc']}"
+
         chosen_feats.append(FeatSummary(
             id=f"heritage-{anc['name'].lower()}",
-            name=heritage_data["name"],
+            name=h_name,
             category="Heritage",
             action_cost=None,
             traits=[anc['name'].lower()],
-            description=clean_pf2e_text(heritage_data["description"])
+            description=h_desc
         ))
 
         # Subclass Feature
@@ -236,7 +248,7 @@ class PF2eGenerator:
                 description=clean_pf2e_text(f1.get("description", ""))
             ))
 
-        # Level 2 Progression (Archetype Dedication or Core Class Feat)
+        # Level 2 Progression
         if level >= 2:
             if archetype_data:
                 ded = archetype_data["level_2_dedication"]
@@ -266,7 +278,6 @@ class PF2eGenerator:
                         description=clean_pf2e_text(f2.get("description", ""))
                     ))
 
-            # Level 2 Skill Feat
             skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2]]
             if skill_feats_2:
                 sf = random.choice(skill_feats_2)
@@ -279,7 +290,7 @@ class PF2eGenerator:
                     description=clean_pf2e_text(sf.get("description", ""))
                 ))
 
-        # Level 3 Progression (General Feat + Feature)
+        # Level 3 Progression
         if level >= 3:
             gf = random.choice(GENERAL_FEATS_LVL3)
             if gf["id"] == "toughness":
@@ -305,7 +316,7 @@ class PF2eGenerator:
                     description=clean_pf2e_text(cf["description"])
                 ))
 
-        # Level 4 Progression (Archetype Follow-up or Class Feat + Skill Feat)
+        # Level 4 Progression
         if level >= 4:
             if archetype_data:
                 arch_lvl4 = random.choice(archetype_data["level_4_feats"])
@@ -336,7 +347,6 @@ class PF2eGenerator:
                         description=clean_pf2e_text(f4.get("description", ""))
                     ))
 
-            # Level 4 Skill Feat
             skill_feats_4 = [
                 f for f in self.feats 
                 if f.get("category") == "skill" 
@@ -369,6 +379,14 @@ class PF2eGenerator:
             level=level
         )
 
+        # 8. Focus Spells & Pool
+        focus_data = resolve_focus_spells(
+            class_name=cls["name"],
+            feats=chosen_feats,
+            attribute_mods=mods,
+            level=level
+        )
+
         return CharacterSheet(
             name=resolved_name,
             level=level,
@@ -393,6 +411,7 @@ class PF2eGenerator:
             all_skills=all_skills,
             equipment=equipment_loadout,
             spellcasting=spellcasting_data,
+            focus_spells=focus_data,
             feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )

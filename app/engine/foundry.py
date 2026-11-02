@@ -52,7 +52,7 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             }
         })
 
-    # Spells (Cantrips, Rank 1, Rank 2)
+    # Standard Spells
     if sheet.spellcasting:
         all_spells = (
             sheet.spellcasting.cantrips
@@ -67,6 +67,24 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
                     "level": {"value": sp.rank},
                     "traits": {"value": [t.lower() for t in sp.traits]},
                     "description": {"value": sp.description}
+                }
+            })
+
+    # Focus Spells
+    focus_pool_val = 0
+    focus_pool_max = 0
+    if sheet.focus_spells:
+        focus_pool_val = sheet.focus_spells.focus_points
+        focus_pool_max = sheet.focus_spells.max_focus_points
+        for fsp in sheet.focus_spells.spells:
+            items.append({
+                "name": fsp.name,
+                "type": "spell",
+                "system": {
+                    "category": {"value": "focus"},
+                    "level": {"value": fsp.rank},
+                    "traits": {"value": [t.lower() for t in fsp.traits]},
+                    "description": {"value": fsp.description}
                 }
             })
 
@@ -86,6 +104,12 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             "ac": {"value": sheet.defenses.ac},
             "speed": {"value": sheet.speed},
             "perception": {"value": sheet.perception.modifier}
+        },
+        "resources": {
+            "focus": {
+                "value": focus_pool_val,
+                "max": focus_pool_max
+            }
         },
         "saves": {
             "fortitude": {"value": sheet.defenses.fortitude.modifier},

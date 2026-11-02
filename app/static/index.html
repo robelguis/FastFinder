@@ -497,6 +497,33 @@
             </div>
           </div>
 
+                    <!-- DEDICATED FOCUS SPELLS & POOL TRACKER -->
+          <div class="sheet-box" id="focusSection" style="display: none; border-left: 3.5px solid #d97706;">
+            <div class="sheet-box-title" style="background: #78350f;">
+              <span>Focus Spells & Focus Pool</span>
+              <span id="focusTraditionMeta" style="font-size: 0.65rem; color: #fef08a;"></span>
+            </div>
+            <div class="sheet-box-content">
+              <div class="defense-row" style="margin-bottom: 0.4rem;">
+                <div class="defense-metric">
+                  <span class="lbl">Focus DC</span>
+                  <span class="val" id="focusDc">17</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Focus Attack</span>
+                  <span class="val" id="focusAttack">+7</span>
+                </div>
+              </div>
+
+              <div class="slot-tracker-bar" style="background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;">
+                <span id="focusPoolLabel">FOCUS POINTS (1 MAX)</span>
+                <div class="slot-pips" id="focusPipsContainer"></div>
+              </div>
+
+              <div id="focusSpellsList" style="margin-top: 0.4rem;"></div>
+            </div>
+          </div>
+
           <!-- SPELLCASTING WITH SCROLL CONTAINER -->
           <div class="sheet-box" id="spellsSection" style="display: none;">
             <div class="sheet-box-title">
@@ -804,6 +831,26 @@
       }
       
       renderConsumables(data.equipment?.consumables || []);
+
+      // Render Focus Spells & Pool
+      const focusSection = document.getElementById("focusSection");
+      if (data.focus_spells && data.focus_spells.spells && data.focus_spells.spells.length > 0) {
+        focusSection.style.display = "block";
+        document.getElementById("focusTraditionMeta").textContent = `${data.focus_spells.tradition} (${data.focus_spells.casting_attribute})`;
+        document.getElementById("focusDc").textContent = data.focus_spells.spell_dc || 10;
+        document.getElementById("focusAttack").textContent = formatMod(data.focus_spells.spell_attack);
+        document.getElementById("focusPoolLabel").textContent = `FOCUS POOL (${data.focus_spells.max_focus_points} POINT${data.focus_spells.max_focus_points > 1 ? "S" : ""} MAX)`;
+
+        const pipsContainer = document.getElementById("focusPipsContainer");
+        pipsContainer.innerHTML = "";
+        for (let i = 0; i < data.focus_spells.max_focus_points; i++) {
+          pipsContainer.innerHTML += `<input type="checkbox" checked class="slot-checkbox" title="Checked = Available Focus Point. Uncheck when spent.">`;
+        }
+
+        renderSpellList("focusSpellsList", data.focus_spells.spells);
+      } else {
+        focusSection.style.display = "none";
+      }
 
       const armorParts = [];
       if (data.equipment?.armor) armorParts.push(data.equipment.armor.name);

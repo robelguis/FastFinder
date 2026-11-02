@@ -104,6 +104,15 @@ class SpellcastingData(BaseModel):
 
 SpellcastingLoadout = SpellcastingData
 
+class FocusSpellData(BaseModel):
+    focus_points: int = 1
+    max_focus_points: int = 1
+    tradition: str = "Divine"
+    casting_attribute: str = "CHA"
+    spell_dc: int = 10
+    spell_attack: int = 0
+    spells: List[SpellSummary] = []
+
 class SubclassSummary(BaseModel):
     title: str
     name: str
@@ -134,5 +143,6 @@ class CharacterSheet(BaseModel):
     all_skills: List[SkillEntry] = []
     equipment: EquipmentLoadout
     spellcasting: Optional[SpellcastingData] = None
+    focus_spells: Optional[FocusSpellData] = None
     feats: List[FeatSummary] = []
     traits: List[str] = []
