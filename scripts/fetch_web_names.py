@@ -1,0 +1,344 @@
+import urllib.request
+import json
+from pathlib import Path
+from typing import Dict, List, Set
+
+DATA_DIR = Path(__file__).resolve().parent.parent / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Curated open raw text sources hosted on GitHub for tabletop name datasets
+# Sources cover typical fantasy naming conventions by ancestry/heritage
+SOURCES = {
+    "human": [
+        "https://raw.githubusercontent.com/dominictarr/random-name/master/first-names.txt",
+        "https://raw.githubusercontent.com/dominictarr/random-name/master/names.txt"
+    ],
+    "elf": [
+        "https://raw.githubusercontent.com/joke2k/faker/master/faker/providers/person/en_US/__init__.py"  # fallback seed
+    ]
+}
+
+# Rich baseline seed dictionary representing Paizo core ancestries
+# Ensures all ancestries have high-flavor, accurate PF2e culture naming
+SEED_NAMES: Dict[str, Dict[str, List[str]]] = {
+    "human": {
+        "first": [
+            "Valeros", "Seelah", "Ezren", "Kallista", "Anton", "Kendra", "Darius", "Elena",
+            "Marek", "Talia", "Cassian", "Vesper", "Bran", "Rhiannon", "Caelan", "Soren",
+            "Althea", "Gareth", "Isolde", "Corin", "Danica", "Rowan", "Lyra", "Vance",
+            "Seraphina", "Theron", "Kaelen", "Morrigan", "Lucan", "Elowen", "Bastian", "Mirela"
+        ],
+        "last": [
+            "Vandermere", "Ironwood", "Oakhaven", "Crowley", "Blackwood", "Ashford", "Dunmore",
+            "Sterling", "Valen", "Hawthorne", "Kestrel", "Winterbourne", "Gryphon", "Rothwell"
+        ]
+    },
+    "dwarf": {
+        "first": [
+            "Torag", "Harsk", "Dolgrin", "Brunhilda", "Thrum", "Kraglin", "Gunnar", "Helga",
+            "Orin", "Borgan", "Duergar", "Marnie", "Barundar", "Dain", "Hilda", "Thorin",
+            "Vondal", "Eldeth", "Bardryn", "Morgran", "Brokk", "Sindri", "Rurik", "Kathra",
+            "Adrik", "Baern", "Kildrak", "Vistra", "Torbera", "Ulfgar", "Morgrim", "Gimrak"
+        ],
+        "last": [
+            "Ironfist", "Stonebreaker", "Coppervein", "Deepdelver", "Forgehammer", "Anvilsmith",
+            "Goldseeker", "Rockjaw", "Fireforge", "Frostbeard", "Battlehammer", "Oakenhelm"
+        ]
+    },
+    "elf": {
+        "first": [
+            "Kyra", "Merisiel", "Fumbus", "Aeris", "Caladrel", "Faeranduil", "Lian", "Sylas",
+            "Kaelen", "Thelian", "Eliandra", "Vaelin", "Amalthea", "Aerith", "Erevan", "Fhaertala",
+            "Ilphukiir", "Rethnor", "Theren", "Caelynn", "Sylleste", "Alluin", "Alarion", "Bryn",
+            "Enna", "Galanodel", "Liadon", "Meliamne", "Naeris", "Sariel", "Xanaphia"
+        ],
+        "last": [
+            "Moondancer", "Starwhisper", "Silverfrond", "Nightbreeze", "Sunstrider", "Oakshadow",
+            "Glimmerwing", "Dewspark", "Featherfall", "Willowshade", "Duskrunner", "Silverbow"
+        ]
+    },
+    "gnome": {
+        "first": [
+            "Lem", "Bimble", "Nissa", "Quinn", "Zook", "Breena", "Tink", "Fizban",
+            "Pippin", "Kora", "Wrenn", "Dimble", "Fonkin", "Gimble", "Nyx", "Orryn",
+            "Sindri", "Waywocket", "Boddynock", "Burgell", "Eldon", "Gerbo", "Namfoodle", "Seebo"
+        ],
+        "last": [
+            "Sparkwhistle", "Geargrinder", "Fizzlebang", "Clockspinner", "Brambletoes",
+            "Copperkettle", "Cogturner", "Springhopper", "Quicktinker", "Steamspark"
+        ]
+    },
+    "goblin": {
+        "first": [
+            "Chuffy", "Poog", "Reta", "Mogmurch", "Zib", "Grik", "Snag", "Skitter",
+            "Krik", "Brak", "Vrax", "Biter", "Gnasher", "Squeal", "Scrap", "Stump",
+            "Twitch", "Bogg", "Claw", "Flea", "Gob", "Grub", "Gutter", "Maggot", "Pinch", "Spit"
+        ],
+        "last": [
+            "Mudlicker", "Toenibbler", "Earslicer", "Firetosser", "Stinkmonger", "Ratcatcher",
+            "Gutterprowler", "Doghater", "Horsechopper", "Pickleprowler", "Bonegnawer"
+        ]
+    },
+    "halfling": {
+        "first": [
+            "Alton", "Cora", "Milo", "Perrin", "Rosie", "Wellby", "Kith", "Bree",
+            "Corin", "Lyle", "Merric", "Andry", "Callie", "Jillian", "Lavinia", "Portia",
+            "Seraph", "Osborn", "Finnan", "Garret", "Lindal", "Pip", "Tobias", "Verna"
+        ],
+        "last": [
+            "Tealeaf", "Greenbottle", "Underbough", "Brushgather", "Goodbarrel", "Highhill",
+            "Thistlebrook", "Proudfoot", "Warmhearth", "Sweetwater", "Appleblossom", "Quickstep"
+        ]
+    },
+    "orc": {
+        "first": [
+            "Ardavan", "Krusk", "Grom", "Thokk", "Urgok", "Shagrat", "Brakka", "Morga",
+            "Drog", "Gorun", "Malthor", "Rakka", "Gorg", "Krag", "Murok", "Vorg",
+            "Zark", "Dench", "Feng", "Gell", "Henk", "Holg", "Imsh", "Keth", "Ront"
+        ],
+        "last": [
+            "Skullsplitter", "Ironhide", "Bloodfang", "Goretusk", "Bonecrusher", "Doomhammer",
+            "Stormscar", "Gorehowl", "Spinebreaker", "Ashcleaver", "Warsnout"
+        ]
+    },
+    "leshy": {
+        "first": [
+            "Acorn", "Bramble", "Clover", "Moss", "Sprout", "Fern", "Thorn", "Twig",
+            "Bark", "Willow", "Briar", "Petal", "Snapdragon", "Burdock", "Thistle", "Alder",
+            "Aspen", "Birch", "Dandelion", "Ivy", "Juniper", "Lichen", "Marigold", "Nettle",
+            "Pinecone", "Rowan", "Sage", "Sorrel", "Tumbleweed", "Yarrow"
+        ],
+        "last": []  # Leshies typically use single descriptive names
+    },
+    "kobold": {
+        "first": [
+            "Mikmek", "Enga", "Sniv", "Varn", "Kael", "Rax", "Zul", "Skel",
+            "Tik", "Vesk", "Zik", "Kip", "Dax", "Droop", "Meepo", "Nark",
+            "Sik", "Faz", "Gix", "Hiss", "Klonk", "Prik", "Rik", "Snag", "Trexx"
+        ],
+        "last": [
+            "Dragonscale", "Trapmender", "Tunnelrat", "Cavernscout", "Tailwhip", "Eggtender",
+            "Wyrmspeaker", "Snakeskin", "Goldseeker", "Puffbreath"
+        ]
+    }
+}
+
+def fetch_external_names(url: str, limit: int = 50) -> List[str]:
+    """Helper to fetch names from open plain-text URL lists."""
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "FastFinder-PF2e-Generator"}
+        )
+        with urllib.request.urlopen(req, timeout=5) as response:
+            text = response.read().decode("utf-8")
+            names = [line.strip().capitalize() for line in text.splitlines() if line.strip() and line.strip().isalpha()]
+            return names[:limit]
+    except Exception as e:
+        print(f"Notice: Could not fetch from {url} ({e}). Using cached seeds.")
+        return []
+
+def compile_name_tables():
+    compiled_dataset: Dict[str, Dict[str, List[str]]] = {}
+
+    for ancestry, seed_data in SEED_NAMES.items():
+        first_names: Set[str] = set(seed_data.get("first", []))
+        last_names: Set[str] = set(seed_data.get("last", []))
+
+        # Check if external URLs are designated for this ancestry
+        if ancestry in SOURCES:
+            for url in SOURCES[ancestry]:
+                fetched = fetch_external_names(url, limit=40)
+                first_names.update(fetched)
+
+        compiled_dataset[ancestry] = {
+            "first": sorted(list(first_names)),
+            "last": sorted(list(last_names
+cat << 'EOF' > app/engine/generator.py
+import json
+import random
+from pathlib import Path
+from typing import Dict, Any, List, Optional
+from app.engine.models import (
+    CharacterSheet,
+    AttributeModifiers,
+    Defenses,
+    Proficiency,
+    FeatSummary,
+)
+
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+
+ATTRIBUTES = ["str", "dex", "con", "int", "wis", "cha"]
+
+RANK_MAP = {
+    1: 2,  # Trained
+    2: 4,  # Expert
+    3: 6,  # Master
+    4: 8,  # Legendary
+}
+
+def load_data(filename: str) -> Any:
+    path = DATA_DIR / filename
+    if not path.exists():
+        raise FileNotFoundError(f"Missing {filename}. Ensure scripts have been run.")
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+class PF2eGenerator:
+    def __init__(self):
+        self.ancestries = {a["name"].lower(): a for a in load_data("ancestries.json")}
+        self.classes = {c["name"].lower(): c for c in load_data("classes.json")}
+        self.backgrounds = {b["name"].lower(): b for b in load_data("backgrounds.json")}
+        self.feats = load_data("feats.json")
+        try:
+            self.names = load_data("names.json")
+        except FileNotFoundError:
+            self.names = {}
+
+    def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
+        prof_bonus = RANK_MAP.get(rank_val, 2)
+        return Proficiency(rank=prof_bonus, modifier=prof_bonus + level + attr_mod)
+
+    def _pick_name(self, ancestry_name: str) -> str:
+        key = ancestry_name.lower()
+        if key in self.names:
+            table = self.names[key]
+            first_pool = table.get("first", [])
+            last_pool = table.get("last", [])
+            first = random.choice(first_pool) if first_pool else "Hero"
+            if last_pool and random.random() > 0.15:  # 85% chance of surname if available
+                return f"{first} {random.choice(last_pool)}"
+            return first
+        return random.choice(["Valeros", "Amiri", "Harsk", "Ezren", "Merisiel", "Kyra"])
+
+    def generate(
+        self,
+        ancestry_name: Optional[str] = None,
+        class_name: Optional[str] = None,
+        char_name: Optional[str] = None
+    ) -> CharacterSheet:
+        # 1. Select Ancestry, Class, and Background
+        if ancestry_name and ancestry_name.lower() in self.ancestries:
+            anc = self.ancestries[ancestry_name.lower()]
+        else:
+            core_ancestries = ["human", "dwarf", "elf", "goblin", "halfling", "orc", "leshy"]
+            chosen = random.choice([k for k in core_ancestries if k in self.ancestries] or list(self.ancestries.keys()))
+            anc = self.ancestries[chosen]
+
+        if class_name and class_name.lower() in self.classes:
+            cls = self.classes[class_name.lower()]
+        else:
+            core_classes = ["fighter", "rogue", "wizard", "cleric", "barbarian", "ranger", "bard"]
+            chosen = random.choice([k for k in core_classes if k in self.classes] or list(self.classes.keys()))
+            cls = self.classes[chosen]
+
+        bg = random.choice(list(self.backgrounds.values()))
+
+        # Resolve Character Name (match ancestry if none provided)
+        resolved_name = char_name.strip() if char_name and char_name.strip() else self._pick_name(anc["name"])
+
+        # 2. Track Attribute Boosts (PF2e Remaster uses +1 modifier per boost)
+        mods = {attr: 0 for attr in ATTRIBUTES}
+
+        # A: Ancestry Boosts & Flaws
+        applied_anc_boosts = set()
+        for boost_option in anc.get("boosts", []):
+            valid_targets = [b.lower() for b in boost_option if b.lower() in ATTRIBUTES and b.lower() not in applied_anc_boosts]
+            if not valid_targets:
+                valid_targets = [a for a in ATTRIBUTES if a not in applied_anc_boosts]
+            chosen_target = random.choice(valid_targets)
+            mods[chosen_target] += 1
+            applied_anc_boosts.add(chosen_target)
+
+        for flaw_option in anc.get("flaws", []):
+            for fl in flaw_option:
+                fl = fl.lower()
+                if fl in mods:
+                    mods[fl] -= 1
+
+        # B: Background Boosts
+        applied_bg_boosts = set()
+        for boost_option in bg.get("boosts", []):
+            valid_targets = [b.lower() for b in boost_option if b.lower() in ATTRIBUTES and b.lower() not in applied_bg_boosts]
+            if not valid_targets:
+                valid_targets = [a for a in ATTRIBUTES if a not in applied_bg_boosts]
+            chosen_target = random.choice(valid_targets)
+            mods[chosen_target] += 1
+            applied_bg_boosts.add(chosen_target)
+
+        # C: Class Key Attribute Boost
+        key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
+        key_attr = random.choice(key_options) if key_options else "str"
+        mods[key_attr] += 1
+
+        # D: 4 Free Boosts
+        priority = [key_attr, "con", "dex", "wis", "str", "cha", "int"]
+        free_boosts_applied = 0
+        for attr in priority:
+            if free_boosts_applied < 4:
+                mods[attr] += 1
+                free_boosts_applied += 1
+
+        # 3. Defenses & Proficiencies
+        level = 1
+        fort_rank = cls.get("saving_throws", {}).get("fortitude", 1)
+        ref_rank = cls.get("saving_throws", {}).get("reflex", 1)
+        will_rank = cls.get("saving_throws", {}).get("will", 1)
+        perception_rank = cls.get("perception", 1)
+
+        fort_prof = self._calc_prof(fort_rank, level, mods["con"])
+        ref_prof = self._calc_prof(ref_rank, level, mods["dex"])
+        will_prof = self._calc_prof(will_rank, level, mods["wis"])
+        perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
+
+        ac_dex = min(mods["dex"], 2)
+        ac_val = 10 + 2 + level + ac_dex
+        total_hp = max(1, anc.get("hp", 8) + cls.get("hp_per_level", 8) + mods["con"])
+
+        # 4. Starting Feat Selection
+        cls_name_lower = cls["name"].lower()
+        eligible_feats = [
+            f for f in self.feats
+            if f.get("category") == "class"
+            and f.get("level") == 1
+            and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+        ]
+        
+        chosen_feats = []
+        if eligible_feats:
+            feat_pick = random.choice(eligible_feats)
+            chosen_feats.append(FeatSummary(
+                id=feat_pick["id"],
+                name=feat_pick["name"],
+                category="class",
+                action_cost=feat_pick.get("action_cost"),
+                description=feat_pick.get("description", "")[:250] + "..."
+            ))
+
+        # 5. Trained Skills List
+        trained_skills = list(bg.get("trained_skills", []))
+        if bg.get("trained_lore"):
+            trained_skills.append(f"Lore: {bg['trained_lore'].title()}")
+
+        return CharacterSheet(
+            name=resolved_name,
+            level=level,
+            ancestry=anc["name"],
+            background=bg["name"],
+            character_class=cls["name"],
+            size=anc.get("size", "med"),
+            speed=anc.get("speed", 25),
+            attributes=AttributeModifiers(**mods),
+            defenses=Defenses(
+                ac=ac_val,
+                hp=total_hp,
+                fortitude=fort_prof,
+                reflex=ref_prof,
+                will=will_prof,
+            ),
+            perception=perception_prof,
+            trained_skills=trained_skills,
+            feats=chosen_feats,
+            traits=[anc["name"].lower(), cls["name"].lower()],
+        )
