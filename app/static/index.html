@@ -26,7 +26,7 @@
 
     .controls {
       display: grid;
-      grid-template-columns: 1.5fr 1.2fr 1.2fr 0.8fr auto;
+      grid-template-columns: 1.5fr 1.2fr 1.2fr 0.8fr auto auto;
       gap: 0.75rem;
       background: var(--panel-bg);
       padding: 1.25rem;
@@ -77,7 +77,7 @@
 
     .sheet-header-banner {
       display: grid;
-      grid-template-columns: 2fr 1fr 1fr 1fr 70px;
+      grid-template-columns: 1.8fr 1.3fr 1fr 1.5fr 70px;
       gap: 0.5rem;
       background: #f1f5f9;
       border: 1.5px solid #000000;
@@ -85,10 +85,24 @@
       border-radius: 4px;
       margin-bottom: 1rem;
     }
-    .banner-block { display: flex; flex-direction: column; }
+    .banner-block { display: flex; flex-direction: column; justify-content: center; }
     .banner-label { font-size: 0.65rem; font-weight: 800; color: #475569; text-transform: uppercase; }
-    .banner-val { font-size: 1.1rem; font-weight: 800; color: #000000; line-height: 1.2; }
+    .banner-val { font-size: 1.05rem; font-weight: 800; color: #000000; line-height: 1.2; }
     .banner-val.level-val { font-size: 1.6rem; text-align: center; color: var(--paizo-red); }
+
+    .arch-badge {
+      display: inline-block;
+      background: #0284c7;
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      margin-top: 0.2rem;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
 
     .sheet-body {
       display: grid;
@@ -188,6 +202,7 @@
       font-weight: 900;
     }
     .badge-t { background: #000000; color: #ffffff; }
+    .badge-e { background: #0369a1; color: #ffffff; }
     .badge-u { background: #e2e8f0; color: #64748b; border: 1px solid #94a3b8; }
     .skill-title { font-weight: 700; }
     .skill-attr-tag { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
@@ -217,6 +232,10 @@
       padding: 0.5rem;
       margin-bottom: 0.4rem;
     }
+    .detail-card.arch-feat {
+      border-left: 3.5px solid #0284c7;
+      background: #f0f9ff;
+    }
     .detail-card-head {
       display: flex;
       justify-content: space-between;
@@ -236,7 +255,13 @@
       color: #334155;
     }
 
-    /* SPELL SLOT TRACKER */
+    /* SPELL SCROLL PANEL TO PREVENT OVER-EXPANSION */
+    .spells-scroll-container {
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
     .slot-tracker-bar {
       display: flex;
       align-items: center;
@@ -256,7 +281,6 @@
       accent-color: #0369a1;
     }
 
-    /* CONSUMABLES CARDS */
     .consumables-list {
       display: flex;
       flex-direction: column;
@@ -307,6 +331,7 @@
       .sheet-box { page-break-inside: avoid; }
       .sheet-box-title { background: #000000 !important; color: #ffffff !important; }
       .w-map, .w-dmg { color: #000000 !important; }
+      .spells-scroll-container { max-height: none !important; overflow: visible !important; }
       .slot-checkbox { appearance: none; -webkit-appearance: none; border: 1.5px solid #000000; border-radius: 2px; }
     }
   </style>
@@ -337,12 +362,12 @@
           <option value="1">Level 1</option>
           <option value="2">Level 2</option>
           <option value="3">Level 3</option>
-          <option value="4">Level 4</option>
+          <option value="4" selected>Level 4</option>
         </select>
       </div>
-            <div class="field" style="justify-content: flex-end; padding-bottom: 0.2rem;">
-        <label style="cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem;">
-          <input type="checkbox" id="dedicationToggle" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-gold);">
+      <div class="field" style="justify-content: flex-end; padding-bottom: 0.2rem;">
+        <label style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 800; color: #f8fafc; background: #0f172a; padding: 0.55rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
+          <input type="checkbox" id="dedicationToggle" checked style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-gold);">
           Archetype Dedication
         </label>
       </div>
@@ -369,8 +394,9 @@
           <span class="banner-val" id="sheetBackground">Farmhand</span>
         </div>
         <div class="banner-block">
-          <span class="banner-label">Class</span>
+          <span class="banner-label">Class & Archetype</span>
           <span class="banner-val" id="sheetClass">Fighter</span>
+          <span id="sheetArchetypeBadge" class="arch-badge" style="display: none;"></span>
         </div>
         <div class="banner-block" style="text-align: center;">
           <span class="banner-label">Level</span>
@@ -471,7 +497,7 @@
             </div>
           </div>
 
-          <!-- SPELLCASTING WITH INTERACTIVE SLOT TRACKER -->
+          <!-- SPELLCASTING WITH SCROLL CONTAINER -->
           <div class="sheet-box" id="spellsSection" style="display: none;">
             <div class="sheet-box-title">
               <span>Spellcasting</span>
@@ -489,17 +515,18 @@
                 </div>
               </div>
 
-              <!-- Spell Slot Pips Container -->
               <div id="slotTrackerContainer"></div>
 
-              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Cantrips</div>
-              <div id="cantripsContainer"></div>
+              <div class="spells-scroll-container">
+                <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Cantrips</div>
+                <div id="cantripsContainer"></div>
 
-              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 1 Spells</div>
-              <div id="rank1Container"></div>
+                <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 1 Spells</div>
+                <div id="rank1Container"></div>
 
-              <div id="rank2Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 2 Spells</div>
-              <div id="rank2Container"></div>
+                <div id="rank2Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 2 Spells</div>
+                <div id="rank2Container"></div>
+              </div>
             </div>
           </div>
 
@@ -631,14 +658,14 @@
       const anc = document.getElementById('ancestrySelect').value;
       const cls = document.getElementById('classSelect').value;
       const lvl = document.getElementById('levelSelect').value || 1;
+      const useDedication = document.getElementById('dedicationToggle')?.checked;
 
       const params = new URLSearchParams();
       if (nameInput) params.append('name', nameInput);
       if (anc) params.append('ancestry', anc);
       if (cls) params.append('class_name', cls);
       params.append('level', lvl);
-      const useDedication = document.getElementById('dedicationToggle')?.checked;
-      if (useDedication) params.append('dedication', 'true');
+      params.append('dedication', useDedication ? 'true' : 'false');
 
       const res = await fetch('/api/generate?' + params.toString());
       const data = await res.json();
@@ -646,14 +673,20 @@
 
       document.getElementById('sheetCard').style.display = 'block';
       document.getElementById('sheetName').textContent = data.name;
-      const heritageDisplay = data.heritage ? `${data.ancestry} (${data.heritage})` : data.ancestry;
-      let classDisplay = data.subclass ? `${data.character_class} (${data.subclass.name})` : data.character_class;
-      if (data.archetype) {
-        classDisplay += ` / ${data.archetype} Dedication`;
-      }
-      document.getElementById('sheetAncestry').textContent = heritageDisplay;
+      document.getElementById('sheetAncestry').textContent = data.heritage ? `${data.ancestry} (${data.heritage})` : data.ancestry;
       document.getElementById('sheetBackground').textContent = data.background;
+      
+      const classDisplay = data.subclass ? `${data.character_class} (${data.subclass.name})` : data.character_class;
       document.getElementById('sheetClass').textContent = classDisplay;
+      
+      const archBadge = document.getElementById('sheetArchetypeBadge');
+      if (data.archetype) {
+        archBadge.textContent = `${data.archetype} Dedication`;
+        archBadge.style.display = 'inline-block';
+      } else {
+        archBadge.style.display = 'none';
+      }
+
       document.getElementById('sheetLevel').textContent = data.level || 1;
 
       // Attributes
@@ -705,8 +738,8 @@
       rawSkills.forEach(sk => {
         const row = document.createElement('div');
         row.className = 'skill-line';
-        const rankLetter = sk.rank_letter || (sk.rank >= 2 ? 'T' : 'U');
-        const badgeClass = rankLetter === 'T' ? 'badge-t' : 'badge-u';
+        const rankLetter = sk.rank_letter || (sk.rank >= 4 ? 'E' : (sk.rank >= 2 ? 'T' : 'U'));
+        const badgeClass = rankLetter === 'E' ? 'badge-e' : (rankLetter === 'T' ? 'badge-t' : 'badge-u');
         row.innerHTML = `
           <div class="skill-meta">
             <span class="skill-badge ${badgeClass}">${rankLetter}</span>
@@ -729,6 +762,7 @@
         renderSlotTrackers(data.spellcasting.slots);
         renderSpellList('cantripsContainer', data.spellcasting.cantrips);
         renderSpellList('rank1Container', data.spellcasting.rank_1_spells);
+
         if (data.spellcasting.rank_2_spells && data.spellcasting.rank_2_spells.length > 0) {
           document.getElementById('rank2Header').style.display = 'block';
           renderSpellList('rank2Container', data.spellcasting.rank_2_spells);
@@ -740,18 +774,19 @@
         spellsSection.style.display = 'none';
       }
 
-      // Feats
+      // Feats Section
       const featsBox = document.getElementById('featsContainer');
       featsBox.innerHTML = '';
       (data.feats || []).forEach(f => {
         const card = document.createElement('div');
-        card.className = 'detail-card';
+        const isArch = (f.category || '').toLowerCase().includes('archetype');
+        card.className = isArch ? 'detail-card arch-feat' : 'detail-card';
         card.innerHTML = `
           <div class="detail-card-head">
             <span>${f.name}</span>
             <span style="font-size: 0.7rem; color: #64748b;">${f.action_cost ? f.action_cost + ' Action(s)' : 'Passive'}</span>
           </div>
-          <div class="detail-card-meta">Traits: [${(f.traits || []).join(', ')}]</div>
+          <div class="detail-card-meta">${f.category} | Traits: [${(f.traits || []).join(', ')}]</div>
           <div class="detail-card-body">${f.description || ''}</div>
         `;
         featsBox.appendChild(card);
@@ -784,6 +819,8 @@
       params.append('ancestry', currentCharacterData.ancestry);
       params.append('class_name', currentCharacterData.character_class);
       params.append('level', currentCharacterData.level || 1);
+      const useDedication = document.getElementById('dedicationToggle')?.checked;
+      params.append('dedication', useDedication ? 'true' : 'false');
       window.location.href = '/api/export/foundry?' + params.toString();
     }
 
