@@ -88,6 +88,10 @@ def resolve_spellcasting(class_name: str, attribute_mods: Dict[str, int], level:
         if not matches_tradition:
             continue
 
+        # Exclude focus spells from standard slot selection
+        if "focus" in combined_traits_lower or "focus" in traditions_lower:
+            continue
+
         # Extract spell rank
         rank = sp.get("rank")
         if rank is None and isinstance(sp.get("system"), dict):
