@@ -16,57 +16,49 @@
       --border: #334155;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 2rem 1rem; }
-    .container { max-width: 900px; margin: 0 auto; }
-    header { text-align: center; margin-bottom: 2rem; }
-    header h1 { font-size: 2.25rem; color: var(--accent); }
-    header p { color: var(--muted); margin-top: 0.5rem; }
+    body { background: var(--bg); color: var(--text); padding: 1.5rem 1rem; }
+    .container { max-width: 960px; margin: 0 auto; }
+    
+    header { text-align: center; margin-bottom: 1.5rem; }
+    header h1 { font-size: 2.2rem; color: var(--accent); }
+    header p { color: var(--muted); margin-top: 0.25rem; font-size: 0.95rem; }
     
     .controls {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-      gap: 1rem;
+      gap: 0.75rem;
       background: var(--card-bg);
-      padding: 1.5rem;
+      padding: 1.25rem;
       border-radius: 8px;
       border: 1px solid var(--border);
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
-    .field { display: flex; flex-direction: column; gap: 0.5rem; }
-    label { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    label { font-size: 0.75rem; font-weight: 700; color: var(--muted); text-transform: uppercase; }
     select, input, button {
-      padding: 0.65rem 0.85rem;
+      padding: 0.6rem 0.75rem;
       background: #0f172a;
       border: 1px solid var(--border);
       border-radius: 6px;
       color: var(--text);
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
-    input::placeholder { color: #64748b; }
-    
-    .btn-group {
-      display: flex;
-      gap: 0.5rem;
-      align-items: flex-end;
-    }
+    .btn-group { display: flex; gap: 0.5rem; align-items: flex-end; }
     button.primary-btn {
       background: var(--accent);
       color: #000;
       font-weight: 700;
       cursor: pointer;
       border: none;
-      transition: background 0.2s;
       flex: 1;
     }
     button.primary-btn:hover { background: var(--accent-hover); }
-
     button.print-btn {
       background: #334155;
       color: #f8fafc;
       font-weight: 700;
       cursor: pointer;
       border: 1px solid var(--border);
-      transition: background 0.2s;
       flex: 1;
     }
     button.print-btn:hover { background: #475569; }
@@ -75,102 +67,165 @@
       background: var(--card-bg);
       border-radius: 8px;
       border: 1px solid var(--border);
-      padding: 2rem;
+      padding: 1.75rem;
       box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     }
     .sheet-header {
       border-bottom: 2px solid var(--border);
-      padding-bottom: 1rem;
-      margin-bottom: 1.5rem;
+      padding-bottom: 0.75rem;
+      margin-bottom: 1.25rem;
       display: flex;
       justify-content: space-between;
       align-items: baseline;
     }
-    .char-title h2 { font-size: 1.8rem; color: var(--accent); }
-    .char-sub { color: var(--muted); font-size: 1rem; margin-top: 0.25rem; }
+    .char-title h2 { font-size: 1.75rem; color: var(--accent); }
+    .char-sub { color: var(--muted); font-size: 0.95rem; margin-top: 0.2rem; }
 
     .stats-grid {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
       text-align: center;
     }
     .stat-box {
       background: #0f172a;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 0.75rem 0.25rem;
+      padding: 0.5rem 0.25rem;
     }
-    .stat-name { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; font-weight: 700; }
-    .stat-val { font-size: 1.5rem; font-weight: 800; color: #38bdf8; margin-top: 0.25rem; }
+    .stat-name { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+    .stat-val { font-size: 1.4rem; font-weight: 800; color: #38bdf8; }
 
     .vitals-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
-      gap: 0.75rem;
-      margin-bottom: 1.5rem;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 0.5rem;
+      margin-bottom: 1.25rem;
     }
     .vital-item {
       background: #0f172a;
       border: 1px solid var(--border);
-      padding: 0.75rem;
+      padding: 0.6rem;
       border-radius: 6px;
       text-align: center;
     }
-    .vital-item span { display: block; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
-    .vital-item strong { font-size: 1.3rem; color: #4ade80; }
+    .vital-item span { display: block; font-size: 0.7rem; color: var(--muted); font-weight: 600; }
+    .vital-item strong { font-size: 1.15rem; color: #4ade80; }
 
-    .section-title { font-size: 1rem; font-weight: 700; color: var(--accent); margin: 1.25rem 0 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
-    .tag-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
-    
-    .skill-tag {
-      background: #0f172a;
-      border: 1px solid var(--border);
-      color: #e2e8f0;
-      padding: 0.35rem 0.65rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      display: flex;
-      gap: 0.5rem;
-      align-items: center;
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin: 1.25rem 0 0.5rem;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 0.25rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
     }
-    .skill-mod { font-weight: 700; color: #38bdf8; }
-    
-    .strike-row {
+
+    /* Strikes Table Layout */
+    .strikes-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 0.5rem;
+      font-size: 0.85rem;
+    }
+    .strikes-table th {
+      text-align: left;
+      padding: 0.4rem 0.6rem;
+      background: #0f172a;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+    .strikes-table td {
+      padding: 0.5rem 0.6rem;
+      border: 1px solid var(--border);
+      background: #0f172a;
+    }
+    .strike-weapon { font-weight: 700; color: #f8fafc; }
+    .strike-map { font-weight: 800; color: #38bdf8; font-family: monospace; font-size: 0.95rem; }
+    .strike-dmg { font-weight: 700; color: #f87171; }
+    .strike-traits { font-size: 0.75rem; color: var(--muted); }
+
+    /* Skills Grid Layout (Dense 2-Column Table) */
+    .skills-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.4rem 1.25rem;
+      margin-top: 0.5rem;
+    }
+    .skill-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       background: #0f172a;
       border: 1px solid var(--border);
-      padding: 0.75rem 1rem;
-      border-radius: 6px;
-      margin-top: 0.5rem;
+      padding: 0.35rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.85rem;
     }
-    .strike-main { display: flex; align-items: baseline; gap: 0.75rem; }
-    .strike-name { font-weight: 700; font-size: 1rem; color: #f8fafc; }
-    .strike-atk { font-weight: 800; color: #38bdf8; font-size: 1.1rem; }
-    .strike-dmg { font-weight: 700; color: #f87171; }
-    .strike-traits { font-size: 0.8rem; color: var(--muted); }
+    .skill-left { display: flex; align-items: center; gap: 0.5rem; }
+    .skill-badge {
+      font-size: 0.65rem;
+      font-weight: 800;
+      padding: 0.15rem 0.35rem;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+    .badge-t { background: #0369a1; color: #e0f2fe; }
+    .badge-u { background: #334155; color: #94a3b8; }
+    .skill-name { font-weight: 600; color: #e2e8f0; }
+    .skill-attr { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+    .skill-total { font-weight: 800; color: #38bdf8; font-size: 0.95rem; }
 
-    .spell-card {
+    /* Cards for Feats & Spells */
+    .detail-card {
       background: #0f172a;
       border: 1px solid var(--border);
       border-radius: 6px;
-      padding: 0.85rem;
+      padding: 0.75rem;
       margin-top: 0.5rem;
     }
-    .spell-header { display: flex; justify-content: space-between; font-weight: 700; color: #a855f7; margin-bottom: 0.25rem; }
-    .spell-sub { font-size: 0.8rem; color: #38bdf8; margin-bottom: 0.4rem; }
-    .spell-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
-
-    .gear-box {
+    .detail-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-weight: 700;
+      color: #f8fafc;
+      margin-bottom: 0.25rem;
+    }
+    .detail-meta {
+      font-size: 0.75rem;
+      color: #38bdf8;
+      margin-bottom: 0.4rem;
+      font-weight: 600;
+    }
+    .detail-desc {
       font-size: 0.85rem;
+      color: #cbd5e1;
+      line-height: 1.45;
+      white-space: pre-line;
+    }
+
+    .tag-container { display: flex; flex-wrap: wrap; gap: 0.4rem; margin-top: 0.5rem; }
+    .item-tag {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: #e2e8f0;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    .gear-box {
+      font-size: 0.8rem;
       color: var(--muted);
-      line-height: 1.6;
+      line-height: 1.5;
       margin-top: 0.5rem;
       background: #0f172a;
-      padding: 0.85rem;
+      padding: 0.65rem;
       border-radius: 6px;
       border: 1px solid var(--border);
     }
@@ -178,43 +233,25 @@
       background: rgba(251, 191, 36, 0.1);
       border: 1px solid var(--gold);
       color: var(--gold);
-      padding: 0.35rem 0.65rem;
-      border-radius: 6px;
+      padding: 0.3rem 0.6rem;
+      border-radius: 4px;
       font-weight: 700;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
     }
 
-    .feat-box {
-      background: #0f172a;
-      border-left: 3px solid var(--accent);
-      padding: 0.85rem;
-      margin-top: 0.5rem;
-      border-radius: 0 4px 4px 0;
-    }
-    .feat-header { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 0.25rem; }
-    .feat-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
-
-    /* ========================================================
-       PRINT & PDF EXPORT STYLES (8.5x11 Clean Layout)
-       ======================================================== */
     @media print {
       @page {
         size: letter portrait;
-        margin: 0.45in;
+        margin: 0.35in;
       }
       body {
         background: #ffffff !important;
         color: #000000 !important;
         padding: 0 !important;
-        font-size: 9pt;
+        font-size: 8pt;
       }
-      .container {
-        max-width: 100% !important;
-        margin: 0 !important;
-      }
-      header, .controls {
-        display: none !important;
-      }
+      .container { max-width: 100% !important; margin: 0 !important; }
+      header, .controls { display: none !important; }
       .sheet-card {
         background: #ffffff !important;
         border: none !important;
@@ -223,79 +260,38 @@
       }
       .sheet-header {
         border-bottom: 2px solid #000000 !important;
-        margin-bottom: 0.5rem !important;
-        padding-bottom: 0.25rem !important;
+        margin-bottom: 0.4rem !important;
+        padding-bottom: 0.2rem !important;
       }
-      .char-title h2 {
-        font-size: 1.6rem !important;
-        color: #000000 !important;
-      }
-      .char-sub {
-        color: #333333 !important;
-        font-size: 0.9rem !important;
-        font-weight: 600;
-      }
+      .char-title h2 { font-size: 1.4rem !important; color: #000000 !important; }
+      .char-sub { color: #222222 !important; font-size: 0.85rem !important; font-weight: 600; }
       .section-title {
         color: #000000 !important;
         border-bottom: 1.5px solid #000000 !important;
-        font-size: 0.95rem !important;
-        margin: 0.75rem 0 0.35rem 0 !important;
+        font-size: 0.85rem !important;
+        margin: 0.6rem 0 0.25rem 0 !important;
       }
-      .stats-grid {
-        gap: 0.35rem !important;
-        margin-bottom: 0.5rem !important;
-      }
-      .stat-box {
-        background: #f8fafc !important;
-        border: 1px solid #000000 !important;
-        padding: 0.35rem 0 !important;
-      }
-      .stat-name {
-        color: #000000 !important;
-        font-size: 0.7rem !important;
-      }
-      .stat-val {
-        color: #000000 !important;
-        font-size: 1.25rem !important;
-      }
-      .vitals-grid {
-        gap: 0.35rem !important;
-        margin-bottom: 0.5rem !important;
-      }
-      .vital-item {
-        background: #f8fafc !important;
-        border: 1px solid #000000 !important;
-        padding: 0.35rem !important;
-      }
-      .vital-item span {
-        color: #333333 !important;
-        font-size: 0.65rem !important;
-      }
-      .vital-item strong {
-        color: #000000 !important;
-        font-size: 1.1rem !important;
-      }
-      .strike-row, .spell-card, .gear-box, .feat-box {
+      .stat-box, .vital-item, .strikes-table td, .strikes-table th, .skill-row, .detail-card, .gear-box {
         background: #ffffff !important;
-        border: 1px solid #666666 !important;
+        border: 1px solid #444444 !important;
         color: #000000 !important;
-        padding: 0.4rem 0.6rem !important;
-        margin-top: 0.35rem !important;
         page-break-inside: avoid;
       }
-      .strike-name { color: #000000 !important; font-weight: bold; }
-      .strike-atk { color: #000000 !important; font-weight: bold; }
-      .strike-dmg { color: #000000 !important; }
-      .strike-traits, .spell-sub, .feat-desc { color: #444444 !important; font-size: 0.8rem !important; }
-      .spell-header { color: #000000 !important; }
-      .skill-tag, .money-pill {
-        background: #ffffff !important;
+      .stat-name, .vital-item span { color: #222222 !important; font-size: 0.65rem !important; }
+      .stat-val, .vital-item strong { color: #000000 !important; font-size: 1rem !important; }
+      .strike-weapon, .strike-map, .strike-dmg, .skill-name, .skill-total, .detail-header {
+        color: #000000 !important;
+      }
+      .strike-traits, .skill-attr, .detail-meta, .detail-desc {
+        color: #333333 !important;
+      }
+      .badge-t { background: #000000 !important; color: #ffffff !important; }
+      .badge-u { background: #ffffff !important; color: #000000 !important; border: 1px solid #000000; }
+      .item-tag, .money-pill {
         border: 1px solid #000000 !important;
         color: #000000 !important;
-        padding: 0.2rem 0.5rem !important;
-        font-size: 0.8rem !important;
+        background: #ffffff !important;
       }
-      .skill-mod { color: #000000 !important; font-weight: bold; }
     }
   </style>
 </head>
@@ -356,7 +352,22 @@
         <div class="vital-item"><span>PERCEPTION</span><strong id="vitalPerception">+0</strong></div>
       </div>
 
-      <!-- Spellcasting Section -->
+      <div class="section-title">STRIKES & WEAPON ATTACKS (MAP)</div>
+      <table class="strikes-table">
+        <thead>
+          <tr>
+            <th>Weapon</th>
+            <th>Attacks (1st / 2nd / 3rd)</th>
+            <th>Damage</th>
+            <th>Traits</th>
+          </tr>
+        </thead>
+        <tbody id="strikesTbody"></tbody>
+      </table>
+
+      <div class="section-title">SKILLS (ALL 16 CORE SKILLS & LORE)</div>
+      <div class="skills-grid" id="skillsContainer"></div>
+
       <div id="spellsSection" style="display: none;">
         <div class="section-title">SPELLCASTING</div>
         <div class="vitals-grid" style="margin-top: 0.5rem;">
@@ -366,25 +377,19 @@
           <div class="vital-item"><span>SPELL ATTACK</span><strong id="spellAttack">+0</strong></div>
         </div>
 
-        <div style="font-weight: 700; color: #a855f7; margin-top: 0.75rem; font-size: 0.9rem;">CANTRIPS (RANK 1)</div>
+        <div style="font-weight: 700; color: #a855f7; margin-top: 0.75rem; font-size: 0.85rem; text-transform: uppercase;">Cantrips (Rank 1)</div>
         <div id="cantripsContainer"></div>
 
-        <div style="font-weight: 700; color: #a855f7; margin-top: 0.75rem; font-size: 0.9rem;">RANK 1 SPELLS</div>
+        <div style="font-weight: 700; color: #a855f7; margin-top: 0.75rem; font-size: 0.85rem; text-transform: uppercase;">Rank 1 Prepared / Known Spells</div>
         <div id="rank1Container"></div>
       </div>
 
-      <div class="section-title">STRIKES & WEAPONS</div>
-      <div id="strikesContainer"></div>
+      <div class="section-title">FEATS & ABILITIES (FULL DESCRIPTIONS)</div>
+      <div id="featsContainer"></div>
 
-      <div class="section-title">EQUIPMENT, WEALTH & ARMOR</div>
+      <div class="section-title">EQUIPMENT & WEALTH</div>
       <div class="tag-container" id="armorContainer"></div>
       <div class="gear-box" id="gearContainer"></div>
-
-      <div class="section-title">TRAINED SKILLS</div>
-      <div class="tag-container" id="skillsContainer"></div>
-
-      <div class="section-title">STARTING FEATS</div>
-      <div id="featsContainer"></div>
     </div>
   </div>
 
@@ -415,22 +420,24 @@
     }
 
     function formatMod(val) {
+      if (val === undefined || val === null) return "+0";
       return val >= 0 ? `+${val}` : `${val}`;
     }
 
     function renderSpellList(containerId, spells) {
       const box = document.getElementById(containerId);
       box.innerHTML = '';
+      if (!Array.isArray(spells)) return;
       spells.forEach(s => {
         const card = document.createElement('div');
-        card.className = 'spell-card';
+        card.className = 'detail-card';
         card.innerHTML = `
-          <div class="spell-header">
+          <div class="detail-header">
             <span>${s.name}</span>
-            <span style="font-size: 0.8rem; color: var(--muted);">${s.actions}</span>
+            <span style="font-size: 0.8rem; color: var(--muted);">${s.actions || ''}</span>
           </div>
-          <div class="spell-sub">Range: ${s.range} | Traits: ${s.traits.join(', ')}</div>
-          <div class="spell-desc">${s.summary}</div>
+          <div class="detail-meta">Range: ${s.range || 'Touch'} | ${s.targets ? 'Targets: ' + s.targets + ' | ' : ''}${s.defense ? 'Defense: ' + s.defense + ' | ' : ''}Traits: [${(s.traits || []).join(', ')}]</div>
+          <div class="detail-desc">${s.description || s.summary || ''}</div>
         `;
         box.appendChild(card);
       });
@@ -453,30 +460,70 @@
       document.getElementById('sheetName').textContent = data.name;
       document.getElementById('sheetSub').textContent = `${data.ancestry} ${data.character_class} | ${data.background}`;
       
-      const attrs = data.attributes;
-      document.getElementById('statStr').textContent = formatMod(attrs.str);
-      document.getElementById('statDex').textContent = formatMod(attrs.dex);
-      document.getElementById('statCon').textContent = formatMod(attrs.con);
-      document.getElementById('statInt').textContent = formatMod(attrs.int);
-      document.getElementById('statWis').textContent = formatMod(attrs.wis);
-      document.getElementById('statCha').textContent = formatMod(attrs.cha);
+      const attrs = data.attributes || {};
+      document.getElementById('statStr').textContent = formatMod(attrs.str ?? attrs.strength);
+      document.getElementById('statDex').textContent = formatMod(attrs.dex ?? attrs.dexterity);
+      document.getElementById('statCon').textContent = formatMod(attrs.con ?? attrs.constitution);
+      document.getElementById('statInt').textContent = formatMod(attrs.int ?? attrs.intelligence);
+      document.getElementById('statWis').textContent = formatMod(attrs.wis ?? attrs.wisdom);
+      document.getElementById('statCha').textContent = formatMod(attrs.cha ?? attrs.charisma);
 
-      document.getElementById('vitalHp').textContent = data.defenses.hp;
-      const acText = data.defenses.shield_bonus > 0 ? `${data.defenses.ac} (+${data.defenses.shield_bonus} Shield)` : data.defenses.ac;
-      document.getElementById('vitalAc').textContent = acText;
-      document.getElementById('vitalSpeed').textContent = `${data.speed} ft`;
-      document.getElementById('vitalFort').textContent = formatMod(data.defenses.fortitude.modifier);
-      document.getElementById('vitalRef').textContent = formatMod(data.defenses.reflex.modifier);
-      document.getElementById('vitalWill').textContent = formatMod(data.defenses.will.modifier);
-      document.getElementById('vitalPerception').textContent = formatMod(data.perception.modifier);
+      document.getElementById('vitalHp').textContent = data.defenses?.hp ?? 0;
+      const shieldBonus = data.defenses?.shield_bonus ?? 0;
+      const acBase = data.defenses?.ac ?? 10;
+      document.getElementById('vitalAc').textContent = shieldBonus > 0 ? `${acBase} (+${shieldBonus} Shield)` : acBase;
+      document.getElementById('vitalSpeed').textContent = `${data.speed ?? 25} ft`;
+      document.getElementById('vitalFort').textContent = formatMod(data.defenses?.fortitude?.modifier);
+      document.getElementById('vitalRef').textContent = formatMod(data.defenses?.reflex?.modifier);
+      document.getElementById('vitalWill').textContent = formatMod(data.defenses?.will?.modifier);
+      document.getElementById('vitalPerception').textContent = formatMod(data.perception?.modifier);
 
-      // Spellcasting
+      // 1. Strikes & MAP Table
+      const strikesTbody = document.getElementById('strikesTbody');
+      strikesTbody.innerHTML = '';
+      const strikesList = data.equipment?.strikes || [];
+      strikesList.forEach(s => {
+        const row = document.createElement('tr');
+        const mapSec = s.map_second !== undefined ? formatMod(s.map_second) : formatMod(s.attack_bonus - 5);
+        const mapThird = s.map_third !== undefined ? formatMod(s.map_third) : formatMod(s.attack_bonus - 10);
+        const mapDisplay = `${formatMod(s.attack_bonus)} / ${mapSec} / ${mapThird}`;
+        row.innerHTML = `
+          <td class="strike-weapon">${s.name}</td>
+          <td class="strike-map">${mapDisplay}</td>
+          <td class="strike-dmg">${s.damage_dice} ${s.damage_type}</td>
+          <td class="strike-traits">${(s.traits || []).join(', ')}</td>
+        `;
+        strikesTbody.appendChild(row);
+      });
+
+      // 2. Full 16 Core Skills List (Supports all_skills OR trained_skills fallback)
+      const skillsContainer = document.getElementById('skillsContainer');
+      skillsContainer.innerHTML = '';
+      const rawSkills = Array.isArray(data.all_skills) ? data.all_skills : (Array.isArray(data.trained_skills) ? data.trained_skills : []);
+      
+      rawSkills.forEach(sk => {
+        const row = document.createElement('div');
+        row.className = 'skill-row';
+        const rankLetter = sk.rank_letter || (sk.rank >= 2 ? 'T' : 'U');
+        const badgeClass = rankLetter === 'T' ? 'badge-t' : 'badge-u';
+        row.innerHTML = `
+          <div class="skill-left">
+            <span class="skill-badge ${badgeClass}">${rankLetter}</span>
+            <span class="skill-name">${sk.name}</span>
+            <span class="skill-attr">(${sk.attribute || 'mod'})</span>
+          </div>
+          <span class="skill-total">${formatMod(sk.modifier)}</span>
+        `;
+        skillsContainer.appendChild(row);
+      });
+
+      // 3. Spellcasting
       const spellsSection = document.getElementById('spellsSection');
       if (data.spellcasting) {
         spellsSection.style.display = 'block';
-        document.getElementById('spellTradition').textContent = data.spellcasting.tradition;
-        document.getElementById('spellAttr').textContent = data.spellcasting.casting_attribute;
-        document.getElementById('spellDc').textContent = data.spellcasting.spell_dc;
+        document.getElementById('spellTradition').textContent = data.spellcasting.tradition || '-';
+        document.getElementById('spellAttr').textContent = data.spellcasting.casting_attribute || '-';
+        document.getElementById('spellDc').textContent = data.spellcasting.spell_dc || 10;
         document.getElementById('spellAttack').textContent = formatMod(data.spellcasting.spell_attack);
         renderSpellList('cantripsContainer', data.spellcasting.cantrips);
         renderSpellList('rank1Container', data.spellcasting.rank_1_spells);
@@ -484,62 +531,37 @@
         spellsSection.style.display = 'none';
       }
 
-      // Strikes
-      const strikesBox = document.getElementById('strikesContainer');
-      strikesBox.innerHTML = '';
-      data.equipment.strikes.forEach(s => {
-        const row = document.createElement('div');
-        row.className = 'strike-row';
-        row.innerHTML = `
-          <div class="strike-main">
-            <span class="strike-name">${s.name}</span>
-            <span class="strike-atk">${formatMod(s.attack_bonus)}</span>
-            <span class="strike-dmg">${s.damage_dice} ${s.damage_type}</span>
-          </div>
-          <div class="strike-traits">${s.traits.join(', ')}</div>
-        `;
-        strikesBox.appendChild(row);
-      });
-
-      // Armor, Wealth & Gear
-      const armorBox = document.getElementById('armorContainer');
-      armorBox.innerHTML = '';
-      if (data.equipment.money) {
-        armorBox.innerHTML += `<span class="money-pill">Remaining Coins: ${data.equipment.money.formatted}</span>`;
-      }
-      if (data.equipment.armor) {
-        armorBox.innerHTML += `<span class="skill-tag">${data.equipment.armor.name}</span>`;
-      }
-      if (data.equipment.shield) {
-        armorBox.innerHTML += `<span class="skill-tag">${data.equipment.shield.name}</span>`;
-      }
-      document.getElementById('gearContainer').textContent = "Pack: " + data.equipment.gear.join(', ');
-
-      // Skills
-      const skillsBox = document.getElementById('skillsContainer');
-      skillsBox.innerHTML = '';
-      data.trained_skills.forEach(s => {
-        const tag = document.createElement('span');
-        tag.className = 'skill-tag';
-        tag.innerHTML = `<span>${s.name}</span><span class="skill-mod">${formatMod(s.modifier)}</span>`;
-        skillsBox.appendChild(tag);
-      });
-
-      // Feats
+      // 4. Feats with Full Descriptions
       const featsBox = document.getElementById('featsContainer');
       featsBox.innerHTML = '';
-      data.feats.forEach(f => {
-        const box = document.createElement('div');
-        box.className = 'feat-box';
-        box.innerHTML = `
-          <div class="feat-header">
+      const featsList = data.feats || [];
+      featsList.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'detail-card';
+        card.innerHTML = `
+          <div class="detail-header">
             <span>${f.name}</span>
-            <span>${f.action_cost ? f.action_cost + ' Action(s)' : 'Passive'}</span>
+            <span style="font-size: 0.8rem; color: var(--muted);">${f.action_cost ? f.action_cost + ' Action(s)' : 'Passive'}</span>
           </div>
-          <div class="feat-desc">${f.description}</div>
+          <div class="detail-meta">Traits: [${(f.traits || []).join(', ')}]</div>
+          <div class="detail-desc">${f.description || ''}</div>
         `;
-        featsBox.appendChild(box);
+        featsBox.appendChild(card);
       });
+
+      // 5. Equipment, Wealth & Gear
+      const armorBox = document.getElementById('armorContainer');
+      armorBox.innerHTML = '';
+      if (data.equipment?.money?.formatted) {
+        armorBox.innerHTML += `<span class="money-pill">Pouch: ${data.equipment.money.formatted}</span>`;
+      }
+      if (data.equipment?.armor) {
+        armorBox.innerHTML += `<span class="item-tag">Armor: ${data.equipment.armor.name}</span>`;
+      }
+      if (data.equipment?.shield) {
+        armorBox.innerHTML += `<span class="item-tag">Shield: ${data.equipment.shield.name}</span>`;
+      }
+      document.getElementById('gearContainer').textContent = "Gear Pack: " + (data.equipment?.gear || []).join(', ');
     }
 
     window.onload = () => {
