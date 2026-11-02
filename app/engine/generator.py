@@ -1,4 +1,5 @@
 import json
+import re
 import random
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Set
@@ -24,6 +25,23 @@ RANK_MAP = {
     3: (6, "M"),  # Master
     4: (8, "L"),  # Legendary
 }
+
+def clean_pf2e_text(text: str) -> str:
+    if not text:
+        return ""
+    # Strip HTML tags
+    text = re.sub(r"<[^>]+>", "", text)
+    # Convert @UUID[...Item.Demoralize]{Demoralize} -> Demoralize
+    text = re.sub(r"@UUID\[[^\]]*\.([A-Za-z0-9_ -]+)\]\{([^}]+)\}", r"\2", text)
+    # Convert @UUID[...Item.Demoralize] -> Demoralize
+    text = re.sub(r"@UUID\[[^\]]*\.([A-Za-z0-9_ -]+)\]", r"\1", text)
+    # Convert @Check[type:athletics|dc:...] -> Athletics check
+    text = re.sub(r"@Check\[[^\]]*type:([a-z]+)[^\]]*\]", r"\1 check", text)
+    # Convert @Damage[...] -> damage
+    text = re.sub(r"@Damage\[[^\]]*\]", "damage", text)
+    # Normalize excessive spaces/newlines
+    text = re.sub(r"\n\s*\n+", "\n\n", text)
+    return text.strip()
 
 def load_data(filename: str) -> Any:
     path = DATA_DIR / filename
@@ -152,7 +170,7 @@ class PF2eGenerator:
 
         total_hp = max(1, anc.get("hp", 8) + cls.get("hp_per_level", 8) + mods["con"])
 
-        # 5. Starting Feat Selection (FULL description)
+        # 5. Starting Feat Selection (Cleaned rules text)
         cls_name_lower = cls["name"].lower()
         eligible_feats = [
             f for f in self.feats
@@ -164,13 +182,14 @@ class PF2eGenerator:
         chosen_feats = []
         if eligible_feats:
             feat_pick = random.choice(eligible_feats)
+            cleaned_desc = clean_pf2e_text(feat_pick.get("description", ""))
             chosen_feats.append(FeatSummary(
                 id=feat_pick["id"],
                 name=feat_pick["name"],
                 category="class",
                 action_cost=feat_pick.get("action_cost"),
                 traits=feat_pick.get("traits", []),
-                description=feat_pick.get("description", "")
+                description=cleaned_desc
             ))
 
         # 6. Full 16 Core Skills List
