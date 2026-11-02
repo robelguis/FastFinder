@@ -12,6 +12,7 @@ from app.engine.models import (
 from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
+from app.engine.spells import resolve_spellcasting
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -150,10 +151,17 @@ class PF2eGenerator:
                 description=feat_pick.get("description", "")[:250] + "..."
             ))
 
-        # 6. Dynamic Skill Training (Class Base + Int Mod + Background)
+        # 6. Dynamic Skill Training
         trained_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
+            attribute_mods=mods,
+            level=level
+        )
+
+        # 7. Spellcasting (if caster class)
+        spellcasting_data = resolve_spellcasting(
+            class_name=cls["name"],
             attribute_mods=mods,
             level=level
         )
@@ -178,6 +186,7 @@ class PF2eGenerator:
             perception=perception_prof,
             trained_skills=trained_skills,
             equipment=equipment_loadout,
+            spellcasting=spellcasting_data,
             feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )

@@ -117,12 +117,9 @@
       gap: 0.5rem;
       align-items: center;
     }
-    .skill-mod {
-      font-weight: 700;
-      color: #38bdf8;
-    }
+    .skill-mod { font-weight: 700; color: #38bdf8; }
     
-    .strike-row {
+    .strike-row, .spell-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -132,11 +129,22 @@
       border-radius: 6px;
       margin-top: 0.5rem;
     }
-    .strike-main { display: flex; align-items: baseline; gap: 0.75rem; }
-    .strike-name { font-weight: 700; font-size: 1rem; color: #f8fafc; }
-    .strike-atk { font-weight: 800; color: #38bdf8; font-size: 1.1rem; }
+    .strike-main, .spell-main { display: flex; align-items: baseline; gap: 0.75rem; }
+    .strike-name, .spell-name { font-weight: 700; font-size: 1rem; color: #f8fafc; }
+    .strike-atk, .spell-meta { font-weight: 800; color: #38bdf8; font-size: 0.9rem; }
     .strike-dmg { font-weight: 700; color: #f87171; }
     .strike-traits { font-size: 0.8rem; color: var(--muted); }
+
+    .spell-card {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.85rem;
+      margin-top: 0.5rem;
+    }
+    .spell-header { display: flex; justify-content: space-between; font-weight: 700; color: #a855f7; margin-bottom: 0.25rem; }
+    .spell-sub { font-size: 0.8rem; color: #38bdf8; margin-bottom: 0.4rem; }
+    .spell-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
 
     .gear-box {
       font-size: 0.85rem;
@@ -216,7 +224,24 @@
         <div class="vital-item"><span>PERCEPTION</span><strong id="vitalPerception">+0</strong></div>
       </div>
 
-      <div class="section-title">STRIKES & ATTACKS</div>
+      <!-- Spellcasting Section (Displayed only for casters) -->
+      <div id="spellsSection" style="display: none;">
+        <div class="section-title">SPELLCASTING</div>
+        <div class="vitals-grid" style="margin-top: 0.5rem;">
+          <div class="vital-item"><span>TRADITION</span><strong id="spellTradition" style="color: #a855f7;">-</strong></div>
+          <div class="vital-item"><span>KEY ATTRIBUTE</span><strong id="spellAttr" style="color: #38bdf8;">-</strong></div>
+          <div class="vital-item"><span>SPELL DC</span><strong id="spellDc">10</strong></div>
+          <div class="vital-item"><span>SPELL ATTACK</span><strong id="spellAttack">+0</strong></div>
+        </div>
+
+        <div style="font-weight: 700; color: #a855f7; margin-top: 1rem; font-size: 0.9rem;">CANTRIPS (RANK 1)</div>
+        <div id="cantripsContainer"></div>
+
+        <div style="font-weight: 700; color: #a855f7; margin-top: 1rem; font-size: 0.9rem;">RANK 1 SPELLS</div>
+        <div id="rank1Container"></div>
+      </div>
+
+      <div class="section-title">STRIKES & WEAPONS</div>
       <div id="strikesContainer"></div>
 
       <div class="section-title">EQUIPMENT & ARMOR</div>
@@ -261,6 +286,24 @@
       return val >= 0 ? `+${val}` : `${val}`;
     }
 
+    function renderSpellList(containerId, spells) {
+      const box = document.getElementById(containerId);
+      box.innerHTML = '';
+      spells.forEach(s => {
+        const card = document.createElement('div');
+        card.className = 'spell-card';
+        card.innerHTML = `
+          <div class="spell-header">
+            <span>${s.name}</span>
+            <span style="font-size: 0.8rem; color: var(--muted);">${s.actions}</span>
+          </div>
+          <div class="spell-sub">Range: ${s.range} | Traits: ${s.traits.join(', ')}</div>
+          <div class="spell-desc">${s.summary}</div>
+        `;
+        box.appendChild(card);
+      });
+    }
+
     async function generate() {
       const nameInput = document.getElementById('charName').value.trim();
       const anc = document.getElementById('ancestrySelect').value;
@@ -294,6 +337,20 @@
       document.getElementById('vitalRef').textContent = formatMod(data.defenses.reflex.modifier);
       document.getElementById('vitalWill').textContent = formatMod(data.defenses.will.modifier);
       document.getElementById('vitalPerception').textContent = formatMod(data.perception.modifier);
+
+      // Spellcasting section
+      const spellsSection = document.getElementById('spellsSection');
+      if (data.spellcasting) {
+        spellsSection.style.display = 'block';
+        document.getElementById('spellTradition').textContent = data.spellcasting.tradition;
+        document.getElementById('spellAttr').textContent = data.spellcasting.casting_attribute;
+        document.getElementById('spellDc').textContent = data.spellcasting.spell_dc;
+        document.getElementById('spellAttack').textContent = formatMod(data.spellcasting.spell_attack);
+        renderSpellList('cantripsContainer', data.spellcasting.cantrips);
+        renderSpellList('rank1Container', data.spellcasting.rank_1_spells);
+      } else {
+        spellsSection.style.display = 'none';
+      }
 
       // Strikes
       const strikesBox = document.getElementById('strikesContainer');

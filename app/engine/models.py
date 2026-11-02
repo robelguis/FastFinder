@@ -48,6 +48,22 @@ class EquipmentLoadout(BaseModel):
     gear: List[str] = []
     strikes: List[Strike] = []
 
+class SpellEntry(BaseModel):
+    name: str
+    rank: int               # 0 = Cantrip, 1 = Rank 1
+    actions: str = "2 actions"
+    range: str = "30 feet"
+    summary: str
+    traits: List[str] = []
+
+class SpellcastingLoadout(BaseModel):
+    tradition: str          # "Arcane", "Divine", "Occult", "Primal"
+    casting_attribute: str  # "int", "wis", "cha"
+    spell_dc: int
+    spell_attack: int
+    cantrips: List[SpellEntry] = []
+    rank_1_spells: List[SpellEntry] = []
+
 class FeatSummary(BaseModel):
     id: str
     name: str
@@ -68,5 +84,6 @@ class CharacterSheet(BaseModel):
     perception: Proficiency
     trained_skills: List[SkillEntry]
     equipment: EquipmentLoadout
+    spellcasting: Optional[SpellcastingLoadout] = None
     feats: List[FeatSummary] = []
     traits: List[str] = []
