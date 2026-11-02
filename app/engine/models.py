@@ -103,6 +103,11 @@ class SpellcastingData(BaseModel):
 
 SpellcastingLoadout = SpellcastingData
 
+class SubclassSummary(BaseModel):
+    title: str
+    name: str
+    description: str
+
 class FeatSummary(BaseModel):
     id: str
     name: str
@@ -115,7 +120,9 @@ class CharacterSheet(BaseModel):
     name: str
     level: int = 1
     ancestry: str
+    heritage: Optional[str] = None
     background: str
+    subclass: Optional[SubclassSummary] = None
     character_class: str
     size: str
     speed: int

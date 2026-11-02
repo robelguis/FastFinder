@@ -14,6 +14,8 @@ from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
 from app.engine.spells import resolve_spellcasting
+from app.engine.subclasses import resolve_heritage, resolve_subclass
+from app.engine.models import SubclassSummary
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -82,6 +84,8 @@ class PF2eGenerator:
             cls = random.choice(list(self.classes.values()))
 
         bg = random.choice(list(self.backgrounds.values()))
+        heritage_data = resolve_heritage(anc["name"])
+        subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
 
         # 2. Track Attribute Boosts (Max +4 at Levels 1-2)
@@ -234,11 +238,35 @@ class PF2eGenerator:
             level=level
         )
 
+        
+        # Append Heritage Feature
+        chosen_feats.insert(0, FeatSummary(
+            id=f"heritage-{anc['name'].lower()}",
+            name=heritage_data["name"],
+            category="Heritage",
+            action_cost=None,
+            traits=[anc['name'].lower()],
+            description=clean_pf2e_text(heritage_data["description"])
+        ))
+
+        # Append Subclass Feature
+        if subclass_data:
+            chosen_feats.insert(1, FeatSummary(
+                id=f"subclass-{cls['name'].lower()}",
+                name=f"{subclass_data['title']}: {subclass_data['name']}",
+                category="Class Feature",
+                action_cost=None,
+                traits=[cls['name'].lower()],
+                description=clean_pf2e_text(subclass_data["description"])
+            ))
+
         return CharacterSheet(
             name=resolved_name,
             level=level,
             ancestry=anc["name"],
+            heritage=heritage_data["name"],
             background=bg["name"],
+            subclass=SubclassSummary(**subclass_data) if subclass_data else None,
             character_class=cls["name"],
             size=anc.get("size", "med"),
             speed=anc.get("speed", 25),

@@ -633,9 +633,11 @@
 
       document.getElementById('sheetCard').style.display = 'block';
       document.getElementById('sheetName').textContent = data.name;
-      document.getElementById('sheetAncestry').textContent = data.ancestry;
+      const heritageDisplay = data.heritage ? `${data.ancestry} (${data.heritage})` : data.ancestry;
+      const classDisplay = data.subclass ? `${data.character_class} (${data.subclass.name})` : data.character_class;
+      document.getElementById('sheetAncestry').textContent = heritageDisplay;
       document.getElementById('sheetBackground').textContent = data.background;
-      document.getElementById('sheetClass').textContent = data.character_class;
+      document.getElementById('sheetClass').textContent = classDisplay;
       document.getElementById('sheetLevel').textContent = data.level || 1;
 
       // Attributes

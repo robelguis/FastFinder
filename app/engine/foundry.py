@@ -173,7 +173,7 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
             "details": {
                 "level": {"value": sheet.level},
                 "ancestry": {"name": sheet.ancestry},
-                "heritage": None,
+                "heritage": {"name": sheet.heritage} if sheet.heritage else None,
                 "class": {"name": sheet.character_class},
                 "background": {"name": sheet.background}
             },
