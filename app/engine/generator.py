@@ -70,20 +70,16 @@ class PF2eGenerator:
     ) -> CharacterSheet:
         level = max(1, min(2, level))
 
-        # 1. Select Ancestry, Class, Background
+        # 1. Select Ancestry, Class, Background from full datasets
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
         else:
-            core_ancestries = ["human", "dwarf", "elf", "goblin", "halfling", "orc", "leshy", "gnome", "kobold"]
-            chosen = random.choice([k for k in core_ancestries if k in self.ancestries] or list(self.ancestries.keys()))
-            anc = self.ancestries[chosen]
+            anc = random.choice(list(self.ancestries.values()))
 
         if class_name and class_name.lower() in self.classes:
             cls = self.classes[class_name.lower()]
         else:
-            core_classes = ["fighter", "rogue", "wizard", "cleric", "barbarian", "ranger", "bard"]
-            chosen = random.choice([k for k in core_classes if k in self.classes] or list(self.classes.keys()))
-            cls = self.classes[chosen]
+            cls = random.choice(list(self.classes.values()))
 
         bg = random.choice(list(self.backgrounds.values()))
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
@@ -153,7 +149,7 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
-        # 4. Resolve Equipment & AC (incorporating character level)
+        # 4. Resolve Equipment & AC
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -161,7 +157,6 @@ class PF2eGenerator:
             level=level
         )
 
-        # Hit Points: Ancestry + (Class HP + CON) * level
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
         base_hp = anc.get("hp", 8) + (class_hp_per_lvl + con_mod)
@@ -173,7 +168,6 @@ class PF2eGenerator:
         cls_name_lower = cls["name"].lower()
         chosen_feats: List[FeatSummary] = []
 
-        # Level 1 Class Feat
         lvl1_feats = [
             f for f in self.feats
             if f.get("category") == "class"
@@ -191,7 +185,6 @@ class PF2eGenerator:
                 description=clean_pf2e_text(f1.get("description", ""))
             ))
 
-        # Level 2 Additions: Class Feat (Lvl 2) + Skill Feat (Lvl 2 or 1)
         if level >= 2:
             lvl2_feats = [
                 f for f in self.feats
@@ -210,7 +203,6 @@ class PF2eGenerator:
                     description=clean_pf2e_text(f2.get("description", ""))
                 ))
 
-            # Skill Feat (Level 1 or 2 skill feat)
             skill_feats = [
                 f for f in self.feats
                 if f.get("category") == "skill"
