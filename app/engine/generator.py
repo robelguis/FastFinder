@@ -9,6 +9,7 @@ from app.engine.models import (
     Proficiency,
     FeatSummary,
 )
+from app.engine.names import generate_ancestry_name
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -21,52 +22,10 @@ RANK_MAP = {
     4: 8,  # Legendary
 }
 
-# Thematic PF2e name tables by Ancestry
-ANCESTRY_NAMES: Dict[str, List[str]] = {
-    "human": [
-        "Valeros", "Seelah", "Ezren", "Kallista", "Anton", "Kendra", 
-        "Darius", "Elena", "Marek", "Talia", "Cassian", "Vesper"
-    ],
-    "dwarf": [
-        "Torag", "Harsk", "Dolgrin", "Brunhilda", "Thrum", "Kraglin", 
-        "Gunnar", "Helga", "Orin", "Borgan", "Duergar", "Marnie"
-    ],
-    "elf": [
-        "Kyra", "Merisiel", "Fumbus", "Aeris", "Caladrel", "Faeranduil", 
-        "Lian", "Sylas", "Kaelen", "Thelian", "Eliandra", "Vaelin"
-    ],
-    "gnome": [
-        "Lem", "Fumbus", "Bimble", "Nissa", "Quinn", "Zook", 
-        "Breena", "Tink", "Fizban", "Pippin", "Kora", "Wrenn"
-    ],
-    "goblin": [
-        "Fumbus", "Chuffy", "Poog", "Reta", "Mogmurch", "Zib", 
-        "Grik", "Snag", "Skitter", "Krik", "Brak", "Vrax"
-    ],
-    "halfling": [
-        "Lem", "Alton", "Cora", "Milo", "Perrin", "Rosie", 
-        "Wellby", "Kith", "Bree", "Corin", "Lyle", "Merric"
-    ],
-    "orc": [
-        "Ardavan", "Krusk", "Grom", "Thokk", "Urgok", "Shagrat", 
-        "Brakka", "Morga", "Drog", "Gorun", "Malthor", "Rakka"
-    ],
-    "leshy": [
-        "Acorn", "Bramble", "Clover", "Moss", "Sprout", "Fern", 
-        "Thorn", "Twig", "Bark", "Willow", "Briar", "Petal"
-    ],
-    "kobold": [
-        "Mikmek", "Enga", "Sniv", "Varn", "Kael", "Rax", 
-        "Zul", "Skel", "Tik", "Vesk", "Zik", "Kip"
-    ]
-}
-
-DEFAULT_NAMES = ["Valeros", "Amiri", "Harsk", "Ezren", "Merisiel", "Kyra"]
-
-def load_data(filename: str) -> List[Dict[str, Any]]:
+def load_data(filename: str) -> Any:
     path = DATA_DIR / filename
     if not path.exists():
-        raise FileNotFoundError(f"Missing {filename}. Ensure scripts/parse_foundry_data.py has been run.")
+        raise FileNotFoundError(f"Missing {filename}. Ensure scripts have been run.")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
@@ -82,10 +41,7 @@ class PF2eGenerator:
         return Proficiency(rank=prof_bonus, modifier=prof_bonus + level + attr_mod)
 
     def _pick_name(self, ancestry_name: str) -> str:
-        key = ancestry_name.lower()
-        if key in ANCESTRY_NAMES:
-            return random.choice(ANCESTRY_NAMES[key])
-        return random.choice(DEFAULT_NAMES)
+        return generate_ancestry_name(ancestry_name)
 
     def generate(
         self,
@@ -97,7 +53,7 @@ class PF2eGenerator:
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
         else:
-            core_ancestries = ["human", "dwarf", "elf", "goblin", "halfling", "orc", "leshy"]
+            core_ancestries = ["human", "dwarf", "elf", "goblin", "halfling", "orc", "leshy", "gnome", "kobold"]
             chosen = random.choice([k for k in core_ancestries if k in self.ancestries] or list(self.ancestries.keys()))
             anc = self.ancestries[chosen]
 
@@ -113,7 +69,7 @@ class PF2eGenerator:
         # Resolve Character Name (match ancestry if none provided)
         resolved_name = char_name.strip() if char_name and char_name.strip() else self._pick_name(anc["name"])
 
-        # 2. Track Attribute Boosts (PF2e Remaster uses +1 modifier per boost)
+        # 2. Track Attribute Boosts
         mods = {attr: 0 for attr in ATTRIBUTES}
 
         # A: Ancestry Boosts & Flaws
