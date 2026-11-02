@@ -105,7 +105,22 @@
 
     .section-title { font-size: 1rem; font-weight: 700; color: var(--accent); margin: 1.25rem 0 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
     .tag-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
-    .tag { background: #334155; color: #e2e8f0; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.85rem; }
+    
+    .skill-tag {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      color: #e2e8f0;
+      padding: 0.35rem 0.65rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    .skill-mod {
+      font-weight: 700;
+      color: #38bdf8;
+    }
     
     .strike-row {
       display: flex;
@@ -301,10 +316,10 @@
       const armorBox = document.getElementById('armorContainer');
       armorBox.innerHTML = '';
       if (data.equipment.armor) {
-        armorBox.innerHTML += `<span class="tag">Armor: ${data.equipment.armor.name}</span>`;
+        armorBox.innerHTML += `<span class="skill-tag">${data.equipment.armor.name}</span>`;
       }
       if (data.equipment.shield) {
-        armorBox.innerHTML += `<span class="tag">Shield: ${data.equipment.shield.name}</span>`;
+        armorBox.innerHTML += `<span class="skill-tag">${data.equipment.shield.name}</span>`;
       }
       document.getElementById('gearContainer').textContent = "Pack: " + data.equipment.gear.join(', ');
 
@@ -313,8 +328,8 @@
       skillsBox.innerHTML = '';
       data.trained_skills.forEach(s => {
         const tag = document.createElement('span');
-        tag.className = 'tag';
-        tag.textContent = s;
+        tag.className = 'skill-tag';
+        tag.innerHTML = `<span>${s.name}</span><span class="skill-mod">${formatMod(s.modifier)}</span>`;
         skillsBox.appendChild(tag);
       });
 

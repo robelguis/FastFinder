@@ -11,6 +11,7 @@ from app.engine.models import (
 )
 from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
+from app.engine.skills import resolve_character_skills
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -119,7 +120,7 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
-        # 4. Resolve Equipment & Calculated AC
+        # 4. Resolve Equipment & AC
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -149,10 +150,13 @@ class PF2eGenerator:
                 description=feat_pick.get("description", "")[:250] + "..."
             ))
 
-        # 6. Trained Skills List
-        trained_skills = list(bg.get("trained_skills", []))
-        if bg.get("trained_lore"):
-            trained_skills.append(f"Lore: {bg['trained_lore'].title()}")
+        # 6. Dynamic Skill Training (Class Base + Int Mod + Background)
+        trained_skills = resolve_character_skills(
+            class_name=cls["name"],
+            background_data=bg,
+            attribute_mods=mods,
+            level=level
+        )
 
         return CharacterSheet(
             name=resolved_name,

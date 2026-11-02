@@ -15,6 +15,12 @@ class Proficiency(BaseModel):
     rank: int = 0       # 0=Untrained, 2=Trained, 4=Expert, 6=Master, 8=Legendary
     modifier: int = 0   # rank + level + attribute_mod
 
+class SkillEntry(BaseModel):
+    name: str
+    attribute: str      # e.g., "dex", "int"
+    rank: int = 2       # Remaster Trained = 2
+    modifier: int = 0   # rank + level + attribute_mod
+
 class Defenses(BaseModel):
     ac: int = 10
     hp: int = 0
@@ -26,13 +32,13 @@ class Defenses(BaseModel):
 class Strike(BaseModel):
     name: str
     attack_bonus: int
-    damage_dice: str    # e.g., "1d8+4"
-    damage_type: str    # e.g., "slashing"
+    damage_dice: str
+    damage_type: str
     traits: List[str] = []
 
 class Item(BaseModel):
     name: str
-    category: str       # "weapon", "armor", "shield", "gear"
+    category: str
     bulk: str = "L"
 
 class EquipmentLoadout(BaseModel):
@@ -60,7 +66,7 @@ class CharacterSheet(BaseModel):
     attributes: AttributeModifiers
     defenses: Defenses
     perception: Proficiency
-    trained_skills: List[str]
+    trained_skills: List[SkillEntry]
     equipment: EquipmentLoadout
     feats: List[FeatSummary] = []
     traits: List[str] = []
