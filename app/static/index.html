@@ -25,7 +25,7 @@
     
     .controls {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 0.75rem;
       background: var(--card-bg);
       padding: 1.25rem;
@@ -43,7 +43,7 @@
       color: var(--text);
       font-size: 0.9rem;
     }
-    .btn-group { display: flex; gap: 0.5rem; align-items: flex-end; }
+    .btn-group { display: flex; gap: 0.4rem; align-items: flex-end; }
     button.primary-btn {
       background: var(--accent);
       color: #000;
@@ -53,15 +53,16 @@
       flex: 1;
     }
     button.primary-btn:hover { background: var(--accent-hover); }
-    button.print-btn {
+    button.action-btn {
       background: #334155;
       color: #f8fafc;
       font-weight: 700;
       cursor: pointer;
       border: 1px solid var(--border);
       flex: 1;
+      white-space: nowrap;
     }
-    button.print-btn:hover { background: #475569; }
+    button.action-btn:hover { background: #475569; }
 
     .sheet-card {
       background: var(--card-bg);
@@ -124,7 +125,6 @@
       letter-spacing: 0.05em;
     }
 
-    /* Strikes Table Layout */
     .strikes-table {
       width: 100%;
       border-collapse: collapse;
@@ -150,7 +150,6 @@
     .strike-dmg { font-weight: 700; color: #f87171; }
     .strike-traits { font-size: 0.75rem; color: var(--muted); }
 
-    /* Skills Grid Layout (Dense 2-Column Table) */
     .skills-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -181,7 +180,6 @@
     .skill-attr { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
     .skill-total { font-weight: 800; color: #38bdf8; font-size: 0.95rem; }
 
-    /* Cards for Feats & Spells */
     .detail-card {
       background: #0f172a;
       border: 1px solid var(--border);
@@ -317,7 +315,8 @@
       </div>
       <div class="field btn-group">
         <button class="primary-btn" id="generateBtn" onclick="generate()">Generate</button>
-        <button class="print-btn" id="printBtn" onclick="window.print()">Print / PDF</button>
+        <button class="action-btn" id="foundryBtn" onclick="downloadFoundryJson()">Foundry JSON</button>
+        <button class="action-btn" id="printBtn" onclick="window.print()">Print / PDF</button>
       </div>
     </div>
 
@@ -394,6 +393,8 @@
   </div>
 
   <script>
+    let currentCharacterData = null;
+
     async function loadOptions() {
       try {
         const res = await fetch('/api/options');
@@ -455,6 +456,7 @@
 
       const res = await fetch('/api/generate?' + params.toString());
       const data = await res.json();
+      currentCharacterData = data;
 
       document.getElementById('sheetCard').style.display = 'block';
       document.getElementById('sheetName').textContent = data.name;
@@ -478,7 +480,7 @@
       document.getElementById('vitalWill').textContent = formatMod(data.defenses?.will?.modifier);
       document.getElementById('vitalPerception').textContent = formatMod(data.perception?.modifier);
 
-      // 1. Strikes & MAP Table
+      // Strikes & MAP
       const strikesTbody = document.getElementById('strikesTbody');
       strikesTbody.innerHTML = '';
       const strikesList = data.equipment?.strikes || [];
@@ -496,11 +498,10 @@
         strikesTbody.appendChild(row);
       });
 
-      // 2. Full 16 Core Skills List (Supports all_skills OR trained_skills fallback)
+      // All 16 Skills
       const skillsContainer = document.getElementById('skillsContainer');
       skillsContainer.innerHTML = '';
       const rawSkills = Array.isArray(data.all_skills) ? data.all_skills : (Array.isArray(data.trained_skills) ? data.trained_skills : []);
-      
       rawSkills.forEach(sk => {
         const row = document.createElement('div');
         row.className = 'skill-row';
@@ -517,7 +518,7 @@
         skillsContainer.appendChild(row);
       });
 
-      // 3. Spellcasting
+      // Spellcasting
       const spellsSection = document.getElementById('spellsSection');
       if (data.spellcasting) {
         spellsSection.style.display = 'block';
@@ -531,7 +532,7 @@
         spellsSection.style.display = 'none';
       }
 
-      // 4. Feats with Full Descriptions
+      // Feats
       const featsBox = document.getElementById('featsContainer');
       featsBox.innerHTML = '';
       const featsList = data.feats || [];
@@ -549,7 +550,7 @@
         featsBox.appendChild(card);
       });
 
-      // 5. Equipment, Wealth & Gear
+      // Equipment & Wealth
       const armorBox = document.getElementById('armorContainer');
       armorBox.innerHTML = '';
       if (data.equipment?.money?.formatted) {
@@ -562,6 +563,22 @@
         armorBox.innerHTML += `<span class="item-tag">Shield: ${data.equipment.shield.name}</span>`;
       }
       document.getElementById('gearContainer').textContent = "Gear Pack: " + (data.equipment?.gear || []).join(', ');
+    }
+
+    // Direct Foundry VTT Actor JSON download
+    function downloadFoundryJson() {
+      if (!currentCharacterData) return;
+
+      const name = currentCharacterData.name;
+      const anc = currentCharacterData.ancestry;
+      const cls = currentCharacterData.character_class;
+
+      const params = new URLSearchParams();
+      params.append('name', name);
+      params.append('ancestry', anc);
+      params.append('class_name', cls);
+
+      window.location.href = '/api/export/foundry?' + params.toString();
     }
 
     window.onload = () => {
