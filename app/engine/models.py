@@ -18,9 +18,29 @@ class Proficiency(BaseModel):
 class Defenses(BaseModel):
     ac: int = 10
     hp: int = 0
+    shield_bonus: int = 0
     fortitude: Proficiency = Field(default_factory=Proficiency)
     reflex: Proficiency = Field(default_factory=Proficiency)
     will: Proficiency = Field(default_factory=Proficiency)
+
+class Strike(BaseModel):
+    name: str
+    attack_bonus: int
+    damage_dice: str    # e.g., "1d8+4"
+    damage_type: str    # e.g., "slashing"
+    traits: List[str] = []
+
+class Item(BaseModel):
+    name: str
+    category: str       # "weapon", "armor", "shield", "gear"
+    bulk: str = "L"
+
+class EquipmentLoadout(BaseModel):
+    armor: Optional[Item] = None
+    shield: Optional[Item] = None
+    weapons: List[Item] = []
+    gear: List[str] = []
+    strikes: List[Strike] = []
 
 class FeatSummary(BaseModel):
     id: str
@@ -41,5 +61,6 @@ class CharacterSheet(BaseModel):
     defenses: Defenses
     perception: Proficiency
     trained_skills: List[str]
+    equipment: EquipmentLoadout
     feats: List[FeatSummary] = []
     traits: List[str] = []

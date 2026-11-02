@@ -89,8 +89,8 @@
 
     .vitals-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
-      gap: 1rem;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: 0.75rem;
       margin-bottom: 1.5rem;
     }
     .vital-item {
@@ -107,6 +107,33 @@
     .tag-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
     .tag { background: #334155; color: #e2e8f0; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.85rem; }
     
+    .strike-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      border-radius: 6px;
+      margin-top: 0.5rem;
+    }
+    .strike-main { display: flex; align-items: baseline; gap: 0.75rem; }
+    .strike-name { font-weight: 700; font-size: 1rem; color: #f8fafc; }
+    .strike-atk { font-weight: 800; color: #38bdf8; font-size: 1.1rem; }
+    .strike-dmg { font-weight: 700; color: #f87171; }
+    .strike-traits { font-size: 0.8rem; color: var(--muted); }
+
+    .gear-box {
+      font-size: 0.85rem;
+      color: var(--muted);
+      line-height: 1.6;
+      margin-top: 0.5rem;
+      background: #0f172a;
+      padding: 0.85rem;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
     .feat-box {
       background: #0f172a;
       border-left: 3px solid var(--accent);
@@ -122,7 +149,7 @@
   <div class="container">
     <header>
       <h1>FastFinder</h1>
-      <p>Instant PF2e Remaster Character Generation</p>
+      <p>Instant PF2e Remaster Character Generator</p>
     </header>
 
     <div class="controls">
@@ -174,6 +201,13 @@
         <div class="vital-item"><span>PERCEPTION</span><strong id="vitalPerception">+0</strong></div>
       </div>
 
+      <div class="section-title">STRIKES & ATTACKS</div>
+      <div id="strikesContainer"></div>
+
+      <div class="section-title">EQUIPMENT & ARMOR</div>
+      <div class="tag-container" id="armorContainer"></div>
+      <div class="gear-box" id="gearContainer"></div>
+
       <div class="section-title">TRAINED SKILLS</div>
       <div class="tag-container" id="skillsContainer"></div>
 
@@ -217,7 +251,6 @@
       const anc = document.getElementById('ancestrySelect').value;
       const cls = document.getElementById('classSelect').value;
 
-      let url = '/api/generate?';
       const params = new URLSearchParams();
       if (nameInput) params.append('name', nameInput);
       if (anc) params.append('ancestry', anc);
@@ -239,13 +272,43 @@
       document.getElementById('statCha').textContent = formatMod(attrs.cha);
 
       document.getElementById('vitalHp').textContent = data.defenses.hp;
-      document.getElementById('vitalAc').textContent = data.defenses.ac;
+      const acText = data.defenses.shield_bonus > 0 ? `${data.defenses.ac} (+${data.defenses.shield_bonus} Shield)` : data.defenses.ac;
+      document.getElementById('vitalAc').textContent = acText;
       document.getElementById('vitalSpeed').textContent = `${data.speed} ft`;
       document.getElementById('vitalFort').textContent = formatMod(data.defenses.fortitude.modifier);
       document.getElementById('vitalRef').textContent = formatMod(data.defenses.reflex.modifier);
       document.getElementById('vitalWill').textContent = formatMod(data.defenses.will.modifier);
       document.getElementById('vitalPerception').textContent = formatMod(data.perception.modifier);
 
+      // Strikes
+      const strikesBox = document.getElementById('strikesContainer');
+      strikesBox.innerHTML = '';
+      data.equipment.strikes.forEach(s => {
+        const row = document.createElement('div');
+        row.className = 'strike-row';
+        row.innerHTML = `
+          <div class="strike-main">
+            <span class="strike-name">${s.name}</span>
+            <span class="strike-atk">${formatMod(s.attack_bonus)}</span>
+            <span class="strike-dmg">${s.damage_dice} ${s.damage_type}</span>
+          </div>
+          <div class="strike-traits">${s.traits.join(', ')}</div>
+        `;
+        strikesBox.appendChild(row);
+      });
+
+      // Armor & Gear
+      const armorBox = document.getElementById('armorContainer');
+      armorBox.innerHTML = '';
+      if (data.equipment.armor) {
+        armorBox.innerHTML += `<span class="tag">Armor: ${data.equipment.armor.name}</span>`;
+      }
+      if (data.equipment.shield) {
+        armorBox.innerHTML += `<span class="tag">Shield: ${data.equipment.shield.name}</span>`;
+      }
+      document.getElementById('gearContainer').textContent = "Pack: " + data.equipment.gear.join(', ');
+
+      // Skills
       const skillsBox = document.getElementById('skillsContainer');
       skillsBox.innerHTML = '';
       data.trained_skills.forEach(s => {
@@ -255,6 +318,7 @@
         skillsBox.appendChild(tag);
       });
 
+      // Feats
       const featsBox = document.getElementById('featsContainer');
       featsBox.innerHTML = '';
       data.feats.forEach(f => {

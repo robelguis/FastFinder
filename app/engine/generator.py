@@ -10,6 +10,7 @@ from app.engine.models import (
     FeatSummary,
 )
 from app.engine.names import generate_ancestry_name
+from app.engine.equipment import resolve_equipment
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -40,9 +41,6 @@ class PF2eGenerator:
         prof_bonus = RANK_MAP.get(rank_val, 2)
         return Proficiency(rank=prof_bonus, modifier=prof_bonus + level + attr_mod)
 
-    def _pick_name(self, ancestry_name: str) -> str:
-        return generate_ancestry_name(ancestry_name)
-
     def generate(
         self,
         ancestry_name: Optional[str] = None,
@@ -65,9 +63,7 @@ class PF2eGenerator:
             cls = self.classes[chosen]
 
         bg = random.choice(list(self.backgrounds.values()))
-
-        # Resolve Character Name (match ancestry if none provided)
-        resolved_name = char_name.strip() if char_name and char_name.strip() else self._pick_name(anc["name"])
+        resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
 
         # 2. Track Attribute Boosts
         mods = {attr: 0 for attr in ATTRIBUTES}
@@ -123,11 +119,17 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
-        ac_dex = min(mods["dex"], 2)
-        ac_val = 10 + 2 + level + ac_dex
+        # 4. Resolve Equipment & Calculated AC
+        equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
+            cls["name"],
+            str_mod=mods["str"],
+            dex_mod=mods["dex"],
+            level=level
+        )
+
         total_hp = max(1, anc.get("hp", 8) + cls.get("hp_per_level", 8) + mods["con"])
 
-        # 4. Starting Feat Selection
+        # 5. Starting Feat Selection
         cls_name_lower = cls["name"].lower()
         eligible_feats = [
             f for f in self.feats
@@ -147,7 +149,7 @@ class PF2eGenerator:
                 description=feat_pick.get("description", "")[:250] + "..."
             ))
 
-        # 5. Trained Skills List
+        # 6. Trained Skills List
         trained_skills = list(bg.get("trained_skills", []))
         if bg.get("trained_lore"):
             trained_skills.append(f"Lore: {bg['trained_lore'].title()}")
@@ -162,7 +164,8 @@ class PF2eGenerator:
             speed=anc.get("speed", 25),
             attributes=AttributeModifiers(**mods),
             defenses=Defenses(
-                ac=ac_val,
+                ac=calculated_ac,
+                shield_bonus=shield_bonus,
                 hp=total_hp,
                 fortitude=fort_prof,
                 reflex=ref_prof,
@@ -170,6 +173,7 @@ class PF2eGenerator:
             ),
             perception=perception_prof,
             trained_skills=trained_skills,
+            equipment=equipment_loadout,
             feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
