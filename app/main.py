@@ -24,11 +24,10 @@ def get_options():
 def generate_character(
     ancestry: Optional[str] = Query(None, description="Ancestry name"),
     class_name: Optional[str] = Query(None, description="Class name"),
-    name: Optional[str] = Query("Valeros", description="Character name")
+    name: Optional[str] = Query(None, description="Character name (optional)")
 ):
     return generator.generate(ancestry_name=ancestry, class_name=class_name, char_name=name)
 
-# Mount frontend static directory
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 @app.get("/")

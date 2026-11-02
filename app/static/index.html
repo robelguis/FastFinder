@@ -41,6 +41,7 @@
       color: var(--text);
       font-size: 0.95rem;
     }
+    input::placeholder { color: #64748b; }
     button {
       background: var(--accent);
       color: #000;
@@ -126,8 +127,8 @@
 
     <div class="controls">
       <div class="field">
-        <label for="charName">Name</label>
-        <input type="text" id="charName" value="Valeros">
+        <label for="charName">Name (Optional)</label>
+        <input type="text" id="charName" placeholder="(Auto by Ancestry)">
       </div>
       <div class="field">
         <label for="ancestrySelect">Ancestry</label>
@@ -212,15 +213,17 @@
     }
 
     async function generate() {
-      const name = document.getElementById('charName').value || 'Valeros';
+      const nameInput = document.getElementById('charName').value.trim();
       const anc = document.getElementById('ancestrySelect').value;
       const cls = document.getElementById('classSelect').value;
 
-      let url = `/api/generate?name=${encodeURIComponent(name)}`;
-      if (anc) url += `&ancestry=${encodeURIComponent(anc)}`;
-      if (cls) url += `&class_name=${encodeURIComponent(cls)}`;
+      let url = '/api/generate?';
+      const params = new URLSearchParams();
+      if (nameInput) params.append('name', nameInput);
+      if (anc) params.append('ancestry', anc);
+      if (cls) params.append('class_name', cls);
 
-      const res = await fetch(url);
+      const res = await fetch('/api/generate?' + params.toString());
       const data = await res.json();
 
       document.getElementById('sheetCard').style.display = 'block';

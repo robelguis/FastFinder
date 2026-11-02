@@ -14,13 +14,54 @@ DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 ATTRIBUTES = ["str", "dex", "con", "int", "wis", "cha"]
 
-# Proficiency rank constants (Remaster: Untrained=0, Trained=2, Expert=4, Master=6, Legendary=8)
 RANK_MAP = {
     1: 2,  # Trained
     2: 4,  # Expert
     3: 6,  # Master
     4: 8,  # Legendary
 }
+
+# Thematic PF2e name tables by Ancestry
+ANCESTRY_NAMES: Dict[str, List[str]] = {
+    "human": [
+        "Valeros", "Seelah", "Ezren", "Kallista", "Anton", "Kendra", 
+        "Darius", "Elena", "Marek", "Talia", "Cassian", "Vesper"
+    ],
+    "dwarf": [
+        "Torag", "Harsk", "Dolgrin", "Brunhilda", "Thrum", "Kraglin", 
+        "Gunnar", "Helga", "Orin", "Borgan", "Duergar", "Marnie"
+    ],
+    "elf": [
+        "Kyra", "Merisiel", "Fumbus", "Aeris", "Caladrel", "Faeranduil", 
+        "Lian", "Sylas", "Kaelen", "Thelian", "Eliandra", "Vaelin"
+    ],
+    "gnome": [
+        "Lem", "Fumbus", "Bimble", "Nissa", "Quinn", "Zook", 
+        "Breena", "Tink", "Fizban", "Pippin", "Kora", "Wrenn"
+    ],
+    "goblin": [
+        "Fumbus", "Chuffy", "Poog", "Reta", "Mogmurch", "Zib", 
+        "Grik", "Snag", "Skitter", "Krik", "Brak", "Vrax"
+    ],
+    "halfling": [
+        "Lem", "Alton", "Cora", "Milo", "Perrin", "Rosie", 
+        "Wellby", "Kith", "Bree", "Corin", "Lyle", "Merric"
+    ],
+    "orc": [
+        "Ardavan", "Krusk", "Grom", "Thokk", "Urgok", "Shagrat", 
+        "Brakka", "Morga", "Drog", "Gorun", "Malthor", "Rakka"
+    ],
+    "leshy": [
+        "Acorn", "Bramble", "Clover", "Moss", "Sprout", "Fern", 
+        "Thorn", "Twig", "Bark", "Willow", "Briar", "Petal"
+    ],
+    "kobold": [
+        "Mikmek", "Enga", "Sniv", "Varn", "Kael", "Rax", 
+        "Zul", "Skel", "Tik", "Vesk", "Zik", "Kip"
+    ]
+}
+
+DEFAULT_NAMES = ["Valeros", "Amiri", "Harsk", "Ezren", "Merisiel", "Kyra"]
 
 def load_data(filename: str) -> List[Dict[str, Any]]:
     path = DATA_DIR / filename
@@ -37,33 +78,40 @@ class PF2eGenerator:
         self.feats = load_data("feats.json")
 
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
-        # Foundry class data uses 1=T, 2=E, 3=M, 4=L
         prof_bonus = RANK_MAP.get(rank_val, 2)
         return Proficiency(rank=prof_bonus, modifier=prof_bonus + level + attr_mod)
+
+    def _pick_name(self, ancestry_name: str) -> str:
+        key = ancestry_name.lower()
+        if key in ANCESTRY_NAMES:
+            return random.choice(ANCESTRY_NAMES[key])
+        return random.choice(DEFAULT_NAMES)
 
     def generate(
         self,
         ancestry_name: Optional[str] = None,
         class_name: Optional[str] = None,
-        char_name: str = "Valeros"
+        char_name: Optional[str] = None
     ) -> CharacterSheet:
         # 1. Select Ancestry, Class, and Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
         else:
-            # Fallback to core standard
-            core_ancestries = ["human", "dwarf", "elf", "goblin"]
+            core_ancestries = ["human", "dwarf", "elf", "goblin", "halfling", "orc", "leshy"]
             chosen = random.choice([k for k in core_ancestries if k in self.ancestries] or list(self.ancestries.keys()))
             anc = self.ancestries[chosen]
 
         if class_name and class_name.lower() in self.classes:
             cls = self.classes[class_name.lower()]
         else:
-            core_classes = ["fighter", "rogue", "wizard", "cleric"]
+            core_classes = ["fighter", "rogue", "wizard", "cleric", "barbarian", "ranger", "bard"]
             chosen = random.choice([k for k in core_classes if k in self.classes] or list(self.classes.keys()))
             cls = self.classes[chosen]
 
         bg = random.choice(list(self.backgrounds.values()))
+
+        # Resolve Character Name (match ancestry if none provided)
+        resolved_name = char_name.strip() if char_name and char_name.strip() else self._pick_name(anc["name"])
 
         # 2. Track Attribute Boosts (PF2e Remaster uses +1 modifier per boost)
         mods = {attr: 0 for attr in ATTRIBUTES}
@@ -84,7 +132,7 @@ class PF2eGenerator:
                 if fl in mods:
                     mods[fl] -= 1
 
-        # B: Background Boosts (1 semi-fixed, 1 free)
+        # B: Background Boosts
         applied_bg_boosts = set()
         for boost_option in bg.get("boosts", []):
             valid_targets = [b.lower() for b in boost_option if b.lower() in ATTRIBUTES and b.lower() not in applied_bg_boosts]
@@ -99,8 +147,7 @@ class PF2eGenerator:
         key_attr = random.choice(key_options) if key_options else "str"
         mods[key_attr] += 1
 
-        # D: 4 Free Boosts (Must be 4 distinct attributes)
-        # Prioritize key attribute, followed by con/dex/wis for defense
+        # D: 4 Free Boosts
         priority = [key_attr, "con", "dex", "wis", "str", "cha", "int"]
         free_boosts_applied = 0
         for attr in priority:
@@ -120,14 +167,11 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
-        # Armor Class (Base 10 + Trained 2 + Level 1 + Dex cap assumed +2 baseline)
         ac_dex = min(mods["dex"], 2)
         ac_val = 10 + 2 + level + ac_dex
-
-        # Max Hit Points: Ancestry HP + Class HP + Constitution Modifier
         total_hp = max(1, anc.get("hp", 8) + cls.get("hp_per_level", 8) + mods["con"])
 
-        # 4. Starting Feat Selection (Level 1 Class Feat)
+        # 4. Starting Feat Selection
         cls_name_lower = cls["name"].lower()
         eligible_feats = [
             f for f in self.feats
@@ -153,7 +197,7 @@ class PF2eGenerator:
             trained_skills.append(f"Lore: {bg['trained_lore'].title()}")
 
         return CharacterSheet(
-            name=char_name,
+            name=resolved_name,
             level=level,
             ancestry=anc["name"],
             background=bg["name"],
