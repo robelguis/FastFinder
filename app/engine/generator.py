@@ -19,10 +19,10 @@ DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 ATTRIBUTES = ["str", "dex", "con", "int", "wis", "cha"]
 
 RANK_MAP = {
-    1: 2,  # Trained
-    2: 4,  # Expert
-    3: 6,  # Master
-    4: 8,  # Legendary
+    1: (2, "T"),  # Trained
+    2: (4, "E"),  # Expert
+    3: (6, "M"),  # Master
+    4: (8, "L"),  # Legendary
 }
 
 def load_data(filename: str) -> Any:
@@ -40,8 +40,8 @@ class PF2eGenerator:
         self.feats = load_data("feats.json")
 
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
-        prof_bonus = RANK_MAP.get(rank_val, 2)
-        return Proficiency(rank=prof_bonus, modifier=prof_bonus + level + attr_mod)
+        prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
+        return Proficiency(rank=prof_bonus, rank_letter=letter, modifier=prof_bonus + level + attr_mod)
 
     def generate(
         self,
@@ -49,7 +49,7 @@ class PF2eGenerator:
         class_name: Optional[str] = None,
         char_name: Optional[str] = None
     ) -> CharacterSheet:
-        # 1. Select Ancestry, Class, and Background
+        # 1. Select Ancestry, Class, Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
         else:
@@ -67,7 +67,7 @@ class PF2eGenerator:
         bg = random.choice(list(self.backgrounds.values()))
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
 
-        # 2. Track Attribute Boosts (Remaster rules: +1 modifier per boost, max +4 at Level 1)
+        # 2. Track Attribute Boosts (Max +4 at Level 1)
         mods = {attr: 0 for attr in ATTRIBUTES}
 
         # Step A: Ancestry Boosts & Flaws
@@ -86,7 +86,7 @@ class PF2eGenerator:
                 if fl in mods:
                     mods[fl] -= 1
 
-        # Step B: Background Boosts (Must be distinct attributes within the step)
+        # Step B: Background Boosts
         applied_bg_boosts: Set[str] = set()
         for boost_option in bg.get("boosts", []):
             valid_targets = [
@@ -102,7 +102,7 @@ class PF2eGenerator:
                 mods[chosen_target] += 1
                 applied_bg_boosts.add(chosen_target)
 
-        # Step C: Class Key Attribute Boost (Cap at +4)
+        # Step C: Class Key Attribute Boost
         key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES and mods[k.lower()] < 4]
         if not key_options:
             key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
@@ -111,10 +111,7 @@ class PF2eGenerator:
             mods[key_attr] += 1
 
         # Step D: 4 Free Boosts
-        # Rules: Exactly 4 distinct attributes, each boosted at most once, none exceeding +4
         free_boosts_applied: Set[str] = set()
-        
-        # Priority order tailored to the class archetype
         priority = [key_attr, "con", "dex", "wis", "str", "cha", "int"]
         
         for attr in priority:
@@ -123,14 +120,12 @@ class PF2eGenerator:
                     mods[attr] += 1
                     free_boosts_applied.add(attr)
 
-        # Fallback if any priority stat was already capped at +4
         if len(free_boosts_applied) < 4:
             for attr in ATTRIBUTES:
                 if len(free_boosts_applied) < 4 and attr not in free_boosts_applied and mods[attr] < 4:
                     mods[attr] += 1
                     free_boosts_applied.add(attr)
 
-        # Hard guardrail to guarantee no modifier ever exceeds +4 at Level 1
         for attr in ATTRIBUTES:
             if mods[attr] > 4:
                 mods[attr] = 4
@@ -147,7 +142,7 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
-        # 4. Resolve Equipment & AC
+        # 4. Resolve Equipment & AC (with MAP)
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -157,7 +152,7 @@ class PF2eGenerator:
 
         total_hp = max(1, anc.get("hp", 8) + cls.get("hp_per_level", 8) + mods["con"])
 
-        # 5. Starting Feat Selection
+        # 5. Starting Feat Selection (FULL description)
         cls_name_lower = cls["name"].lower()
         eligible_feats = [
             f for f in self.feats
@@ -174,18 +169,19 @@ class PF2eGenerator:
                 name=feat_pick["name"],
                 category="class",
                 action_cost=feat_pick.get("action_cost"),
-                description=feat_pick.get("description", "")[:250] + "..."
+                traits=feat_pick.get("traits", []),
+                description=feat_pick.get("description", "")
             ))
 
-        # 6. Dynamic Skill Training
-        trained_skills = resolve_character_skills(
+        # 6. Full 16 Core Skills List
+        all_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
             attribute_mods=mods,
             level=level
         )
 
-        # 7. Spellcasting (if caster class)
+        # 7. Spellcasting
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
@@ -210,7 +206,7 @@ class PF2eGenerator:
                 will=will_prof,
             ),
             perception=perception_prof,
-            trained_skills=trained_skills,
+            all_skills=all_skills,
             equipment=equipment_loadout,
             spellcasting=spellcasting_data,
             feats=chosen_feats,

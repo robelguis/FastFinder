@@ -2,7 +2,6 @@ import random
 from typing import Dict, List, Set, Any
 from app.engine.models import SkillEntry
 
-# The 16 Core PF2e Skills and their governing attributes
 CORE_SKILLS: Dict[str, str] = {
     "Acrobatics": "dex",
     "Arcana": "int",
@@ -22,7 +21,6 @@ CORE_SKILLS: Dict[str, str] = {
     "Thievery": "dex"
 }
 
-# Standard PF2e Class Skill Allocations (Mandatory skills + base additional budget)
 CLASS_SKILL_PROFILES: Dict[str, Dict[str, Any]] = {
     "barbarian": {
         "mandatory": ["Athletics"],
@@ -105,8 +103,7 @@ def resolve_character_skills(
     lore_entries: List[SkillEntry] = []
 
     # 1. Background Skills
-    bg_skills = background_data.get("trained_skills", [])
-    for s in bg_skills:
+    for s in background_data.get("trained_skills", []):
         clean = s.title()
         if clean in CORE_SKILLS:
             trained_set.add(clean)
@@ -120,26 +117,26 @@ def resolve_character_skills(
             name=lore_name,
             attribute="int",
             rank=2,
+            rank_letter="T",
             modifier=2 + level + int_mod
         ))
 
-    # 2. Mandatory Class Skills
+    # 2. Class Mandatory Skills
     for s in profile.get("mandatory", []):
         if s in CORE_SKILLS:
             trained_set.add(s)
 
-    # Choice picks
+    # Class Choice picks
     if "choice_pick" in profile:
         choices = [c for c in profile["choice_pick"] if c in CORE_SKILLS]
         if choices:
             choice = max(choices, key=lambda c: attribute_mods.get(CORE_SKILLS.get(c, "str"), 0))
             trained_set.add(choice)
 
-    # 3. Class Free Skill Budget = Base Count + Int Modifier (minimum 1 free skill)
+    # 3. Class Free Skill Budget = Base Count + Int Modifier (minimum 1)
     int_mod = attribute_mods.get("int", 0)
     budget = max(1, profile.get("base_count", 3) + int_mod)
 
-    # Candidate pool: preferred skills first, then rest of core skills
     candidates = [s for s in profile.get("priority", []) if s in CORE_SKILLS and s not in trained_set]
     remaining_core = [s for s in CORE_SKILLS.keys() if s not in trained_set and s not in candidates]
     random.shuffle(remaining_core)
@@ -152,16 +149,27 @@ def resolve_character_skills(
             trained_set.add(skill)
             budget -= 1
 
-    # 4. Build SkillEntry objects
-    skill_entries: List[SkillEntry] = []
-    for skill in sorted(list(trained_set)):
-        attr = CORE_SKILLS[skill]
+    # 4. Compile the FULL list of all 16 skills (Trained & Untrained)
+    all_skill_entries: List[SkillEntry] = []
+    for skill_name, attr in sorted(CORE_SKILLS.items()):
+        is_trained = skill_name in trained_set
         mod_val = attribute_mods.get(attr, 0)
-        skill_entries.append(SkillEntry(
-            name=skill,
+        
+        if is_trained:
+            rank_bonus = 2
+            rank_letter = "T"
+            total_mod = rank_bonus + level + mod_val
+        else:
+            rank_bonus = 0
+            rank_letter = "U"
+            total_mod = mod_val  # PF2e Untrained = 0 rank + 0 level + attribute mod
+
+        all_skill_entries.append(SkillEntry(
+            name=skill_name,
             attribute=attr,
-            rank=2,
-            modifier=2 + level + mod_val
+            rank=rank_bonus,
+            rank_letter=rank_letter,
+            modifier=total_mod
         ))
 
-    return skill_entries + lore_entries
+    return all_skill_entries + lore_entries

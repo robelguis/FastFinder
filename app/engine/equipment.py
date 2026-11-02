@@ -1,8 +1,6 @@
 from typing import Dict, Any, List, Tuple
 from app.engine.models import Item, Strike, EquipmentLoadout, Wealth
 
-# Official Remaster Level 1 Costs in silver pieces (sp)
-# (10 sp = 1 gp)
 WEAPONS_DB: Dict[str, Dict[str, Any]] = {
     "Longsword": {"damage": "1d8", "type": "slashing", "traits": ["versatile P"], "bulk": "1", "cost_sp": 10},
     "Greatsword": {"damage": "1d12", "type": "slashing", "traits": ["two-hand d12", "versatile P"], "bulk": "2", "cost_sp": 20},
@@ -28,7 +26,7 @@ ARMOR_DB: Dict[str, Dict[str, Any]] = {
     "Chain Mail": {"ac_bonus": 4, "dex_cap": 1, "bulk": "2", "cost_sp": 60}
 }
 
-ADVENTURER_PACK_COST_SP = 15  # Adventurer's Pack is 1 gp 5 sp (15 sp)
+ADVENTURER_PACK_COST_SP = 15
 ADVENTURER_PACK = [
     "Backpack", "Bedroll", "10x Chalk", "Flint and Steel", "50ft Rope",
     "2 weeks Rations", "Soap", "5x Torches", "Waterskin"
@@ -52,9 +50,6 @@ def resolve_equipment(
     dex_mod: int,
     level: int = 1
 ) -> Tuple[EquipmentLoadout, int, int]:
-    """
-    Returns: (EquipmentLoadout, calculated_ac, shield_circumstance_bonus)
-    """
     cls = class_name.lower()
     is_finesse_dex = dex_mod > str_mod
 
@@ -62,7 +57,6 @@ def resolve_equipment(
     armor_name = "Leather Armor"
     has_shield = False
 
-    # 1. Determine Class Weapon & Armor Allocation
     if cls in ["fighter", "champion"]:
         has_shield = True
         if is_finesse_dex:
@@ -108,8 +102,7 @@ def resolve_equipment(
         armor_name = "Leather Armor"
         weapons_to_give = ["Longsword", "Dagger"]
 
-    # 2. Build Item Models and Track Expenses
-    starting_allowance_sp = 150  # 15 gp = 150 sp
+    starting_allowance_sp = 150
     spent_sp = ADVENTURER_PACK_COST_SP
 
     armor_spec = ARMOR_DB.get(armor_name, ARMOR_DB["Leather Armor"])
@@ -123,7 +116,7 @@ def resolve_equipment(
 
     shield_item = None
     if has_shield:
-        shield_cost_sp = 20  # Steel Shield = 2 gp (20 sp)
+        shield_cost_sp = 20
         spent_sp += shield_cost_sp
         shield_item = Item(name="Steel Shield", category="shield", bulk="1", cost_sp=shield_cost_sp)
 
@@ -141,19 +134,17 @@ def resolve_equipment(
 
     gear_list = list(ADVENTURER_PACK)
     if any("Shortbow" in w or "Crossbow" in w for w in weapons_to_give):
-        quiver_cost_sp = 2  # Quiver + 20 ammo = 2 sp
+        quiver_cost_sp = 2
         spent_sp += quiver_cost_sp
         gear_list.append("Quiver with 20 Arrows/Bolts")
 
-    # Remaining Wealth
     remaining_wealth = format_wealth(starting_allowance_sp - spent_sp)
 
-    # 3. Calculate AC
     prof_bonus = 2 + level
     ac_dex = min(dex_mod, armor_spec["dex_cap"])
     calculated_ac = 10 + prof_bonus + armor_spec["ac_bonus"] + ac_dex
 
-    # 4. Generate Calculated Strikes
+    # Strikes and Multi-Attack Penalty (MAP)
     strikes: List[Strike] = []
     weapon_prof_rank = 4 if cls == "fighter" else 2
     attack_base = weapon_prof_rank + level
@@ -164,6 +155,7 @@ def resolve_equipment(
 
         is_ranged = any("range" in t for t in traits)
         is_finesse = "finesse" in traits
+        is_agile = "agile" in traits
 
         if is_ranged:
             atk_mod = dex_mod
@@ -173,12 +165,19 @@ def resolve_equipment(
             atk_mod = str_mod
 
         total_attack = attack_base + atk_mod
+        
+        # Agile MAP is -4 / -8; Non-agile MAP is -5 / -10
+        second_strike = total_attack - 4 if is_agile else total_attack - 5
+        third_strike = total_attack - 8 if is_agile else total_attack - 10
+
         dmg_dice = spec["damage"]
         dmg_formula = dmg_dice if is_ranged else (f"{dmg_dice}+{str_mod}" if str_mod != 0 else dmg_dice)
 
         strikes.append(Strike(
             name=w_name,
             attack_bonus=total_attack,
+            map_second=second_strike,
+            map_third=third_strike,
             damage_dice=dmg_formula,
             damage_type=spec["type"],
             traits=traits

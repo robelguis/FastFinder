@@ -13,12 +13,14 @@ class AttributeModifiers(BaseModel):
 
 class Proficiency(BaseModel):
     rank: int = 0       # 0=Untrained, 2=Trained, 4=Expert, 6=Master, 8=Legendary
+    rank_letter: str = "U" # "U", "T", "E", "M", "L"
     modifier: int = 0   # rank + level + attribute_mod
 
 class SkillEntry(BaseModel):
     name: str
-    attribute: str
-    rank: int = 2
+    attribute: str      # "str", "dex", "con", "int", "wis", "cha"
+    rank: int = 0       # 0=Untrained, 2=Trained
+    rank_letter: str = "U" # "U" or "T"
     modifier: int = 0
 
 class Defenses(BaseModel):
@@ -32,15 +34,17 @@ class Defenses(BaseModel):
 class Strike(BaseModel):
     name: str
     attack_bonus: int
+    map_second: int     # -5 standard (-4 agile)
+    map_third: int      # -10 standard (-8 agile)
     damage_dice: str
     damage_type: str
     traits: List[str] = []
 
 class Item(BaseModel):
     name: str
-    category: str       # "weapon", "armor", "shield", "gear"
+    category: str
     bulk: str = "L"
-    cost_sp: int = 0    # cost in silver pieces
+    cost_sp: int = 0
 
 class Wealth(BaseModel):
     gp: int = 0
@@ -61,7 +65,9 @@ class SpellEntry(BaseModel):
     rank: int
     actions: str = "2 actions"
     range: str = "30 feet"
-    summary: str
+    targets: Optional[str] = None
+    defense: Optional[str] = None
+    description: str
     traits: List[str] = []
 
 class SpellcastingLoadout(BaseModel):
@@ -77,6 +83,7 @@ class FeatSummary(BaseModel):
     name: str
     category: str
     action_cost: Optional[int] = None
+    traits: List[str] = []
     description: str
 
 class CharacterSheet(BaseModel):
@@ -90,7 +97,7 @@ class CharacterSheet(BaseModel):
     attributes: AttributeModifiers
     defenses: Defenses
     perception: Proficiency
-    trained_skills: List[SkillEntry]
+    all_skills: List[SkillEntry]
     equipment: EquipmentLoadout
     spellcasting: Optional[SpellcastingLoadout] = None
     feats: List[FeatSummary] = []
