@@ -1,0 +1,14 @@
+# Virtual environment
+venv/
+.env
+
+# Raw upstream Foundry clone (DO NOT commit raw packs to GitHub)
+source_data/
+
+# Python cache & build files
+__pycache__/
+*.pyc
+
+# OS files
+.DS_Store
+Thumbs.db
