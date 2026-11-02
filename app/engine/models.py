@@ -113,6 +113,26 @@ class FocusSpellData(BaseModel):
     spell_attack: int = 0
     spells: List[SpellSummary] = []
 
+class PartnerCreatureData(BaseModel):
+    name: str
+    creature_type: str # "Animal Companion", "Eidolon", "Familiar", "Thrall / Minion"
+    sub_type: str      # e.g., "Wolf", "Dragon Eidolon", "Raven Familiar"
+    stage: str         # "Young", "Mature", "Standard"
+    size: str
+    speed: str
+    ac: int
+    hp: Union[int, str] # Supports integer HP or "Shared with Master"
+    fortitude: int
+    reflex: int
+    will: int
+    perception: int
+    strikes: List[Strike] = []
+    primary_ability: str # Support Benefit, Eidolon Feature, or Familiar Abilities
+    secondary_ability: Optional[str] = None # Advanced Maneuver or Command Action
+    traits: List[str] = []
+
+AnimalCompanionData = PartnerCreatureData
+
 class SubclassSummary(BaseModel):
     title: str
     name: str
@@ -144,5 +164,6 @@ class CharacterSheet(BaseModel):
     equipment: EquipmentLoadout
     spellcasting: Optional[SpellcastingData] = None
     focus_spells: Optional[FocusSpellData] = None
+    companion: Optional[PartnerCreatureData] = None
     feats: List[FeatSummary] = []
     traits: List[str] = []

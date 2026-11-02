@@ -497,7 +497,62 @@
             </div>
           </div>
 
-                    <!-- DEDICATED FOCUS SPELLS & POOL TRACKER -->
+                              <!-- ANIMAL COMPANION DOSSIER -->
+          <div class="sheet-box" id="companionSection" style="display: none; border-left: 3.5px solid #16a34a;">
+            <div class="sheet-box-title" style="background: #14532d;">
+              <span>Animal Companion</span>
+              <span id="companionStageBadge" style="font-size: 0.65rem; color: #86efac; font-weight: 800; text-transform: uppercase;"></span>
+            </div>
+            <div class="sheet-box-content">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+                <span id="companionName" style="font-size: 0.95rem; font-weight: 800; color: #0f172a;"></span>
+                <span id="companionMeta" style="font-size: 0.72rem; color: #475569; font-weight: 700;"></span>
+              </div>
+
+              <div class="defense-row" style="margin-bottom: 0.4rem;">
+                <div class="defense-metric">
+                  <span class="lbl">AC</span>
+                  <span class="val" id="compAc">17</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Max HP</span>
+                  <span class="val" id="compHp" style="color: #15803d;">26</span>
+                </div>
+              </div>
+
+              <div class="saves-grid" style="margin-bottom: 0.4rem;">
+                <div class="save-box">
+                  <div class="save-lbl">Fort</div>
+                  <div class="save-val" id="compFort">+6</div>
+                </div>
+                <div class="save-box">
+                  <div class="save-lbl">Ref</div>
+                  <div class="save-val" id="compRef">+7</div>
+                </div>
+                <div class="save-box">
+                  <div class="save-lbl">Will</div>
+                  <div class="save-val" id="compWill">+5</div>
+                </div>
+              </div>
+
+              <div style="font-weight: 800; font-size: 0.7rem; color: #475569; text-transform: uppercase; margin-bottom: 0.2rem;">Companion Strikes</div>
+              <table class="strikes-table" style="margin-bottom: 0.4rem;">
+                <tbody id="compStrikesTbody"></tbody>
+              </table>
+
+              <div class="detail-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; margin-bottom: 0.3rem;">
+                <div class="detail-card-head" style="color: #166534;">Support Benefit</div>
+                <div class="detail-card-body" id="compSupport" style="color: #14532d;"></div>
+              </div>
+
+              <div class="detail-card" id="compAdvCard" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0;">
+                <div class="detail-card-head" style="color: #166534;">Advanced Maneuver</div>
+                <div class="detail-card-body" id="compAdv" style="color: #14532d;"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DEDICATED FOCUS SPELLS & POOL TRACKER -->
           <div class="sheet-box" id="focusSection" style="display: none; border-left: 3.5px solid #d97706;">
             <div class="sheet-box-title" style="background: #78350f;">
               <span>Focus Spells & Focus Pool</span>
@@ -831,6 +886,45 @@
       }
       
       renderConsumables(data.equipment?.consumables || []);
+
+      // Render Animal Companion
+      const compSection = document.getElementById("companionSection");
+      if (data.companion) {
+        compSection.style.display = "block";
+        document.getElementById("companionName").textContent = data.companion.name;
+        document.getElementById("companionStageBadge").textContent = `${data.companion.stage} (${data.companion.species})`;
+        document.getElementById("companionMeta").textContent = `Size: ${data.companion.size} | Speed: ${data.companion.speed} | Perception: ${formatMod(data.companion.perception)}`;
+        document.getElementById("compAc").textContent = data.companion.ac;
+        const isEidolon = (data.companion.creature_type || "").toLowerCase().includes("eidolon");
+        document.getElementById("compHp").textContent = isEidolon ? `${data.companion.hp} (Shared)` : data.companion.hp;
+        document.getElementById("compFort").textContent = formatMod(data.companion.fortitude);
+        document.getElementById("compRef").textContent = formatMod(data.companion.reflex);
+        document.getElementById("compWill").textContent = formatMod(data.companion.will);
+
+        const compStrikesTbody = document.getElementById("compStrikesTbody");
+        compStrikesTbody.innerHTML = "";
+        (data.companion.strikes || []).forEach(st => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><span class="w-name">${st.name}</span></td>
+            <td class="w-map">${formatMod(st.attack_bonus)} / ${formatMod(st.map_second)} / ${formatMod(st.map_third)}</td>
+            <td class="w-dmg">${st.damage_dice} ${st.damage_type}</td>
+            <td class="w-traits">${(st.traits || []).join(", ")}</td>
+          `;
+          compStrikesTbody.appendChild(tr);
+        });
+
+        document.getElementById("compSupport").textContent = data.companion.support_benefit;
+        
+        if (data.companion.advanced_maneuver) {
+          document.getElementById("compAdvCard").style.display = "block";
+          document.getElementById("compAdv").textContent = data.companion.advanced_maneuver;
+        } else {
+          document.getElementById("compAdvCard").style.display = "none";
+        }
+      } else {
+        compSection.style.display = "none";
+      }
 
       // Render Focus Spells & Pool
       const focusSection = document.getElementById("focusSection");

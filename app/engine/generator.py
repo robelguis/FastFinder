@@ -16,6 +16,8 @@ from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
+from app.engine.companions import resolve_companion
+from app.engine.eidolons import resolve_eidolon
 from app.engine.subclasses import resolve_heritage, resolve_subclass
 from app.engine.archetypes import pick_archetype
 
@@ -387,6 +389,18 @@ class PF2eGenerator:
             level=level
         )
 
+        # 9. Partner Creature (Eidolon or Animal Companion)
+        companion_data = None
+        if cls_name_lower == "summoner":
+            companion_data = resolve_eidolon(master_hp=total_hp, level=level)
+        else:
+            companion_data = resolve_companion(
+                class_name=cls["name"],
+                feats=chosen_feats,
+                archetype=archetype_data["name"] if archetype_data else None,
+                level=level
+            )
+
         return CharacterSheet(
             name=resolved_name,
             level=level,
@@ -412,6 +426,7 @@ class PF2eGenerator:
             equipment=equipment_loadout,
             spellcasting=spellcasting_data,
             focus_spells=focus_data,
+            companion=companion_data,
             feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
