@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastFinder - PF2e Level 1 Character Generator</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card-bg: #1e293b;
+      --accent: #d97706;
+      --accent-hover: #b45309;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 2rem 1rem; }
+    .container { max-width: 900px; margin: 0 auto; }
+    header { text-align: center; margin-bottom: 2rem; }
+    header h1 { font-size: 2.25rem; color: var(--accent); }
+    header p { color: var(--muted); margin-top: 0.5rem; }
+    
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      background: var(--card-bg);
+      padding: 1.5rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+    .field { display: flex; flex-direction: column; gap: 0.5rem; }
+    label { font-size: 0.85rem; font-weight: 600; color: var(--muted); text-transform: uppercase; }
+    select, input, button {
+      padding: 0.65rem 0.85rem;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.95rem;
+    }
+    button {
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      transition: background 0.2s;
+      align-self: flex-end;
+    }
+    button:hover { background: var(--accent-hover); }
+
+    .sheet-card {
+      background: var(--card-bg);
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      padding: 2rem;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .sheet-header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+    .char-title h2 { font-size: 1.8rem; color: var(--accent); }
+    .char-sub { color: var(--muted); font-size: 1rem; margin-top: 0.25rem; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .stat-box {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.75rem 0.25rem;
+    }
+    .stat-name { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; font-weight: 700; }
+    .stat-val { font-size: 1.5rem; font-weight: 800; color: #38bdf8; margin-top: 0.25rem; }
+
+    .vitals-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .vital-item {
+      background: #0f172a;
+      border: 1px solid var(--border);
+      padding: 0.75rem;
+      border-radius: 6px;
+      text-align: center;
+    }
+    .vital-item span { display: block; font-size: 0.8rem; color: var(--muted); font-weight: 600; }
+    .vital-item strong { font-size: 1.3rem; color: #4ade80; }
+
+    .section-title { font-size: 1rem; font-weight: 700; color: var(--accent); margin: 1.25rem 0 0.5rem; border-bottom: 1px solid var(--border); padding-bottom: 0.25rem; }
+    .tag-container { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.5rem; }
+    .tag { background: #334155; color: #e2e8f0; padding: 0.25rem 0.6rem; border-radius: 4px; font-size: 0.85rem; }
+    
+    .feat-box {
+      background: #0f172a;
+      border-left: 3px solid var(--accent);
+      padding: 0.85rem;
+      margin-top: 0.5rem;
+      border-radius: 0 4px 4px 0;
+    }
+    .feat-header { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 0.25rem; }
+    .feat-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>FastFinder</h1>
+      <p>Instant PF2e Remaster Character Generation</p>
+    </header>
+
+    <div class="controls">
+      <div class="field">
+        <label for="charName">Name</label>
+        <input type="text" id="charName" value="Valeros">
+      </div>
+      <div class="field">
+        <label for="ancestrySelect">Ancestry</label>
+        <select id="ancestrySelect"><option value="">Any Ancestry</option></select>
+      </div>
+      <div class="field">
+        <label for="classSelect">Class</label>
+        <select id="classSelect"><option value="">Any Class</option></select>
+      </div>
+      <div class="field">
+        <button id="generateBtn" onclick="generate()">Generate Sheet</button>
+      </div>
+    </div>
+
+    <div class="sheet-card" id="sheetCard" style="display: none;">
+      <div class="sheet-header">
+        <div class="char-title">
+          <h2 id="sheetName"></h2>
+          <div class="char-sub" id="sheetSub"></div>
+        </div>
+        <div class="vital-item" style="min-width: 90px;">
+          <span>LEVEL</span>
+          <strong id="sheetLevel" style="color: #f8fafc;">1</strong>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box"><div class="stat-name">STR</div><div class="stat-val" id="statStr">+0</div></div>
+        <div class="stat-box"><div class="stat-name">DEX</div><div class="stat-val" id="statDex">+0</div></div>
+        <div class="stat-box"><div class="stat-name">CON</div><div class="stat-val" id="statCon">+0</div></div>
+        <div class="stat-box"><div class="stat-name">INT</div><div class="stat-val" id="statInt">+0</div></div>
+        <div class="stat-box"><div class="stat-name">WIS</div><div class="stat-val" id="statWis">+0</div></div>
+        <div class="stat-box"><div class="stat-name">CHA</div><div class="stat-val" id="statCha">+0</div></div>
+      </div>
+
+      <div class="vitals-grid">
+        <div class="vital-item"><span>MAX HP</span><strong id="vitalHp">0</strong></div>
+        <div class="vital-item"><span>ARMOR CLASS</span><strong id="vitalAc">0</strong></div>
+        <div class="vital-item"><span>SPEED</span><strong id="vitalSpeed">25 ft</strong></div>
+        <div class="vital-item"><span>FORTITUDE</span><strong id="vitalFort">+0</strong></div>
+        <div class="vital-item"><span>REFLEX</span><strong id="vitalRef">+0</strong></div>
+        <div class="vital-item"><span>WILL</span><strong id="vitalWill">+0</strong></div>
+        <div class="vital-item"><span>PERCEPTION</span><strong id="vitalPerception">+0</strong></div>
+      </div>
+
+      <div class="section-title">TRAINED SKILLS</div>
+      <div class="tag-container" id="skillsContainer"></div>
+
+      <div class="section-title">STARTING FEATS</div>
+      <div id="featsContainer"></div>
+    </div>
+  </div>
+
+  <script>
+    async function loadOptions() {
+      try {
+        const res = await fetch('/api/options');
+        const data = await res.json();
+        
+        const ancSelect = document.getElementById('ancestrySelect');
+        data.ancestries.forEach(a => {
+          const opt = document.createElement('option');
+          opt.value = a;
+          opt.textContent = a;
+          ancSelect.appendChild(opt);
+        });
+
+        const clsSelect = document.getElementById('classSelect');
+        data.classes.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c;
+          opt.textContent = c;
+          clsSelect.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Failed to load options", err);
+      }
+    }
+
+    function formatMod(val) {
+      return val >= 0 ? `+${val}` : `${val}`;
+    }
+
+    async function generate() {
+      const name = document.getElementById('charName').value || 'Valeros';
+      const anc = document.getElementById('ancestrySelect').value;
+      const cls = document.getElementById('classSelect').value;
+
+      let url = `/api/generate?name=${encodeURIComponent(name)}`;
+      if (anc) url += `&ancestry=${encodeURIComponent(anc)}`;
+      if (cls) url += `&class_name=${encodeURIComponent(cls)}`;
+
+      const res = await fetch(url);
+      const data = await res.json();
+
+      document.getElementById('sheetCard').style.display = 'block';
+      document.getElementById('sheetName').textContent = data.name;
+      document.getElementById('sheetSub').textContent = `${data.ancestry} ${data.character_class} | ${data.background}`;
+      
+      const attrs = data.attributes;
+      document.getElementById('statStr').textContent = formatMod(attrs.str);
+      document.getElementById('statDex').textContent = formatMod(attrs.dex);
+      document.getElementById('statCon').textContent = formatMod(attrs.con);
+      document.getElementById('statInt').textContent = formatMod(attrs.int);
+      document.getElementById('statWis').textContent = formatMod(attrs.wis);
+      document.getElementById('statCha').textContent = formatMod(attrs.cha);
+
+      document.getElementById('vitalHp').textContent = data.defenses.hp;
+      document.getElementById('vitalAc').textContent = data.defenses.ac;
+      document.getElementById('vitalSpeed').textContent = `${data.speed} ft`;
+      document.getElementById('vitalFort').textContent = formatMod(data.defenses.fortitude.modifier);
+      document.getElementById('vitalRef').textContent = formatMod(data.defenses.reflex.modifier);
+      document.getElementById('vitalWill').textContent = formatMod(data.defenses.will.modifier);
+      document.getElementById('vitalPerception').textContent = formatMod(data.perception.modifier);
+
+      const skillsBox = document.getElementById('skillsContainer');
+      skillsBox.innerHTML = '';
+      data.trained_skills.forEach(s => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = s;
+        skillsBox.appendChild(tag);
+      });
+
+      const featsBox = document.getElementById('featsContainer');
+      featsBox.innerHTML = '';
+      data.feats.forEach(f => {
+        const box = document.createElement('div');
+        box.className = 'feat-box';
+        box.innerHTML = `
+          <div class="feat-header">
+            <span>${f.name}</span>
+            <span>${f.action_cost ? f.action_cost + ' Action(s)' : 'Passive'}</span>
+          </div>
+          <div class="feat-desc">${f.description}</div>
+        `;
+        featsBox.appendChild(box);
+      });
+    }
+
+    window.onload = () => {
+      loadOptions();
+      generate();
+    };
+  </script>
+</body>
+</html>
