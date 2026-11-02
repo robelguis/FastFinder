@@ -337,7 +337,14 @@
           <option value="1">Level 1</option>
           <option value="2">Level 2</option>
           <option value="3">Level 3</option>
+          <option value="4">Level 4</option>
         </select>
+      </div>
+            <div class="field" style="justify-content: flex-end; padding-bottom: 0.2rem;">
+        <label style="cursor: pointer; display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem;">
+          <input type="checkbox" id="dedicationToggle" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-gold);">
+          Archetype Dedication
+        </label>
       </div>
       <div class="field btn-group">
         <button class="primary-btn" id="generateBtn" onclick="generate()">Generate</button>
@@ -630,6 +637,8 @@
       if (anc) params.append('ancestry', anc);
       if (cls) params.append('class_name', cls);
       params.append('level', lvl);
+      const useDedication = document.getElementById('dedicationToggle')?.checked;
+      if (useDedication) params.append('dedication', 'true');
 
       const res = await fetch('/api/generate?' + params.toString());
       const data = await res.json();
@@ -638,7 +647,10 @@
       document.getElementById('sheetCard').style.display = 'block';
       document.getElementById('sheetName').textContent = data.name;
       const heritageDisplay = data.heritage ? `${data.ancestry} (${data.heritage})` : data.ancestry;
-      const classDisplay = data.subclass ? `${data.character_class} (${data.subclass.name})` : data.character_class;
+      let classDisplay = data.subclass ? `${data.character_class} (${data.subclass.name})` : data.character_class;
+      if (data.archetype) {
+        classDisplay += ` / ${data.archetype} Dedication`;
+      }
       document.getElementById('sheetAncestry').textContent = heritageDisplay;
       document.getElementById('sheetBackground').textContent = data.background;
       document.getElementById('sheetClass').textContent = classDisplay;

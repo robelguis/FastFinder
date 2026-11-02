@@ -125,6 +125,7 @@ class CharacterSheet(BaseModel):
     background: str
     character_class: str
     subclass: Optional[SubclassSummary] = None
+    archetype: Optional[str] = None
     size: str
     speed: int
     attributes: AttributeModifiers

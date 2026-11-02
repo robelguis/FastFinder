@@ -16,6 +16,7 @@ from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
 from app.engine.spells import resolve_spellcasting
 from app.engine.subclasses import resolve_heritage, resolve_subclass
+from app.engine.archetypes import pick_archetype
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -28,7 +29,6 @@ RANK_MAP = {
     4: (8, "L"),  # Legendary
 }
 
-# Standard General Feats pool for 3rd level
 GENERAL_FEATS_LVL3 = [
     {"id": "fleet", "name": "Fleet", "description": "Your Speed increases by 5 feet."},
     {"id": "toughness", "name": "Toughness", "description": "Your maximum HP increases by your level. The DC of recovery checks is 9 + dying value."},
@@ -41,7 +41,7 @@ GENERAL_FEATS_LVL3 = [
 
 CLASS_FEATURES_LVL3 = {
     "fighter": {"name": "Bravery", "description": "Your proficiency rank in Will saves increases to expert. When you roll a success on a Will save against a fear effect, you get a critical success instead."},
-    "rogue": {"name": "Deny Advantage", "description": "You aren't off-guard to hidden, undetected, or flanking creatures of your level or lower, or creatures of your level or lower using surprise attack."},
+    "rogue": {"name": "Deny Advantage", "description": "You aren't off-guard to hidden, undetected, or flanking creatures of your level or lower."},
     "barbarian": {"name": "Deny Advantage", "description": "You aren't off-guard to hidden, undetected, or flanking creatures of your level or lower."},
     "champion": {"name": "Divine Smite", "description": "Your champion reaction deals persistent damage equal to your Charisma modifier."},
     "ranger": {"name": "Iron Will", "description": "Your proficiency rank for Will saves increases to expert."},
@@ -88,9 +88,10 @@ class PF2eGenerator:
         ancestry_name: Optional[str] = None,
         class_name: Optional[str] = None,
         char_name: Optional[str] = None,
-        level: int = 1
+        level: int = 1,
+        use_dedication: bool = False
     ) -> CharacterSheet:
-        level = max(1, min(3, level))
+        level = max(1, min(4, level))
 
         # 1. Select Ancestry, Class, Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
@@ -107,6 +108,9 @@ class PF2eGenerator:
         heritage_data = resolve_heritage(anc["name"])
         subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
+
+        # Resolve archetype if enabled
+        archetype_data = pick_archetype(cls["name"]) if use_dedication else None
 
         # 2. Track Attribute Boosts
         mods = {attr: 0 for attr in ATTRIBUTES}
@@ -168,7 +172,6 @@ class PF2eGenerator:
         will_rank = cls.get("saving_throws", {}).get("will", 1)
         perception_rank = cls.get("perception", 1)
 
-        # Level 3 Fighter Bravery & Ranger Iron Will upgrade Will to Expert (rank 2 = +4)
         if level >= 3 and cls["name"].lower() in ["fighter", "ranger"] and will_rank < 2:
             will_rank = 2
 
@@ -177,7 +180,7 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
-        # 4. Resolve Equipment & AC
+        # 4. Equipment & HP
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -233,32 +236,40 @@ class PF2eGenerator:
                 description=clean_pf2e_text(f1.get("description", ""))
             ))
 
-        # Level 2 Class & Skill Feats
+        # Level 2 Progression (Archetype Dedication or Core Class Feat)
         if level >= 2:
-            lvl2_feats = [
-                f for f in self.feats
-                if f.get("category") == "class"
-                and f.get("level") == 2
-                and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-            ]
-            if lvl2_feats:
-                f2 = random.choice(lvl2_feats)
+            if archetype_data:
+                ded = archetype_data["level_2_dedication"]
                 chosen_feats.append(FeatSummary(
-                    id=f2["id"],
-                    name=f2["name"],
-                    category="Class (Level 2)",
-                    action_cost=f2.get("action_cost"),
-                    traits=f2.get("traits", []),
-                    description=clean_pf2e_text(f2.get("description", ""))
+                    id=ded["id"],
+                    name=ded["name"],
+                    category=f"Archetype ({archetype_data['name']})",
+                    action_cost=ded.get("action_cost"),
+                    traits=ded.get("traits", []),
+                    description=clean_pf2e_text(ded["description"])
                 ))
+            else:
+                lvl2_feats = [
+                    f for f in self.feats
+                    if f.get("category") == "class"
+                    and f.get("level") == 2
+                    and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                ]
+                if lvl2_feats:
+                    f2 = random.choice(lvl2_feats)
+                    chosen_feats.append(FeatSummary(
+                        id=f2["id"],
+                        name=f2["name"],
+                        category="Class (Level 2)",
+                        action_cost=f2.get("action_cost"),
+                        traits=f2.get("traits", []),
+                        description=clean_pf2e_text(f2.get("description", ""))
+                    ))
 
-            skill_feats = [
-                f for f in self.feats
-                if f.get("category") == "skill"
-                and f.get("level") in [1, 2]
-            ]
-            if skill_feats:
-                sf = random.choice(skill_feats)
+            # Level 2 Skill Feat
+            skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2]]
+            if skill_feats_2:
+                sf = random.choice(skill_feats_2)
                 chosen_feats.append(FeatSummary(
                     id=sf["id"],
                     name=sf["name"],
@@ -268,11 +279,11 @@ class PF2eGenerator:
                     description=clean_pf2e_text(sf.get("description", ""))
                 ))
 
-        # Level 3 General Feat & Class Feature
+        # Level 3 Progression (General Feat + Feature)
         if level >= 3:
             gf = random.choice(GENERAL_FEATS_LVL3)
             if gf["id"] == "toughness":
-                total_hp += level  # Toughness gives +level HP
+                total_hp += level
 
             chosen_feats.append(FeatSummary(
                 id=gf["id"],
@@ -294,7 +305,56 @@ class PF2eGenerator:
                     description=clean_pf2e_text(cf["description"])
                 ))
 
-        # 6. Skills with Expert Rank Promotion
+        # Level 4 Progression (Archetype Follow-up or Class Feat + Skill Feat)
+        if level >= 4:
+            if archetype_data:
+                arch_lvl4 = random.choice(archetype_data["level_4_feats"])
+                chosen_feats.append(FeatSummary(
+                    id=arch_lvl4["id"],
+                    name=arch_lvl4["name"],
+                    category=f"Archetype ({archetype_data['name']})",
+                    action_cost=arch_lvl4.get("action_cost"),
+                    traits=arch_lvl4.get("traits", []),
+                    description=clean_pf2e_text(arch_lvl4["description"])
+                ))
+            else:
+                lvl4_feats = [
+                    f for f in self.feats
+                    if f.get("category") == "class"
+                    and f.get("level") in [1, 2, 4]
+                    and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                    and f["name"] not in [cf.name for cf in chosen_feats]
+                ]
+                if lvl4_feats:
+                    f4 = random.choice(lvl4_feats)
+                    chosen_feats.append(FeatSummary(
+                        id=f4["id"],
+                        name=f4["name"],
+                        category="Class (Level 4)",
+                        action_cost=f4.get("action_cost"),
+                        traits=f4.get("traits", []),
+                        description=clean_pf2e_text(f4.get("description", ""))
+                    ))
+
+            # Level 4 Skill Feat
+            skill_feats_4 = [
+                f for f in self.feats 
+                if f.get("category") == "skill" 
+                and f.get("level") in [1, 2, 4]
+                and f["name"] not in [cf.name for cf in chosen_feats]
+            ]
+            if skill_feats_4:
+                sf4 = random.choice(skill_feats_4)
+                chosen_feats.append(FeatSummary(
+                    id=sf4["id"],
+                    name=sf4["name"],
+                    category="Skill (Level 4)",
+                    action_cost=sf4.get("action_cost"),
+                    traits=sf4.get("traits", []),
+                    description=clean_pf2e_text(sf4.get("description", ""))
+                ))
+
+        # 6. Skills
         all_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
@@ -302,7 +362,7 @@ class PF2eGenerator:
             level=level
         )
 
-        # 7. Spellcasting with Rank 1 and Rank 2 Slots
+        # 7. Spellcasting
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
@@ -317,6 +377,7 @@ class PF2eGenerator:
             background=bg["name"],
             character_class=cls["name"],
             subclass=SubclassSummary(**subclass_data) if subclass_data else None,
+            archetype=archetype_data["name"] if archetype_data else None,
             size=anc.get("size", "med"),
             speed=anc.get("speed", 25),
             attributes=AttributeModifiers(**mods),
