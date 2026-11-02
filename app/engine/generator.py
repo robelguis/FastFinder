@@ -31,15 +31,23 @@ def clean_pf2e_text(text: str) -> str:
         return ""
     # Strip HTML tags
     text = re.sub(r"<[^>]+>", "", text)
-    # Convert @UUID[...Item.Demoralize]{Demoralize} -> Demoralize
-    text = re.sub(r"@UUID\[[^\]]*\.([A-Za-z0-9_ -]+)\]\{([^}]+)\}", r"\2", text)
-    # Convert @UUID[...Item.Demoralize] -> Demoralize
-    text = re.sub(r"@UUID\[[^\]]*\.([A-Za-z0-9_ -]+)\]", r"\1", text)
-    # Convert @Check[type:athletics|dc:...] -> Athletics check
-    text = re.sub(r"@Check\[[^\]]*type:([a-z]+)[^\]]*\]", r"\1 check", text)
-    # Convert @Damage[...] -> damage
-    text = re.sub(r"@Damage\[[^\]]*\]", "damage", text)
-    # Normalize excessive spaces/newlines
+    # 1. Matches labeled @UUID[...]{Display Name} -> Display Name
+    text = re.sub(r"@UUID\[[^\]]+\]\{([^}]+)\}", r"\1", text)
+    # 2. Matches unlabeled @UUID[Compendium.pf2e.actionspf2e.Item.Recall Knowledge] -> Recall Knowledge
+    text = re.sub(r"@UUID\[(?:.*?\.)?([^\]\.]+?)\]", r"\1", text)
+    # 3. Matches @Check[type:athletics|dc:15]{Athletics} -> Athletics
+    text = re.sub(r"@Check\[[^\]]+\]\{([^}]+)\}", r"\1", text)
+    # 4. Matches unlabeled @Check[type:athletics...] -> athletics check
+    text = re.sub(r"@Check\[[^\]]*type:([a-zA-Z]+)[^\]]*\]", r"\1 check", text)
+    # 5. Clean @Damage[1d6[fire]] or @Damage[1d6]{1d6 fire} -> 1d6 fire
+    text = re.sub(r"@Damage\[[^\]]+\]\{([^}]+)\}", r"\1", text)
+    text = re.sub(r"@Damage\[([^\]]+)\]", r"\1", text)
+    # 6. Clean generic Foundry tags (@Template, @Compendium)
+    text = re.sub(r"@[A-Za-z]+\[[^\]]+\]\{([^}]+)\}", r"\1", text)
+    text = re.sub(r"@[A-Za-z]+\[[^\]]+\]", "", text)
+    # Clean nested brackets & whitespace
+    text = text.replace("[[", "").replace("]]", "")
+    text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n+", "\n\n", text)
     return text.strip()
 
@@ -170,7 +178,7 @@ class PF2eGenerator:
 
         total_hp = max(1, anc.get("hp", 8) + cls.get("hp_per_level", 8) + mods["con"])
 
-        # 5. Starting Feat Selection (Cleaned rules text)
+        # 5. Starting Feat Selection (Comprehensive cleaning)
         cls_name_lower = cls["name"].lower()
         eligible_feats = [
             f for f in self.feats
