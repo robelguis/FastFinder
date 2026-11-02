@@ -24,7 +24,7 @@
     
     .controls {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 1rem;
       background: var(--card-bg);
       padding: 1.5rem;
@@ -43,16 +43,33 @@
       font-size: 0.95rem;
     }
     input::placeholder { color: #64748b; }
-    button {
+    
+    .btn-group {
+      display: flex;
+      gap: 0.5rem;
+      align-items: flex-end;
+    }
+    button.primary-btn {
       background: var(--accent);
       color: #000;
       font-weight: 700;
       cursor: pointer;
       border: none;
       transition: background 0.2s;
-      align-self: flex-end;
+      flex: 1;
     }
-    button:hover { background: var(--accent-hover); }
+    button.primary-btn:hover { background: var(--accent-hover); }
+
+    button.print-btn {
+      background: #334155;
+      color: #f8fafc;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: background 0.2s;
+      flex: 1;
+    }
+    button.print-btn:hover { background: #475569; }
 
     .sheet-card {
       background: var(--card-bg);
@@ -176,6 +193,110 @@
     }
     .feat-header { display: flex; justify-content: space-between; font-weight: 700; margin-bottom: 0.25rem; }
     .feat-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.4; }
+
+    /* ========================================================
+       PRINT & PDF EXPORT STYLES (8.5x11 Clean Layout)
+       ======================================================== */
+    @media print {
+      @page {
+        size: letter portrait;
+        margin: 0.45in;
+      }
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+        padding: 0 !important;
+        font-size: 9pt;
+      }
+      .container {
+        max-width: 100% !important;
+        margin: 0 !important;
+      }
+      header, .controls {
+        display: none !important;
+      }
+      .sheet-card {
+        background: #ffffff !important;
+        border: none !important;
+        box-shadow: none !important;
+        padding: 0 !important;
+      }
+      .sheet-header {
+        border-bottom: 2px solid #000000 !important;
+        margin-bottom: 0.5rem !important;
+        padding-bottom: 0.25rem !important;
+      }
+      .char-title h2 {
+        font-size: 1.6rem !important;
+        color: #000000 !important;
+      }
+      .char-sub {
+        color: #333333 !important;
+        font-size: 0.9rem !important;
+        font-weight: 600;
+      }
+      .section-title {
+        color: #000000 !important;
+        border-bottom: 1.5px solid #000000 !important;
+        font-size: 0.95rem !important;
+        margin: 0.75rem 0 0.35rem 0 !important;
+      }
+      .stats-grid {
+        gap: 0.35rem !important;
+        margin-bottom: 0.5rem !important;
+      }
+      .stat-box {
+        background: #f8fafc !important;
+        border: 1px solid #000000 !important;
+        padding: 0.35rem 0 !important;
+      }
+      .stat-name {
+        color: #000000 !important;
+        font-size: 0.7rem !important;
+      }
+      .stat-val {
+        color: #000000 !important;
+        font-size: 1.25rem !important;
+      }
+      .vitals-grid {
+        gap: 0.35rem !important;
+        margin-bottom: 0.5rem !important;
+      }
+      .vital-item {
+        background: #f8fafc !important;
+        border: 1px solid #000000 !important;
+        padding: 0.35rem !important;
+      }
+      .vital-item span {
+        color: #333333 !important;
+        font-size: 0.65rem !important;
+      }
+      .vital-item strong {
+        color: #000000 !important;
+        font-size: 1.1rem !important;
+      }
+      .strike-row, .spell-card, .gear-box, .feat-box {
+        background: #ffffff !important;
+        border: 1px solid #666666 !important;
+        color: #000000 !important;
+        padding: 0.4rem 0.6rem !important;
+        margin-top: 0.35rem !important;
+        page-break-inside: avoid;
+      }
+      .strike-name { color: #000000 !important; font-weight: bold; }
+      .strike-atk { color: #000000 !important; font-weight: bold; }
+      .strike-dmg { color: #000000 !important; }
+      .strike-traits, .spell-sub, .feat-desc { color: #444444 !important; font-size: 0.8rem !important; }
+      .spell-header { color: #000000 !important; }
+      .skill-tag, .money-pill {
+        background: #ffffff !important;
+        border: 1px solid #000000 !important;
+        color: #000000 !important;
+        padding: 0.2rem 0.5rem !important;
+        font-size: 0.8rem !important;
+      }
+      .skill-mod { color: #000000 !important; font-weight: bold; }
+    }
   </style>
 </head>
 <body>
@@ -198,8 +319,9 @@
         <label for="classSelect">Class</label>
         <select id="classSelect"><option value="">Any Class</option></select>
       </div>
-      <div class="field">
-        <button id="generateBtn" onclick="generate()">Generate Sheet</button>
+      <div class="field btn-group">
+        <button class="primary-btn" id="generateBtn" onclick="generate()">Generate</button>
+        <button class="print-btn" id="printBtn" onclick="window.print()">Print / PDF</button>
       </div>
     </div>
 
@@ -209,7 +331,7 @@
           <h2 id="sheetName"></h2>
           <div class="char-sub" id="sheetSub"></div>
         </div>
-        <div class="vital-item" style="min-width: 90px;">
+        <div class="vital-item" style="min-width: 80px;">
           <span>LEVEL</span>
           <strong id="sheetLevel" style="color: #f8fafc;">1</strong>
         </div>
@@ -244,10 +366,10 @@
           <div class="vital-item"><span>SPELL ATTACK</span><strong id="spellAttack">+0</strong></div>
         </div>
 
-        <div style="font-weight: 700; color: #a855f7; margin-top: 1rem; font-size: 0.9rem;">CANTRIPS (RANK 1)</div>
+        <div style="font-weight: 700; color: #a855f7; margin-top: 0.75rem; font-size: 0.9rem;">CANTRIPS (RANK 1)</div>
         <div id="cantripsContainer"></div>
 
-        <div style="font-weight: 700; color: #a855f7; margin-top: 1rem; font-size: 0.9rem;">RANK 1 SPELLS</div>
+        <div style="font-weight: 700; color: #a855f7; margin-top: 0.75rem; font-size: 0.9rem;">RANK 1 SPELLS</div>
         <div id="rank1Container"></div>
       </div>
 
