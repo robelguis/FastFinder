@@ -57,6 +57,22 @@ GENERIC_HERITAGES = [
 
 # Class Subclasses Matrix
 CLASS_SUBCLASSES: Dict[str, Dict[str, Any]] = {
+    "animist": {
+        "title": "Apparition Practice",
+        "options": [
+            {"name": "Channeler", "description": "You allow apparitions to flood directly through your body, fueling powerful channeler stances and bursts."},
+            {"name": "Sage", "description": "You commune deeply with the spirits of wisdom and memory to recall lost secrets and enhance spellcraft."},
+            {"name": "Shaman", "description": "You guide restless spirits between the material realm and the spirit world, gaining curative and protective wards."}
+        ]
+    },
+    "exemplar": {
+        "title": "Ikon",
+        "options": [
+            {"name": "Body Ikon (Gleaming Scar)", "description": "Your physical vessel is marked with transcendent divine endurance."},
+            {"name": "Weapon Ikon (Mighty Weapon)", "description": "Your weapon channels mythological strikes that cleave through enemy defenses."},
+            {"name": "Worn Ikon (Radiant Crown)", "description": "You bear a relic radiating sovereign majesty and authority."}
+        ]
+    },
     "rogue": {
         "title": "Racket",
         "options": [

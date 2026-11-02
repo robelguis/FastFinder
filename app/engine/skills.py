@@ -61,7 +61,13 @@ def resolve_character_skills(
         if sk_title in CORE_SKILLS and sk_title not in base_trained:
             base_trained.append(sk_title)
 
-    lore_name = background_data.get("lore", "Lore")
+    lore_name = background_data.get("lore")
+    if not lore_name or lore_name.strip().lower() == "lore":
+        bg_name = background_data.get("name", "").strip()
+        lore_name = f"{bg_name} Lore" if bg_name else "Settlement Lore"
+    else:
+        if not lore_name.endswith("Lore"):
+            lore_name = f"{lore_name} Lore" 
     
     # 3. Extra skill picks (2 + INT mod, min 1; Rogue/Investigator get 7)
     int_mod = attribute_mods.get("int", 0)
@@ -105,7 +111,7 @@ def resolve_character_skills(
     # Append Lore skill (always trained, scales with INT)
     lore_attr_val = attribute_mods.get("int", 0)
     skills_list.append(SkillEntry(
-        name=f"Lore: {lore_name}",
+        name=lore_name,
         attribute="INT",
         rank=2,
         rank_letter="T",

@@ -31,7 +31,7 @@ def generate_character(
     ancestry: Optional[str] = Query(None),
     class_name: Optional[str] = Query(None),
     name: Optional[str] = Query(None),
-    level: int = Query(1, ge=1, le=2)
+    level: int = Query(1, ge=1, le=4)
 ):
     try:
         sheet = generator.generate(
@@ -49,7 +49,7 @@ def export_foundry(
     ancestry: Optional[str] = Query(None),
     class_name: Optional[str] = Query(None),
     name: Optional[str] = Query(None),
-    level: int = Query(1, ge=1, le=2)
+    level: int = Query(1, ge=1, le=4)
 ):
     try:
         sheet = generator.generate(

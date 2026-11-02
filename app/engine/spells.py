@@ -16,6 +16,9 @@ SPELLCASTING_CLASSES = {
     "witch": {"tradition": "Occult", "attribute": "int"},
     "oracle": {"tradition": "Divine", "attribute": "cha"},
     "psychic": {"tradition": "Occult", "attribute": "int"},
+    "animist": {"tradition": "Divine", "attribute": "wis"},
+    "magus": {"tradition": "Arcane", "attribute": "int"},
+    "summoner": {"tradition": "Arcane", "attribute": "cha"},
 }
 
 EXCLUDED_TRAITS = {
@@ -140,7 +143,7 @@ def resolve_spellcasting(class_name: str, attribute_mods: Dict[str, int], level:
     slots = [SpellSlotTracker(rank=1, max_slots=rank1_count, used_slots=0)]
 
     if level >= 3:
-        rank2_count = 2  # Standard 2 slots of highest rank at 3rd level
+        rank2_count = 2
         rank2_list = [build_summary(s, 2) for s in matching_rank2[:rank2_count]]
         slots.append(SpellSlotTracker(rank=2, max_slots=rank2_count, used_slots=0))
 
