@@ -1,5 +1,5 @@
 import random
-from typing import Dict, List, Set, Any
+from typing import Dict, Any, List
 from app.engine.models import SkillEntry
 
 CORE_SKILLS: Dict[str, str] = {
@@ -18,72 +18,29 @@ CORE_SKILLS: Dict[str, str] = {
     "Society": "int",
     "Stealth": "dex",
     "Survival": "wis",
-    "Thievery": "dex"
+    "Thievery": "dex",
 }
 
-CLASS_SKILL_PROFILES: Dict[str, Dict[str, Any]] = {
-    "barbarian": {
-        "mandatory": ["Athletics"],
-        "base_count": 3,
-        "priority": ["Intimidation", "Survival", "Acrobatics"]
-    },
-    "bard": {
-        "mandatory": ["Occultism", "Performance"],
-        "base_count": 4,
-        "priority": ["Deception", "Diplomacy", "Society", "Stealth"]
-    },
-    "champion": {
-        "mandatory": ["Religion"],
-        "base_count": 2,
-        "priority": ["Athletics", "Diplomacy", "Intimidation", "Medicine"]
-    },
-    "cleric": {
-        "mandatory": ["Religion"],
-        "base_count": 2,
-        "priority": ["Medicine", "Diplomacy", "Survival", "Society"]
-    },
-    "druid": {
-        "mandatory": ["Nature"],
-        "base_count": 2,
-        "priority": ["Survival", "Medicine", "Athletics", "Crafting"]
-    },
-    "fighter": {
-        "mandatory": [],
-        "choice_pick": ["Acrobatics", "Athletics"],
-        "base_count": 3,
-        "priority": ["Athletics", "Acrobatics", "Intimidation", "Crafting"]
-    },
-    "monk": {
-        "mandatory": [],
-        "choice_pick": ["Acrobatics", "Athletics"],
-        "base_count": 4,
-        "priority": ["Acrobatics", "Athletics", "Stealth", "Religion"]
-    },
-    "ranger": {
-        "mandatory": ["Nature", "Survival"],
-        "base_count": 4,
-        "priority": ["Athletics", "Stealth", "Acrobatics", "Medicine"]
-    },
-    "rogue": {
-        "mandatory": ["Stealth"],
-        "base_count": 7,
-        "priority": ["Thievery", "Deception", "Acrobatics", "Diplomacy", "Intimidation", "Society"]
-    },
-    "sorcerer": {
-        "mandatory": [],
-        "base_count": 2,
-        "priority": ["Deception", "Diplomacy", "Intimidation", "Arcana", "Occultism"]
-    },
-    "witch": {
-        "mandatory": [],
-        "base_count": 3,
-        "priority": ["Arcana", "Occultism", "Nature", "Religion", "Crafting"]
-    },
-    "wizard": {
-        "mandatory": ["Arcana"],
-        "base_count": 2,
-        "priority": ["Crafting", "Society", "Occultism", "Nature"]
-    }
+CLASS_TRAINED_SKILLS: Dict[str, List[str]] = {
+    "fighter": ["Acrobatics", "Athletics"],
+    "rogue": ["Stealth", "Thievery", "Deception", "Acrobatics"],
+    "wizard": ["Arcana"],
+    "cleric": ["Religion"],
+    "barbarian": ["Athletics"],
+    "bard": ["Performance", "Occultism"],
+    "druid": ["Nature", "Survival"],
+    "ranger": ["Nature", "Survival", "Athletics"],
+    "champion": ["Religion", "Athletics"],
+    "monk": ["Athletics", "Acrobatics"],
+    "swashbuckler": ["Acrobatics"],
+    "investigator": ["Society"],
+    "thaumaturge": ["Arcana", "Occultism", "Religion", "Nature"],
+    "psychic": ["Occultism"],
+    "oracle": ["Religion"],
+    "witch": ["Arcana", "Occultism"],
+    "kineticist": ["Nature"],
+    "alchemist": ["Crafting"],
+    "gunslinger": ["Acrobatics"],
 }
 
 def resolve_character_skills(
@@ -93,83 +50,66 @@ def resolve_character_skills(
     level: int = 1
 ) -> List[SkillEntry]:
     cls_key = class_name.lower()
-    profile = CLASS_SKILL_PROFILES.get(cls_key, {
-        "mandatory": [],
-        "base_count": 3,
-        "priority": ["Athletics", "Acrobatics", "Stealth"]
-    })
+    
+    # 1. Base trained skills
+    base_trained = list(CLASS_TRAINED_SKILLS.get(cls_key, ["Athletics"]))
+    
+    # 2. Background skill & Lore
+    bg_skills = background_data.get("skills", [])
+    for sk in bg_skills:
+        sk_title = sk.title()
+        if sk_title in CORE_SKILLS and sk_title not in base_trained:
+            base_trained.append(sk_title)
 
-    trained_set: Set[str] = set()
-    lore_entries: List[SkillEntry] = []
-
-    # 1. Background Skills
-    for s in background_data.get("trained_skills", []):
-        clean = s.title()
-        if clean in CORE_SKILLS:
-            trained_set.add(clean)
-
-    # Background Lore
-    bg_lore = background_data.get("trained_lore")
-    if bg_lore:
-        lore_name = f"Lore: {bg_lore.title()}"
-        int_mod = attribute_mods.get("int", 0)
-        lore_entries.append(SkillEntry(
-            name=lore_name,
-            attribute="int",
-            rank=2,
-            rank_letter="T",
-            modifier=2 + level + int_mod
-        ))
-
-    # 2. Class Mandatory Skills
-    for s in profile.get("mandatory", []):
-        if s in CORE_SKILLS:
-            trained_set.add(s)
-
-    # Class Choice picks
-    if "choice_pick" in profile:
-        choices = [c for c in profile["choice_pick"] if c in CORE_SKILLS]
-        if choices:
-            choice = max(choices, key=lambda c: attribute_mods.get(CORE_SKILLS.get(c, "str"), 0))
-            trained_set.add(choice)
-
-    # 3. Class Free Skill Budget = Base Count + Int Modifier (minimum 1)
+    lore_name = background_data.get("lore", "Lore")
+    
+    # 3. Extra skill picks (2 + INT mod, min 1; Rogue/Investigator get 7)
     int_mod = attribute_mods.get("int", 0)
-    budget = max(1, profile.get("base_count", 3) + int_mod)
+    extra_count = 7 + int_mod if cls_key in ["rogue", "investigator"] else 2 + int_mod
+    extra_count = max(1, extra_count)
 
-    candidates = [s for s in profile.get("priority", []) if s in CORE_SKILLS and s not in trained_set]
-    remaining_core = [s for s in CORE_SKILLS.keys() if s not in trained_set and s not in candidates]
-    random.shuffle(remaining_core)
-    pool = candidates + remaining_core
+    remaining_pool = [s for s in CORE_SKILLS.keys() if s not in base_trained]
+    random.shuffle(remaining_pool)
+    trained_skills_set = set(base_trained + remaining_pool[:extra_count])
 
-    for skill in pool:
-        if budget <= 0:
-            break
-        if skill not in trained_set and skill in CORE_SKILLS:
-            trained_set.add(skill)
-            budget -= 1
+    # 4. Level 3 Skill Increase: promote 1 trained skill to Expert (rank 4)
+    expert_skills_set = set()
+    if level >= 3 and trained_skills_set:
+        promoted = random.choice(list(trained_skills_set))
+        expert_skills_set.add(promoted)
 
-    # 4. Compile the FULL list of all 16 skills (Trained & Untrained)
-    all_skill_entries: List[SkillEntry] = []
+    skills_list: List[SkillEntry] = []
     for skill_name, attr in sorted(CORE_SKILLS.items()):
-        is_trained = skill_name in trained_set
-        mod_val = attribute_mods.get(attr, 0)
-        
-        if is_trained:
-            rank_bonus = 2
+        attr_val = attribute_mods.get(attr, 0)
+        if skill_name in expert_skills_set:
+            rank = 4
+            rank_letter = "E"
+            modifier = rank + level + attr_val
+        elif skill_name in trained_skills_set:
+            rank = 2
             rank_letter = "T"
-            total_mod = rank_bonus + level + mod_val
+            modifier = rank + level + attr_val
         else:
-            rank_bonus = 0
+            rank = 0
             rank_letter = "U"
-            total_mod = mod_val  # PF2e Untrained = 0 rank + 0 level + attribute mod
+            modifier = attr_val
 
-        all_skill_entries.append(SkillEntry(
+        skills_list.append(SkillEntry(
             name=skill_name,
-            attribute=attr,
-            rank=rank_bonus,
+            attribute=attr.upper(),
+            rank=rank,
             rank_letter=rank_letter,
-            modifier=total_mod
+            modifier=modifier
         ))
 
-    return all_skill_entries + lore_entries
+    # Append Lore skill (always trained, scales with INT)
+    lore_attr_val = attribute_mods.get("int", 0)
+    skills_list.append(SkillEntry(
+        name=f"Lore: {lore_name}",
+        attribute="INT",
+        rank=2,
+        rank_letter="T",
+        modifier=2 + level + lore_attr_val
+    ))
+
+    return skills_list

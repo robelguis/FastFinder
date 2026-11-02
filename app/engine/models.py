@@ -53,7 +53,7 @@ ItemEntry = Item
 class ConsumableItem(BaseModel):
     name: str
     quantity: int = 1
-    item_type: str = "potion"  # potion, elixir, scroll, talisman
+    item_type: str = "potion"
     bulk: Union[str, float, int] = "L"
     description: str = ""
 
@@ -99,6 +99,7 @@ class SpellcastingData(BaseModel):
     spell_attack: int
     cantrips: List[SpellSummary] = []
     rank_1_spells: List[SpellSummary] = []
+    rank_2_spells: List[SpellSummary] = []
     slots: List[SpellSlotTracker] = []
 
 SpellcastingLoadout = SpellcastingData
@@ -122,8 +123,8 @@ class CharacterSheet(BaseModel):
     ancestry: str
     heritage: Optional[str] = None
     background: str
-    subclass: Optional[SubclassSummary] = None
     character_class: str
+    subclass: Optional[SubclassSummary] = None
     size: str
     speed: int
     attributes: AttributeModifiers

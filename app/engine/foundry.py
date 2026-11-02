@@ -144,7 +144,8 @@ def export_to_foundry_actor(sheet: CharacterSheet) -> Dict[str, Any]:
                 "value": slot.max_slots - slot.used_slots
             }
 
-        for sp in sheet.spellcasting.cantrips + sheet.spellcasting.rank_1_spells:
+        all_spells = sheet.spellcasting.cantrips + sheet.spellcasting.rank_1_spells + sheet.spellcasting.rank_2_spells
+        for sp in all_spells:
             items.append({
                 "name": sp.name,
                 "type": "spell",

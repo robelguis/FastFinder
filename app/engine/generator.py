@@ -9,13 +9,13 @@ from app.engine.models import (
     Defenses,
     Proficiency,
     FeatSummary,
+    SubclassSummary,
 )
 from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
 from app.engine.spells import resolve_spellcasting
 from app.engine.subclasses import resolve_heritage, resolve_subclass
-from app.engine.models import SubclassSummary
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -26,6 +26,26 @@ RANK_MAP = {
     2: (4, "E"),  # Expert
     3: (6, "M"),  # Master
     4: (8, "L"),  # Legendary
+}
+
+# Standard General Feats pool for 3rd level
+GENERAL_FEATS_LVL3 = [
+    {"id": "fleet", "name": "Fleet", "description": "Your Speed increases by 5 feet."},
+    {"id": "toughness", "name": "Toughness", "description": "Your maximum HP increases by your level. The DC of recovery checks is 9 + dying value."},
+    {"id": "diehard", "name": "Diehard", "description": "You die from the dying condition at dying 5, rather than dying 4."},
+    {"id": "fast-recovery", "name": "Fast Recovery", "description": "You regain twice as many HP from resting and gain a +2 bonus against poison/disease."},
+    {"id": "prescient-planner", "name": "Prescient Planner", "description": "You can pull standard equipment you predicted you'd need directly from your backpack."},
+    {"id": "ancestral-paragon", "name": "Ancestral Paragon", "description": "You gain a 1st-level ancestry feat."},
+    {"id": "untrained-improvisation", "name": "Untrained Improvisation", "description": "You add your level to untrained skill checks instead of 0."},
+]
+
+CLASS_FEATURES_LVL3 = {
+    "fighter": {"name": "Bravery", "description": "Your proficiency rank in Will saves increases to expert. When you roll a success on a Will save against a fear effect, you get a critical success instead."},
+    "rogue": {"name": "Deny Advantage", "description": "You aren't off-guard to hidden, undetected, or flanking creatures of your level or lower, or creatures of your level or lower using surprise attack."},
+    "barbarian": {"name": "Deny Advantage", "description": "You aren't off-guard to hidden, undetected, or flanking creatures of your level or lower."},
+    "champion": {"name": "Divine Smite", "description": "Your champion reaction deals persistent damage equal to your Charisma modifier."},
+    "ranger": {"name": "Iron Will", "description": "Your proficiency rank for Will saves increases to expert."},
+    "monk": {"name": "Incredible Movement", "description": "You gain a +10-foot status bonus to your Speed whenever you're not wearing armor."},
 }
 
 def clean_pf2e_text(text: str) -> str:
@@ -70,9 +90,9 @@ class PF2eGenerator:
         char_name: Optional[str] = None,
         level: int = 1
     ) -> CharacterSheet:
-        level = max(1, min(2, level))
+        level = max(1, min(3, level))
 
-        # 1. Select Ancestry, Class, Background from full datasets
+        # 1. Select Ancestry, Class, Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
         else:
@@ -88,7 +108,7 @@ class PF2eGenerator:
         subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
 
-        # 2. Track Attribute Boosts (Max +4 at Levels 1-2)
+        # 2. Track Attribute Boosts
         mods = {attr: 0 for attr in ATTRIBUTES}
 
         applied_anc_boosts: Set[str] = set()
@@ -148,6 +168,10 @@ class PF2eGenerator:
         will_rank = cls.get("saving_throws", {}).get("will", 1)
         perception_rank = cls.get("perception", 1)
 
+        # Level 3 Fighter Bravery & Ranger Iron Will upgrade Will to Expert (rank 2 = +4)
+        if level >= 3 and cls["name"].lower() in ["fighter", "ranger"] and will_rank < 2:
+            will_rank = 2
+
         fort_prof = self._calc_prof(fort_rank, level, mods["con"])
         ref_prof = self._calc_prof(ref_rank, level, mods["dex"])
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
@@ -163,15 +187,35 @@ class PF2eGenerator:
 
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
-        base_hp = anc.get("hp", 8) + (class_hp_per_lvl + con_mod)
-        if level == 2:
-            base_hp += (class_hp_per_lvl + con_mod)
+        base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * level)
         total_hp = max(1, base_hp)
 
-        # 5. Feat Selection for Level 1 and Level 2
+        # 5. Feat Progression
         cls_name_lower = cls["name"].lower()
         chosen_feats: List[FeatSummary] = []
 
+        # Heritage Feature
+        chosen_feats.append(FeatSummary(
+            id=f"heritage-{anc['name'].lower()}",
+            name=heritage_data["name"],
+            category="Heritage",
+            action_cost=None,
+            traits=[anc['name'].lower()],
+            description=clean_pf2e_text(heritage_data["description"])
+        ))
+
+        # Subclass Feature
+        if subclass_data:
+            chosen_feats.append(FeatSummary(
+                id=f"subclass-{cls['name'].lower()}",
+                name=f"{subclass_data['title']}: {subclass_data['name']}",
+                category="Class Feature",
+                action_cost=None,
+                traits=[cls['name'].lower()],
+                description=clean_pf2e_text(subclass_data["description"])
+            ))
+
+        # Level 1 Class Feat
         lvl1_feats = [
             f for f in self.feats
             if f.get("category") == "class"
@@ -189,6 +233,7 @@ class PF2eGenerator:
                 description=clean_pf2e_text(f1.get("description", ""))
             ))
 
+        # Level 2 Class & Skill Feats
         if level >= 2:
             lvl2_feats = [
                 f for f in self.feats
@@ -223,7 +268,33 @@ class PF2eGenerator:
                     description=clean_pf2e_text(sf.get("description", ""))
                 ))
 
-        # 6. Skills List with Level Scaling
+        # Level 3 General Feat & Class Feature
+        if level >= 3:
+            gf = random.choice(GENERAL_FEATS_LVL3)
+            if gf["id"] == "toughness":
+                total_hp += level  # Toughness gives +level HP
+
+            chosen_feats.append(FeatSummary(
+                id=gf["id"],
+                name=gf["name"],
+                category="General (Level 3)",
+                action_cost=None,
+                traits=["general"],
+                description=clean_pf2e_text(gf["description"])
+            ))
+
+            if cls_name_lower in CLASS_FEATURES_LVL3:
+                cf = CLASS_FEATURES_LVL3[cls_name_lower]
+                chosen_feats.append(FeatSummary(
+                    id=f"class-feat-{cf['name'].lower().replace(' ', '-')}",
+                    name=cf["name"],
+                    category="Class Feature (Level 3)",
+                    action_cost=None,
+                    traits=[cls_name_lower],
+                    description=clean_pf2e_text(cf["description"])
+                ))
+
+        # 6. Skills with Expert Rank Promotion
         all_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
@@ -231,34 +302,12 @@ class PF2eGenerator:
             level=level
         )
 
-        # 7. Spellcasting with Level Scaling
+        # 7. Spellcasting with Rank 1 and Rank 2 Slots
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
             level=level
         )
-
-        
-        # Append Heritage Feature
-        chosen_feats.insert(0, FeatSummary(
-            id=f"heritage-{anc['name'].lower()}",
-            name=heritage_data["name"],
-            category="Heritage",
-            action_cost=None,
-            traits=[anc['name'].lower()],
-            description=clean_pf2e_text(heritage_data["description"])
-        ))
-
-        # Append Subclass Feature
-        if subclass_data:
-            chosen_feats.insert(1, FeatSummary(
-                id=f"subclass-{cls['name'].lower()}",
-                name=f"{subclass_data['title']}: {subclass_data['name']}",
-                category="Class Feature",
-                action_cost=None,
-                traits=[cls['name'].lower()],
-                description=clean_pf2e_text(subclass_data["description"])
-            ))
 
         return CharacterSheet(
             name=resolved_name,
@@ -266,8 +315,8 @@ class PF2eGenerator:
             ancestry=anc["name"],
             heritage=heritage_data["name"],
             background=bg["name"],
-            subclass=SubclassSummary(**subclass_data) if subclass_data else None,
             character_class=cls["name"],
+            subclass=SubclassSummary(**subclass_data) if subclass_data else None,
             size=anc.get("size", "med"),
             speed=anc.get("speed", 25),
             attributes=AttributeModifiers(**mods),

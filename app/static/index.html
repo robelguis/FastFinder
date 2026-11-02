@@ -336,6 +336,7 @@
         <select id="levelSelect">
           <option value="1">Level 1</option>
           <option value="2">Level 2</option>
+          <option value="3">Level 3</option>
         </select>
       </div>
       <div class="field btn-group">
@@ -489,6 +490,9 @@
 
               <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 1 Spells</div>
               <div id="rank1Container"></div>
+
+              <div id="rank2Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 2 Spells</div>
+              <div id="rank2Container"></div>
             </div>
           </div>
 
@@ -713,6 +717,13 @@
         renderSlotTrackers(data.spellcasting.slots);
         renderSpellList('cantripsContainer', data.spellcasting.cantrips);
         renderSpellList('rank1Container', data.spellcasting.rank_1_spells);
+        if (data.spellcasting.rank_2_spells && data.spellcasting.rank_2_spells.length > 0) {
+          document.getElementById('rank2Header').style.display = 'block';
+          renderSpellList('rank2Container', data.spellcasting.rank_2_spells);
+        } else {
+          document.getElementById('rank2Header').style.display = 'none';
+          document.getElementById('rank2Container').innerHTML = '';
+        }
       } else {
         spellsSection.style.display = 'none';
       }
