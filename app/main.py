@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from app.engine.generator import PF2eGenerator
-from app.engine.archetypes import ARCHETYPES
+from app.engine.archetypes import ARCHETYPES_CATALOG, get_all_archetype_names
 from app.engine.foundry import export_to_foundry_actor
 
 app = FastAPI(title="FastFinder PF2e Generator")
