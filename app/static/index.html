@@ -545,7 +545,7 @@
           <!-- ANIMAL COMPANION DOSSIER -->
           <div class="sheet-box" id="companionSection" style="display: none; border-left: 3.5px solid #16a34a;">
             <div class="sheet-box-title" style="background: #14532d;">
-              <span>Animal Companion</span>
+               <span id="companionTitleHeader">Partner Creature</span>
               <span id="companionStageBadge" style="font-size: 0.65rem; color: #86efac; font-weight: 800; text-transform: uppercase;"></span>
             </div>
             <div class="sheet-box-content">
@@ -967,23 +967,38 @@
       
       renderConsumables(data.equipment?.consumables || []);
 
-      // Render Animal Companion
+      // Render Partner Creature / Animal Companion / Eidolon
       const compSection = document.getElementById("companionSection");
       if (data.companion && data.companion.name) {
         compSection.style.display = "block";
-        document.getElementById("companionName").textContent = data.companion.name;
-        document.getElementById("companionStageBadge").textContent = `${data.companion.stage} (${data.companion.species})`;
-        document.getElementById("companionMeta").textContent = `Size: ${data.companion.size} | Speed: ${data.companion.speed} | Perception: ${formatMod(data.companion.perception)}`;
-        document.getElementById("compAc").textContent = data.companion.ac;
-        const isEidolon = (data.companion.creature_type || "").toLowerCase().includes("eidolon");
-        document.getElementById("compHp").textContent = isEidolon ? `${data.companion.hp} (Shared)` : data.companion.hp;
-        document.getElementById("compFort").textContent = formatMod(data.companion.fortitude);
-        document.getElementById("compRef").textContent = formatMod(data.companion.reflex);
-        document.getElementById("compWill").textContent = formatMod(data.companion.will);
+        const comp = data.companion;
 
+        // 1. Dynamic Header Title (Eidolon, Construct Companion, Familiar, Animal Companion)
+        const headerTitle = comp.creature_type ? comp.creature_type.toUpperCase() : "ANIMAL COMPANION";
+        const headerEl = document.getElementById("companionTitleHeader");
+        if (headerEl) headerEl.textContent = headerTitle;
+
+        // 2. Stage Badge: Resolve species, sub_type, or tradition cleanly without (UNDEFINED)
+        const typeDetail = comp.sub_type || comp.species || comp.tradition || "";
+        const stageText = comp.stage || "";
+        const badgeText = typeDetail ? `${stageText} (${typeDetail})`.trim() : stageText;
+        document.getElementById("companionStageBadge").textContent = badgeText;
+
+        // 3. Name & Core Metadata
+        document.getElementById("companionName").textContent = comp.name;
+        document.getElementById("companionMeta").textContent = `Size: ${comp.size || "Med"} | Speed: ${comp.speed || "25 ft"} | Perception: ${formatMod(comp.perception)}`;
+        document.getElementById("compAc").textContent = comp.ac;
+        
+        const isEidolon = (comp.creature_type || "").toLowerCase().includes("eidolon");
+        document.getElementById("compHp").textContent = isEidolon ? `${comp.hp} (Shared)` : comp.hp;
+        document.getElementById("compFort").textContent = formatMod(comp.fortitude);
+        document.getElementById("compRef").textContent = formatMod(comp.reflex);
+        document.getElementById("compWill").textContent = formatMod(comp.will);
+
+        // 4. Strikes
         const compStrikesTbody = document.getElementById("compStrikesTbody");
         compStrikesTbody.innerHTML = "";
-        (data.companion.strikes || []).forEach(st => {
+        (comp.strikes || []).forEach(st => {
           const tr = document.createElement("tr");
           tr.innerHTML = `
             <td><span class="w-name">${st.name}</span></td>
@@ -994,13 +1009,34 @@
           compStrikesTbody.appendChild(tr);
         });
 
-        document.getElementById("compSupport").textContent = data.companion.support_benefit;
+        // 5. Primary Benefit / Support Benefit (Handles both Animal Companions and Eidolons)
+        const benefitTitleEl = document.querySelector("#companionSection .detail-card-head");
+        const benefitBodyEl = document.getElementById("compSupport");
         
-        if (data.companion.advanced_maneuver) {
-          document.getElementById("compAdvCard").style.display = "block";
-          document.getElementById("compAdv").textContent = data.companion.advanced_maneuver;
+        if (comp.primary_ability) {
+          if (benefitTitleEl) benefitTitleEl.textContent = "Primary Ability";
+          benefitBodyEl.textContent = comp.primary_ability;
+          benefitBodyEl.parentElement.style.display = "block";
+        } else if (comp.support_benefit) {
+          if (benefitTitleEl) benefitTitleEl.textContent = "Support Benefit";
+          benefitBodyEl.textContent = comp.support_benefit;
+          benefitBodyEl.parentElement.style.display = "block";
         } else {
-          document.getElementById("compAdvCard").style.display = "none";
+          benefitBodyEl.parentElement.style.display = "none";
+        }
+
+        // 6. Advanced Maneuver / Secondary Ability
+        const advCard = document.getElementById("compAdvCard");
+        const advTitleEl = advCard ? advCard.querySelector(".detail-card-head") : null;
+        const advBodyEl = document.getElementById("compAdv");
+        
+        const secondaryText = comp.secondary_ability || comp.advanced_maneuver;
+        if (secondaryText) {
+          advCard.style.display = "block";
+          if (advTitleEl) advTitleEl.textContent = comp.secondary_ability ? "Unique Ability" : "Advanced Maneuver";
+          advBodyEl.textContent = secondaryText;
+        } else {
+          advCard.style.display = "none";
         }
       } else {
         compSection.style.display = "none";
