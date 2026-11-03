@@ -143,6 +143,16 @@ def extract_ancestry_description(anc: dict) -> str:
         
     return cleaned
 class PF2eGenerator:
+    def __init__(self):
+        # ...
+
+    def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
+        # ...
+
+    def generate(self, ...) -> CharacterSheet:
+        # ... (ends with: return CharacterSheet(...))
+
+    # --- MUST BE INDENTED INSIDE class PF2eGenerator ---
     def level_up(self, current_char: Dict[str, Any], target_level: int) -> CharacterSheet:
         target_level = max(1, min(6, int(target_level)))
         old_level = int(current_char.get("level", 1))
@@ -151,7 +161,7 @@ class PF2eGenerator:
         anc_name = (current_char.get("ancestry") or "").strip().lower()
         cls_name = (current_char.get("character_class") or "").strip().lower()
         bg_name = (current_char.get("background") or "").strip().lower()
-        
+
         anc = self.ancestries.get(anc_name) or next(
             (a for a in self.ancestries.values() if a["name"].lower() == anc_name),
             list(self.ancestries.values())[0]
@@ -169,11 +179,9 @@ class PF2eGenerator:
         raw_attrs = current_char.get("attributes", {})
         mods = {attr: raw_attrs.get(attr, 0) for attr in ATTRIBUTES}
 
-        # Key attribute detection
         key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
         key_attr = key_options[0] if key_options else "str"
 
-        # Apply Level 5 Boosts if crossing the threshold
         if old_level < 5 and target_level >= 5:
             lvl5_boosts_applied: Set[str] = set()
             lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
@@ -223,20 +231,16 @@ class PF2eGenerator:
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * target_level)
         total_hp = max(1, base_hp)
 
-        # 5. Resolve Archetype (Preserve existing or pick one if reaching level >= 2)
+        # 5. Resolve Archetype
         archetype_data = None
         existing_arch_name = current_char.get("archetype")
         if target_level >= 2:
             archetype_data = pick_archetype(cls["name"])
-            # If the character already had a specific archetype, retain its name
-            if existing_arch_name and archetype_data:
-                resolved_arch_name = existing_arch_name
-            else:
-                resolved_arch_name = archetype_data["name"] if archetype_data else None
+            resolved_arch_name = existing_arch_name or (archetype_data["name"] if archetype_data else None)
         else:
             resolved_arch_name = None
 
-        # 6. Preserve existing feats and append new level feats
+        # 6. Preserve and advance feats
         existing_feats_raw = current_char.get("feats", [])
         chosen_feats: List[FeatSummary] = [FeatSummary(**f) for f in existing_feats_raw]
         existing_feat_names = {f.name for f in chosen_feats}
@@ -246,16 +250,15 @@ class PF2eGenerator:
             if lvl == 2:
                 if archetype_data and archetype_data["level_2_dedication"]["name"] not in existing_feat_names:
                     ded = archetype_data["level_2_dedication"]
-                    f_ded = FeatSummary(
+                    chosen_feats.append(FeatSummary(
                         id=ded["id"],
                         name=ded["name"],
                         category=f"Archetype ({archetype_data['name']})",
                         action_cost=ded.get("action_cost"),
                         traits=ded.get("traits", []),
                         description=clean_pf2e_text(ded["description"])
-                    )
-                    chosen_feats.append(f_ded)
-                    existing_feat_names.add(f_ded.name)
+                    ))
+                    existing_feat_names.add(ded["name"])
                 else:
                     lvl2_feats = [
                         f for f in self.feats
@@ -266,35 +269,33 @@ class PF2eGenerator:
                     ]
                     if lvl2_feats:
                         f2 = random.choice(lvl2_feats)
-                        f_obj = FeatSummary(
+                        chosen_feats.append(FeatSummary(
                             id=f2["id"],
                             name=f2["name"],
                             category="Class (Level 2)",
                             action_cost=f2.get("action_cost"),
                             traits=f2.get("traits", []),
                             description=clean_pf2e_text(f2.get("description", ""))
-                        )
-                        chosen_feats.append(f_obj)
-                        existing_feat_names.add(f_obj.name)
+                        ))
+                        existing_feat_names.add(f2["name"])
 
                 skill_feats_2 = [
-                    f for f in self.feats 
-                    if f.get("category") == "skill" 
+                    f for f in self.feats
+                    if f.get("category") == "skill"
                     and f.get("level") in [1, 2]
                     and f["name"] not in existing_feat_names
                 ]
                 if skill_feats_2:
                     sf = random.choice(skill_feats_2)
-                    f_obj = FeatSummary(
+                    chosen_feats.append(FeatSummary(
                         id=sf["id"],
                         name=sf["name"],
                         category="Skill (Level 2)",
                         action_cost=sf.get("action_cost"),
                         traits=sf.get("traits", []),
                         description=clean_pf2e_text(sf.get("description", ""))
-                    )
-                    chosen_feats.append(f_obj)
-                    existing_feat_names.add(f_obj.name)
+                    ))
+                    existing_feat_names.add(sf["name"])
 
             elif lvl == 3:
                 gf_pool = [f for f in GENERAL_FEATS_LVL3 if f["name"] not in existing_feat_names]
@@ -358,8 +359,8 @@ class PF2eGenerator:
                         existing_feat_names.add(f4["name"])
 
                 skill_feats_4 = [
-                    f for f in self.feats 
-                    if f.get("category") == "skill" 
+                    f for f in self.feats
+                    if f.get("category") == "skill"
                     and f.get("level") in [1, 2, 4]
                     and f["name"] not in existing_feat_names
                 ]
@@ -443,11 +444,10 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add(cf6["name"])
 
-        # Check if Toughness was gained to adjust HP
         if any(f.name.lower() == "toughness" for f in chosen_feats):
             total_hp += target_level
 
-        # 7. Recalculate Skills with updated level and mods
+        # 7. Skills
         all_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
@@ -455,7 +455,7 @@ class PF2eGenerator:
             level=target_level
         )
 
-        # 8. Update Spellcasting & Focus Spells
+        # 8. Spellcasting
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
@@ -470,7 +470,7 @@ class PF2eGenerator:
             level=target_level
         )
 
-        # 9. Companion scaling
+        # 9. Companions
         companion_data = current_char.get("companion")
         if companion_data:
             arch_name = (resolved_arch_name or "").lower()
@@ -501,12 +501,10 @@ class PF2eGenerator:
                     level=target_level
                 )
 
-        # 10. Assemble and Return
+        # 10. Assemble
         subclass_obj = SubclassSummary(**current_char["subclass"]) if current_char.get("subclass") else None
-        
-        # Ensure the real ancestry description is returned directly from the loaded data
-        anc_desc = extract_ancestry_description(anc) or current_char.get("ancestry_description", "")
-        
+        anc_desc = clean_pf2e_text(anc.get("description", "")) or current_char.get("ancestry_description", "")
+
         return CharacterSheet(
             name=current_char["name"],
             level=target_level,
