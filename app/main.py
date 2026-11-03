@@ -6,6 +6,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from app.engine.generator import PF2eGenerator
+from app.engine.archetypes import ARCHETYPES
 from app.engine.foundry import export_to_foundry_actor
 
 app = FastAPI(title="FastFinder PF2e Generator")
@@ -29,11 +30,12 @@ async def root():
 
 
 @app.get("/api/options")
-async def get_options():
+def get_options():
     return {
-        "ancestries": sorted(list(generator.ancestries.keys())),
-        "classes": sorted(list(generator.classes.keys())),
-        "backgrounds": sorted(list(generator.backgrounds.keys())),
+        "ancestries": sorted([a["name"] for a in generator.ancestries.values()]),
+        "classes": sorted([c["name"] for c in generator.classes.values()]),
+        "backgrounds": sorted([b["name"] for b in generator.backgrounds.values()]),
+        "archetypes": sorted(list(ARCHETYPES.keys())),
     }
 
 
@@ -43,6 +45,7 @@ async def generate_character(
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
     background: Optional[str] = None,
+    archetype: Optional[str] = None,
     level: int = Query(1, ge=1, le=6),
     dedication: bool = Query(False),
 ):
@@ -51,9 +54,10 @@ async def generate_character(
             ancestry_name=ancestry,
             class_name=class_name,
             background_name=background,
+            archetype_name=archetype,
             char_name=name,
             level=level,
-            use_dedication=dedication,
+            use_dedication=dedication or bool(archetype),
         )
         return sheet
     except Exception as e:
