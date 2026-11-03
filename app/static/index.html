@@ -889,7 +889,7 @@
 
       // Render Animal Companion
       const compSection = document.getElementById("companionSection");
-      if (data.companion) {
+      if (data.companion && data.companion.name) {
         compSection.style.display = "block";
         document.getElementById("companionName").textContent = data.companion.name;
         document.getElementById("companionStageBadge").textContent = `${data.companion.stage} (${data.companion.species})`;
