@@ -988,13 +988,6 @@ class PF2eGenerator:
                 archetype=resolved_arch_name,
                 level=target_level
             )
-            else:
-                companion_data = resolve_companion(
-                    class_name=cls["name"],
-                    feats=chosen_feats,
-                    archetype=resolved_arch_name,
-                    level=target_level
-                )
 
         # 10. Assemble and Return
         subclass_obj = SubclassSummary(**current_char["subclass"]) if current_char.get("subclass") else None
