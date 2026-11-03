@@ -215,6 +215,9 @@ def resolve_companion(
 
     return AnimalCompanionData(
         name=f"{c_name} the {cfg['species']}",
+        creature_type="Animal Companion",
+        sub_type=cfg.get("species", "Beast"),
+        primary_ability=cfg.get("support", "Support Benefit: Adds tactical advantage."),
         species=cfg["species"],
         stage=stage,
         size=size,
