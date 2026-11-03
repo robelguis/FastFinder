@@ -160,6 +160,31 @@ def scale_existing_companion(companion_data: dict, old_level: int, target_level:
         comp["stage"] = comp["stage"].replace("Young", "Mature")
 
     return comp
+
+TERRAIN_TYPES = [
+    "Aquatic", "Arctic", "Desert", "Forest",
+    "Mountain", "Plains", "Sky", "Swamp", "Underground"
+]
+
+def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
+    fn_lower = feat_name.lower()
+
+    if "wilderness spotter" in fn_lower and "(" not in feat_name:
+        taken = [
+            fn.split("(")[-1].replace(")", "").strip().title()
+            for fn in existing_feat_names
+            if "wilderness spotter" in fn.lower() and "(" in fn
+        ]
+        available = [t for t in TERRAIN_TYPES if t not in taken]
+        chosen = random.choice(available) if available else random.choice(TERRAIN_TYPES)
+        return f"{feat_name} ({chosen})"
+
+    if "terrain stalker" in fn_lower and "(" not in feat_name:
+        stalker_opts = ["Rubble", "Snow", "Underbrush"]
+        return f"{feat_name} ({random.choice(stalker_opts)})"
+
+    return feat_name
+
 class PF2eGenerator:
     def __init__(self):
         self.ancestries = {a["name"].lower(): a for a in load_data("ancestries.json")}
@@ -423,9 +448,10 @@ class PF2eGenerator:
             skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2]]
             if skill_feats_2:
                 sf = random.choice(skill_feats_2)
+                resolved_name = resolve_feat_subchoices(sf["name"], {f.name for f in chosen_feats})
                 chosen_feats.append(FeatSummary(
                     id=sf["id"],
-                    name=sf["name"],
+                    name=resolved_name,
                     category="Skill (Level 2)",
                     action_cost=sf.get("action_cost"),
                     traits=sf.get("traits", []),
@@ -497,9 +523,10 @@ class PF2eGenerator:
             ]
             if skill_feats_4:
                 sf4 = random.choice(skill_feats_4)
+                resolved_name4 = resolve_feat_subchoices(sf4["name"], {f.name for f in chosen_feats})
                 chosen_feats.append(FeatSummary(
                     id=sf4["id"],
-                    name=sf4["name"],
+                    name=resolved_name4,
                     category="Skill (Level 4)",
                     action_cost=sf4.get("action_cost"),
                     traits=sf4.get("traits", []),
@@ -568,6 +595,24 @@ class PF2eGenerator:
                     action_cost=cf6.get("action_cost"),
                     traits=cf6.get("traits", []),
                     description=clean_pf2e_text(cf6.get("description", ""))
+                ))
+
+            skill_feats_6 = [
+                f for f in self.feats
+                if f.get("category") == "skill"
+                and f.get("level") in [1, 2, 4, 6]
+                and f["name"] not in [cf.name for cf in chosen_feats]
+            ]
+            if skill_feats_6:
+                sf6 = random.choice(skill_feats_6)
+                resolved_name6 = resolve_feat_subchoices(sf6["name"], {f.name for f in chosen_feats})
+                chosen_feats.append(FeatSummary(
+                    id=sf6["id"],
+                    name=resolved_name6,
+                    category="Skill (Level 6)",
+                    action_cost=sf6.get("action_cost"),
+                    traits=sf6.get("traits", []),
+                    description=clean_pf2e_text(sf6.get("description", ""))
                 ))
 
         # 6. Skills
@@ -825,9 +870,10 @@ class PF2eGenerator:
                 ]
                 if skill_feats_2:
                     sf = random.choice(skill_feats_2)
+                    resolved_name = resolve_feat_subchoices(sf["name"], existing_feat_names)
                     chosen_feats.append(FeatSummary(
                         id=sf["id"],
-                        name=sf["name"],
+                        name=resolved_name,
                         category="Skill (Level 2)",
                         action_cost=sf.get("action_cost"),
                         traits=sf.get("traits", []),
@@ -904,9 +950,10 @@ class PF2eGenerator:
                 ]
                 if skill_feats_4:
                     sf4 = random.choice(skill_feats_4)
+                    resolved_name4 = resolve_feat_subchoices(sf4["name"], existing_feat_names)
                     chosen_feats.append(FeatSummary(
                         id=sf4["id"],
-                        name=sf4["name"],
+                        name=resolved_name4,
                         category="Skill (Level 4)",
                         action_cost=sf4.get("action_cost"),
                         traits=sf4.get("traits", []),
@@ -981,6 +1028,25 @@ class PF2eGenerator:
                         description=clean_pf2e_text(cf6.get("description", ""))
                     ))
                     existing_feat_names.add(cf6["name"])
+
+                skill_feats_6 = [
+                    f for f in self.feats
+                    if f.get("category") == "skill"
+                    and f.get("level") in [1, 2, 4, 6]
+                    and f["name"] not in existing_feat_names
+                ]
+                if skill_feats_6:
+                    sf6 = random.choice(skill_feats_6)
+                    resolved_name6 = resolve_feat_subchoices(sf6["name"], existing_feat_names)
+                    chosen_feats.append(FeatSummary(
+                        id=sf6["id"],
+                        name=resolved_name6,
+                        category="Skill (Level 6)",
+                        action_cost=sf6.get("action_cost"),
+                        traits=sf6.get("traits", []),
+                        description=clean_pf2e_text(sf6.get("description", ""))
+                    ))
+                    existing_feat_names.add(resolved_name6)
 
         if any(f.name.lower() == "toughness" for f in chosen_feats):
             total_hp += target_level
