@@ -119,13 +119,22 @@ class PF2eGenerator:
         old_level = int(current_char.get("level", 1))
 
         # 1. Recover base info and core data
-        anc_name = current_char.get("ancestry", "").lower()
-        cls_name = current_char.get("character_class", "").lower()
-        bg_name = current_char.get("background", "").lower()
+        anc_name = (current_char.get("ancestry") or "").strip().lower()
+        cls_name = (current_char.get("character_class") or "").strip().lower()
+        bg_name = (current_char.get("background") or "").strip().lower()
         
-        anc = self.ancestries.get(anc_name, list(self.ancestries.values())[0])
-        cls = self.classes.get(cls_name, list(self.classes.values())[0])
-        bg = self.backgrounds.get(bg_name, list(self.backgrounds.values())[0])
+        anc = self.ancestries.get(anc_name) or next(
+            (a for a in self.ancestries.values() if a["name"].lower() == anc_name),
+            list(self.ancestries.values())[0]
+        )
+        cls = self.classes.get(cls_name) or next(
+            (c for c in self.classes.values() if c["name"].lower() == cls_name),
+            list(self.classes.values())[0]
+        )
+        bg = self.backgrounds.get(bg_name) or next(
+            (b for b in self.backgrounds.values() if b["name"].lower() == bg_name),
+            list(self.backgrounds.values())[0]
+        )
 
         # 2. Extract current attributes
         raw_attrs = current_char.get("attributes", {})
@@ -185,27 +194,25 @@ class PF2eGenerator:
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * target_level)
         total_hp = max(1, base_hp)
 
-        # 5. Preserve existing feats and append new level feats
+        # 5. Resolve Archetype (Preserve existing or pick one if reaching level >= 2)
+        archetype_data = None
+        existing_arch_name = current_char.get("archetype")
+        if target_level >= 2:
+            archetype_data = pick_archetype(cls["name"])
+            # If the character already had a specific archetype, retain its name
+            if existing_arch_name and archetype_data:
+                resolved_arch_name = existing_arch_name
+            else:
+                resolved_arch_name = archetype_data["name"] if archetype_data else None
+        else:
+            resolved_arch_name = None
+
+        # 6. Preserve existing feats and append new level feats
         existing_feats_raw = current_char.get("feats", [])
         chosen_feats: List[FeatSummary] = [FeatSummary(**f) for f in existing_feats_raw]
         existing_feat_names = {f.name for f in chosen_feats}
         cls_name_lower = cls["name"].lower()
 
-        # Check for archetype
-        archetype_name = current_char.get("archetype")
-        archetype_data = None
-        if archetype_name:
-            import app.engine.archetypes as arch_module
-            # Check common dictionary names or fall back to pick_archetype
-            arch_dict = getattr(arch_module, "ARCHETYPES", None) or getattr(arch_module, "ARCHETYPE_DATA", None)
-            if arch_dict and isinstance(arch_dict, dict):
-                archetype_data = next((a for a in arch_dict.values() if a.get("name", "").lower() == archetype_name.lower()), None)
-            
-            if not archetype_data and hasattr(arch_module, "pick_archetype"):
-                # If exact dictionary isn't exposed, pick by class or dedication lookup
-                archetype_data = arch_module.pick_archetype(cls["name"])
-
-        # Incrementally add feats for ungranted levels
         for lvl in range(old_level + 1, target_level + 1):
             if lvl == 2:
                 if archetype_data and archetype_data["level_2_dedication"]["name"] not in existing_feat_names:
@@ -289,7 +296,7 @@ class PF2eGenerator:
 
             elif lvl == 4:
                 if archetype_data:
-                    arch_lvl4 = [f for f in archetype_data["level_4_feats"] if f["name"] not in existing_feat_names]
+                    arch_lvl4 = [f for f in archetype_data.get("level_4_feats", []) if f["name"] not in existing_feat_names]
                     if arch_lvl4:
                         af4 = random.choice(arch_lvl4)
                         chosen_feats.append(FeatSummary(
@@ -411,7 +418,7 @@ class PF2eGenerator:
         if any(f.name.lower() == "toughness" for f in chosen_feats):
             total_hp += target_level
 
-        # 6. Recalculate Skills with updated level and mods
+        # 7. Recalculate Skills with updated level and mods
         all_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
@@ -419,7 +426,7 @@ class PF2eGenerator:
             level=target_level
         )
 
-        # 7. Update Spellcasting & Focus Spells
+        # 8. Update Spellcasting & Focus Spells
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
@@ -434,10 +441,10 @@ class PF2eGenerator:
             level=target_level
         )
 
-        # 8. Companion scaling
+        # 9. Companion scaling
         companion_data = current_char.get("companion")
         if companion_data:
-            arch_name = archetype_name.lower() if archetype_name else ""
+            arch_name = (resolved_arch_name or "").lower()
             all_feat_str = " ".join([f.name.lower() for f in chosen_feats])
             if cls_name_lower == "summoner":
                 companion_data = resolve_eidolon(master_hp=total_hp, level=target_level)
@@ -461,25 +468,28 @@ class PF2eGenerator:
                 companion_data = resolve_companion(
                     class_name=cls["name"],
                     feats=chosen_feats,
-                    archetype=archetype_name,
+                    archetype=resolved_arch_name,
                     level=target_level
                 )
 
-        # 9. Return updated CharacterSheet model
+        # 10. Assemble and Return
         subclass_obj = SubclassSummary(**current_char["subclass"]) if current_char.get("subclass") else None
+        
+        # Ensure the real ancestry description is returned directly from the loaded data
+        anc_desc = clean_pf2e_text(anc.get("description", "")) or current_char.get("ancestry_description", "")
 
         return CharacterSheet(
             name=current_char["name"],
             level=target_level,
-            ancestry=current_char["ancestry"],
-            ancestry_description=current_char.get("ancestry_description", ""),
+            ancestry=anc["name"],
+            ancestry_description=anc_desc,
             heritage=current_char["heritage"],
             background=current_char["background"],
-            character_class=current_char["character_class"],
+            character_class=cls["name"],
             subclass=subclass_obj,
-            archetype=current_char.get("archetype"),
-            size=current_char.get("size", "med"),
-            speed=current_char.get("speed", 25),
+            archetype=resolved_arch_name,
+            size=anc.get("size", current_char.get("size", "med")),
+            speed=anc.get("speed", current_char.get("speed", 25)),
             attributes=AttributeModifiers(**mods),
             defenses=Defenses(
                 ac=calculated_ac,
