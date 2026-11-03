@@ -39,6 +39,7 @@ class Strike(BaseModel):
     map_third: int
     damage_dice: str
     damage_type: str
+    languages: List[str] = ["Common"]
     traits: List[str] = []
 
 StrikeOption = Strike
@@ -79,6 +80,7 @@ class SpellSummary(BaseModel):
     name: str
     rank: int
     actions: str
+    languages: List[str] = ["Common"]
     traits: List[str] = []
     range: Optional[str] = None
     targets: Optional[str] = None
@@ -134,6 +136,7 @@ class PartnerCreatureData(BaseModel):
     strikes: List[Strike] = []
     primary_ability: str
     secondary_ability: Optional[str] = None
+    languages: List[str] = ["Common"]
     traits: List[str] = []
 
 AnimalCompanionData = PartnerCreatureData
@@ -148,6 +151,7 @@ class FeatSummary(BaseModel):
     name: str
     category: str
     action_cost: Optional[int] = None
+    languages: List[str] = ["Common"]
     traits: List[str] = []
     description: str
 
@@ -174,4 +178,5 @@ class CharacterSheet(BaseModel):
     focus_spells: Optional[FocusSpellData] = None
     companion: Optional[PartnerCreatureData] = None
     feats: List[FeatSummary] = []
+    languages: List[str] = ["Common"]
     traits: List[str] = []

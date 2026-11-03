@@ -689,6 +689,17 @@ class PF2eGenerator:
                 level=level
             )
 
+        # Resolve Languages
+        base_langs = list(anc.get("languages", ["Common"]))
+        if "Common" not in base_langs:
+            base_langs.insert(0, "Common")
+        int_mod = mods.get("int", 0)
+        bonus_pool = ["Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", "Orcish", "Draconic", "Sylvan", "Undercommon"]
+        avail = [l for l in bonus_pool if l not in base_langs]
+        if int_mod > 0 and avail:
+            base_langs.extend(random.sample(avail, min(int_mod, len(avail))))
+        character_languages = base_langs
+
         return CharacterSheet(
             name=resolved_name,
             level=level,
@@ -719,6 +730,7 @@ class PF2eGenerator:
             focus_spells=focus_data,
             companion=companion_data,
             feats=chosen_feats,
+            languages=character_languages,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
 
@@ -1098,6 +1110,17 @@ class PF2eGenerator:
         # 10. Assemble and Return
         subclass_obj = SubclassSummary(**current_char["subclass"]) if current_char.get("subclass") else None
         anc_desc = clean_pf2e_text(anc.get("description", "")) or current_char.get("ancestry_description", "")
+
+        # Resolve Languages
+        base_langs = list(anc.get("languages", ["Common"]))
+        if "Common" not in base_langs:
+            base_langs.insert(0, "Common")
+        int_mod = mods.get("int", 0)
+        bonus_pool = ["Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", "Orcish", "Draconic", "Sylvan", "Undercommon"]
+        avail = [l for l in bonus_pool if l not in base_langs]
+        if int_mod > 0 and avail:
+            base_langs.extend(random.sample(avail, min(int_mod, len(avail))))
+        character_languages = base_langs
 
         return CharacterSheet(
             name=current_char["name"],

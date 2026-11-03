@@ -616,6 +616,16 @@
               <p id="archetypeBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
             </div>
           </div>
+
+          <!-- Languages Box -->
+          <div class="sheet-box" id="languagesBox" style="margin-top: 0.6rem;">
+            <div class="sheet-box-title">Languages</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
+              <div id="characterLanguages" style="display: flex; flex-wrap: wrap; gap: 0.35rem; font-size: 0.78rem;">
+                <span style="background: #e2e8f0; color: #334155; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 500;">Common</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- RIGHT COLUMN: STRIKES, SPELLS, FEATS, CONSUMABLES & EQUIPMENT -->
@@ -974,6 +984,15 @@
       if (bgBoxEl) {
         bgTitleEl.textContent = `${data.background || "Background"} Lore`;
         bgDescEl.textContent = data.background_description || "Background details not found in compendium.";
+      }
+
+      // Populate Languages Box
+      const langContainer = document.getElementById("characterLanguages");
+      if (langContainer) {
+        const langs = (data.languages && data.languages.length > 0) ? data.languages : ["Common"];
+        langContainer.innerHTML = langs.map(l => 
+          `<span style="background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 600;">${l}</span>`
+        ).join("");
       }
 
       // Populate Archetype / Dedication Box
