@@ -845,10 +845,10 @@
       const ancDescEl = document.getElementById("ancestryBoxDesc");
       const ancTitleEl = document.getElementById("ancestryBoxTitle");
       if (ancTitleEl) {
-        ancTitleEl.textContent = (data.ancestry || "Ancestry") + " Lore";
+        ancTitleEl.textContent = `${data.ancestry || "Ancestry"} Lore`;
       }
       if (ancDescEl) {
-        ancDescEl.textContent = data.ancestry_description || (data.ancestry ? data.ancestry + " characters possess distinctive physical traits, adaptations, and specialized ancestral traditions." : "No ancestry description available.");
+        ancDescEl.textContent = data.ancestry_description || "Lore details not found in compendium.";
       }
 
       // Attributes
