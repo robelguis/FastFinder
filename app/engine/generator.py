@@ -112,7 +112,53 @@ def load_data(filename: str) -> Any:
         raise FileNotFoundError(f"Missing {filename}.")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+def scale_existing_companion(companion_data: dict, old_level: int, target_level: int, master_hp: int) -> dict:
+    """
+    Scales an existing companion's numerical stats from old_level to target_level
+    while preserving its name, species, sub-type, traits, and abilities.
+    """
+    comp = dict(companion_data)
+    level_delta = target_level - old_level
+    if level_delta <= 0:
+        return comp
 
+    creature_type = (comp.get("creature_type") or "").lower()
+
+    # 1. Hit Points
+    if "eidolon" in creature_type:
+        comp["hp"] = master_hp
+    else:
+        # Standard animal / construct companion HP gain: ~8 HP per level
+        comp["hp"] = comp.get("hp", 20) + (level_delta * 8)
+
+    # 2. Level 4 Maturity Milestone Boost (Trained -> Expert bump of +2)
+    stage_bump = 2 if (old_level < 4 and target_level >= 4 and "eidolon" not in creature_type) else 0
+
+    # 3. Defenses (AC & Saves scale by level_delta + maturity bump)
+    total_stat_boost = level_delta + stage_bump
+    comp["ac"] = comp.get("ac", 16) + total_stat_boost
+    comp["fortitude"] = comp.get("fortitude", 5) + total_stat_boost
+    comp["reflex"] = comp.get("reflex", 5) + total_stat_boost
+    comp["will"] = comp.get("will", 5) + total_stat_boost
+    comp["perception"] = comp.get("perception", 4) + total_stat_boost
+
+    # 4. Strikes
+    updated_strikes = []
+    for strike in comp.get("strikes", []):
+        s = dict(strike)
+        s["attack_bonus"] = s.get("attack_bonus", 5) + total_stat_boost
+        if "map_second" in s:
+            s["map_second"] = s.get("map_second", 0) + total_stat_boost
+        if "map_third" in s:
+            s["map_third"] = s.get("map_third", -5) + total_stat_boost
+        updated_strikes.append(s)
+    comp["strikes"] = updated_strikes
+
+    # 5. Advance Stage Name at Level 4 for Animal Companions
+    if target_level >= 4 and "Young" in comp.get("stage", ""):
+        comp["stage"] = comp["stage"].replace("Young", "Mature")
+
+    return comp
 class PF2eGenerator:
     def __init__(self):
         self.ancestries = {a["name"].lower(): a for a in load_data("ancestries.json")}
@@ -924,29 +970,23 @@ class PF2eGenerator:
             level=target_level
         )
 
-        # 9. Companions
-        companion_data = current_char.get("companion")
-        if companion_data:
-            arch_name = (resolved_arch_name or "").lower()
-            all_feat_str = " ".join([f.name.lower() for f in chosen_feats])
-            if cls_name_lower == "summoner":
-                companion_data = resolve_eidolon(master_hp=total_hp, level=target_level)
-            elif cls_name_lower == "inventor":
-                companion_data = resolve_construct_companion(master_int_mod=mods["int"], level=target_level)
-            elif "undead master" in arch_name or "undead companion" in all_feat_str:
-                companion_data = resolve_undead_companion(level=target_level)
-            elif "plant companion" in all_feat_str or (cls_name_lower == "druid" and "leaf" in all_feat_str):
-                companion_data = resolve_plant_companion(level=target_level)
-            elif cls_name_lower == "witch" or "familiar" in all_feat_str:
-                companion_data = resolve_familiar(
-                    master_ac=calculated_ac,
-                    master_fort=fort_prof.modifier,
-                    master_ref=ref_prof.modifier,
-                    master_will=will_prof.modifier,
-                    master_perception=perception_prof.modifier,
-                    class_name=cls["name"],
-                    level=target_level
-                )
+        # 9. Companions (Scale existing companion in place without re-rolling identity)
+        raw_companion = current_char.get("companion")
+        if raw_companion and raw_companion.get("name"):
+            companion_data = scale_existing_companion(
+                companion_data=raw_companion,
+                old_level=old_level,
+                target_level=target_level,
+                master_hp=total_hp
+            )
+        else:
+            # If the character didn't have one before, check if a newly gained archetype/feat grants one
+            companion_data = resolve_companion(
+                class_name=cls["name"],
+                feats=chosen_feats,
+                archetype=resolved_arch_name,
+                level=target_level
+            )
             else:
                 companion_data = resolve_companion(
                     class_name=cls["name"],
