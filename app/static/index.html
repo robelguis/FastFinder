@@ -357,6 +357,10 @@
         <select id="classSelect"><option value="">Any Class</option></select>
       </div>
       <div class="field">
+        <label for="backgroundSelect">Background</label>
+        <select id="backgroundSelect"><option value="">Any Background</option></select>
+      </div>
+      <div class="field">
         <label for="levelSelect">Level</label>
         <select id="levelSelect">
           <option value="1">Level 1</option>
@@ -476,6 +480,13 @@
             <div class="sheet-box-title">Skills Ledger</div>
             <div class="sheet-box-content">
               <div class="skills-ledger" id="skillsContainer"></div>
+            </div>
+          </div>
+
+          <div class="sheet-box" id="ancestryBox" style="margin-top: 0.6rem;">
+            <div class="sheet-box-title" id="ancestryBoxTitle">Ancestry Lore</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
+              <p id="ancestryBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
             </div>
           </div>
         </div>
@@ -648,22 +659,39 @@
       try {
         const res = await fetch('/api/options');
         const data = await res.json();
-        
+
         const ancSelect = document.getElementById('ancestrySelect');
-        data.ancestries.forEach(a => {
-          const opt = document.createElement('option');
-          opt.value = a;
-          opt.textContent = a;
-          ancSelect.appendChild(opt);
-        });
+        if (ancSelect && data.ancestries) {
+          ancSelect.innerHTML = '<option value="">Any Ancestry</option>';
+          data.ancestries.forEach(a => {
+            const opt = document.createElement('option');
+            opt.value = a;
+            opt.textContent = a;
+            ancSelect.appendChild(opt);
+          });
+        }
 
         const clsSelect = document.getElementById('classSelect');
-        data.classes.forEach(c => {
-          const opt = document.createElement('option');
-          opt.value = c;
-          opt.textContent = c;
-          clsSelect.appendChild(opt);
-        });
+        if (clsSelect && data.classes) {
+          clsSelect.innerHTML = '<option value="">Any Class</option>';
+          data.classes.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c;
+            opt.textContent = c;
+            clsSelect.appendChild(opt);
+          });
+        }
+
+        const bgSelect = document.getElementById("backgroundSelect");
+        if (bgSelect && data.backgrounds) {
+          bgSelect.innerHTML = '<option value="">Any Background</option>';
+          data.backgrounds.forEach(b => {
+            const opt = document.createElement("option");
+            opt.value = b;
+            opt.textContent = b;
+            bgSelect.appendChild(opt);
+          });
+        }
       } catch (err) {
         console.error("Failed to load options", err);
       }
@@ -741,6 +769,7 @@
       const nameInput = document.getElementById('charName').value.trim();
       const anc = document.getElementById('ancestrySelect').value;
       const cls = document.getElementById('classSelect').value;
+      const bg = document.getElementById("backgroundSelect") ? document.getElementById("backgroundSelect").value : "";
       const lvl = document.getElementById('levelSelect').value || 1;
       const useDedication = document.getElementById('dedicationToggle')?.checked;
 
@@ -748,6 +777,7 @@
       if (nameInput) params.append('name', nameInput);
       if (anc) params.append('ancestry', anc);
       if (cls) params.append('class_name', cls);
+      if (bg) params.append("background", bg);
       params.append('level', lvl);
       params.append('dedication', useDedication ? 'true' : 'false');
 
@@ -764,7 +794,7 @@
       document.getElementById('sheetClass').textContent = classDisplay;
       
       const archBadge = document.getElementById('sheetArchetypeBadge');
-      if (data.archetype) {
+      if (data.archetype && (data.level || 1) >= 2) {
         archBadge.textContent = `${data.archetype} Dedication`;
         archBadge.style.display = 'inline-block';
       } else {
@@ -772,6 +802,16 @@
       }
 
       document.getElementById('sheetLevel').textContent = data.level || 1;
+
+      // Populate Ancestry Lore Box
+      const ancDescEl = document.getElementById("ancestryBoxDesc");
+      const ancTitleEl = document.getElementById("ancestryBoxTitle");
+      if (ancTitleEl) {
+        ancTitleEl.textContent = (data.ancestry || "Ancestry") + " Lore";
+      }
+      if (ancDescEl) {
+        ancDescEl.textContent = data.ancestry_description || (data.ancestry ? data.ancestry + " characters possess distinctive physical traits, adaptations, and specialized ancestral traditions." : "No ancestry description available.");
+      }
 
       // Attributes
       const attrs = data.attributes || {};

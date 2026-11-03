@@ -128,6 +128,7 @@ class PF2eGenerator:
         self,
         ancestry_name: Optional[str] = None,
         class_name: Optional[str] = None,
+        background_name: Optional[str] = None,
         char_name: Optional[str] = None,
         level: int = 1,
         use_dedication: bool = False
@@ -145,12 +146,16 @@ class PF2eGenerator:
         else:
             cls = random.choice(list(self.classes.values()))
 
-        bg = random.choice(list(self.backgrounds.values()))
+        if background_name and background_name.strip():
+            matched_bg = next((b for b in self.backgrounds.values() if b["name"].lower() == background_name.strip().lower()), None)
+            bg = matched_bg if matched_bg else random.choice(list(self.backgrounds.values()))
+        else:
+            bg = random.choice(list(self.backgrounds.values()))
         heritage_data = resolve_heritage(anc["name"])
         subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
 
-        archetype_data = pick_archetype(cls["name"]) if use_dedication else None
+        archetype_data = pick_archetype(cls["name"]) if (use_dedication and level >= 2) else None
 
         # 2. Track Attribute Boosts (Level 1)
         mods = {attr: 0 for attr in ATTRIBUTES}
@@ -575,6 +580,7 @@ class PF2eGenerator:
             name=resolved_name,
             level=level,
             ancestry=anc["name"],
+            ancestry_description=clean_pf2e_text(anc.get("description", "")),
             heritage=heritage_data["name"],
             background=bg["name"],
             character_class=cls["name"],

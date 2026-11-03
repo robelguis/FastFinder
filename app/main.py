@@ -23,8 +23,9 @@ async def root():
 @app.get("/api/options")
 async def get_options():
     return {
-        "ancestries": sorted([a.title() for a in generator.ancestries.keys()]),
-        "classes": sorted([c.title() for c in generator.classes.keys()])
+        "ancestries": sorted(list(generator.ancestries.keys())),
+        "classes": sorted(list(generator.classes.keys())),
+        "backgrounds": sorted(list(generator.backgrounds.keys()))
     }
 
 @app.get("/api/generate")
@@ -32,6 +33,7 @@ async def generate_character(
     name: Optional[str] = None,
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
+    background: Optional[str] = None,
     level: int = Query(1, ge=1, le=6),
     dedication: bool = Query(False)
 ):
@@ -39,6 +41,7 @@ async def generate_character(
         sheet = generator.generate(
             ancestry_name=ancestry,
             class_name=class_name,
+            background_name=background,
             char_name=name,
             level=level,
             use_dedication=dedication
