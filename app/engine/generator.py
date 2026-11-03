@@ -507,6 +507,7 @@ class PF2eGenerator:
             class_name=cls["name"],
             feats=chosen_feats,
             attribute_mods=mods,
+            subclass_name=subclass_data["name"] if subclass_data else None,
             level=level
         )
 

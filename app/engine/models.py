@@ -113,6 +113,10 @@ class FocusSpellData(BaseModel):
     spell_dc: int = 10
     spell_attack: int = 0
     spells: List[SpellSummary] = []
+    # Oracle Remaster fields:
+    cursebound_limit: Optional[int] = None
+    curse_mystery: Optional[str] = None
+    cursebound_effects: Optional[Dict[str, str]] = None
 
 class PartnerCreatureData(BaseModel):
     name: str
