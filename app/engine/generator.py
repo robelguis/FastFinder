@@ -317,6 +317,20 @@ class PF2eGenerator:
         # 5. Feat Progression
         cls_name_lower = cls["name"].lower()
         chosen_feats: List[FeatSummary] = []
+        # Extract background skill feat if present
+        bg_desc = bg.get("description", "")
+        bg_feat_match = re.search(r"Item\.([^\]]+)\] skill feat", bg_desc) or re.search(r"gain the @UUID\[[^\]]*\.Item\.([^\]]+)\]", bg_desc)
+        bg_feat_name = bg_feat_match.group(1).strip() if bg_feat_match else None
+        if bg_feat_name:
+            chosen_feats.append(FeatSummary(
+                id=f"feat-bg-{bg_feat_name.lower().replace(' ', '-')}",
+                name=bg_feat_name,
+                category="Background Feat",
+                action_cost=None,
+                traits=["General", "Skill"],
+                description=f"Granted by the {bg['name']} background."
+            ))
+
 
         # Heritage Feature & Concrete Choice Resolution
         h_name = heritage_data["name"]

@@ -1,3 +1,4 @@
+import re
 import random
 from typing import Dict, Any, List
 from app.engine.models import SkillEntry
@@ -55,19 +56,25 @@ def resolve_character_skills(
     base_trained = list(CLASS_TRAINED_SKILLS.get(cls_key, ["Athletics"]))
     
     # 2. Background skill & Lore
-    bg_skills = background_data.get("skills", [])
-    for sk in bg_skills:
-        sk_title = sk.title()
+    raw_bg_skills = background_data.get("trained_skills", []) or background_data.get("skills", [])
+    for sk in raw_bg_skills:
+        sk_title = sk.strip().title()
         if sk_title in CORE_SKILLS and sk_title not in base_trained:
             base_trained.append(sk_title)
 
-    lore_name = background_data.get("lore")
-    if not lore_name or lore_name.strip().lower() == "lore":
-        bg_name = background_data.get("name", "").strip()
-        lore_name = f"{bg_name} Lore" if bg_name else "Settlement Lore"
-    else:
-        if not lore_name.endswith("Lore"):
-            lore_name = f"{lore_name} Lore" 
+    # Resolve Lore name
+    raw_lore = background_data.get("trained_lore") or background_data.get("lore") or ""
+    desc = background_data.get("description", "")
+    if not raw_lore:
+        # Check description for explicit "choice of the X Lore or Y Lore"
+        lore_matches = re.findall(r"([A-Z][a-zA-Z]+ Lore)", desc)
+        if lore_matches:
+            raw_lore = random.choice(lore_matches)
+        else:
+            bg_name = background_data.get("name", "").strip()
+            raw_lore = f"{bg_name} Lore" if bg_name else "Settlement Lore"
+
+    lore_name = raw_lore if raw_lore.endswith("Lore") else f"{raw_lore} Lore" 
     
     # 3. Extra skill picks (2 + INT mod, min 1; Rogue/Investigator get 7)
     int_mod = attribute_mods.get("int", 0)
