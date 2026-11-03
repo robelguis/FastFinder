@@ -22,38 +22,208 @@ PERMANENT_MAGIC_ITEMS: List[Dict[str, Any]] = [
     {"name": "Bracers of Missile Deflection", "level": 3, "cost_gp": 52, "bulk": "L", "description": "+1 circumstance bonus to AC against ranged attacks with reaction."}
 ]
 
-CLASS_WEAPONS: Dict[str, List[Dict[str, Any]]] = {
-    "fighter": [
-        {"name": "Longsword", "dice": "1d8", "type": "Slashing", "traits": ["Versatile P"]},
-        {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
+# Categorized PF2e Weapon Pools for Rich Randomized Selection
+MARTIAL_TWO_HANDED = [
+    {"name": "Greatsword", "dice": "1d12", "type": "Slashing", "traits": ["Versatile P"]},
+    {"name": "Greataxe", "dice": "1d12", "type": "Slashing", "traits": ["Sweep"]},
+    {"name": "Maul", "dice": "1d12", "type": "Bludgeoning", "traits": ["Shove"]},
+    {"name": "Halberd", "dice": "1d10", "type": "Piercing", "traits": ["Reach", "Versatile S"]},
+    {"name": "Glaive", "dice": "1d8", "type": "Slashing", "traits": ["Deadly d8", "Forceful", "Reach"]},
+    {"name": "Guisarme", "dice": "1d10", "type": "Slashing", "traits": ["Reach", "Trip"]},
+    {"name": "Greatpick", "dice": "1d10", "type": "Piercing", "traits": ["Fatal d12"]},
+]
+
+MARTIAL_ONE_HANDED = [
+    {"name": "Longsword", "dice": "1d8", "type": "Slashing", "traits": ["Versatile P"]},
+    {"name": "Warhammer", "dice": "1d8", "type": "Bludgeoning", "traits": ["Shove"]},
+    {"name": "Battleaxe", "dice": "1d8", "type": "Slashing", "traits": ["Sweep"]},
+    {"name": "Flail", "dice": "1d6", "type": "Bludgeoning", "traits": ["Disarm", "Sweep", "Trip"]},
+    {"name": "Pick", "dice": "1d6", "type": "Piercing", "traits": ["Fatal d10"]},
+    {"name": "Scimitar", "dice": "1d6", "type": "Slashing", "traits": ["Forceful", "Sweep"]},
+    {"name": "Trident", "dice": "1d8", "type": "Piercing", "traits": ["Thrown 20 ft"]},
+]
+
+MARTIAL_FINESSE = [
+    {"name": "Rapier", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d8", "Disarm", "Finesse"]},
+    {"name": "Shortsword", "dice": "1d6", "type": "Piercing", "traits": ["Agile", "Finesse", "Versatile S"]},
+    {"name": "Scourge", "dice": "1d4", "type": "Slashing", "traits": ["Agile", "Disarm", "Finesse", "Nonlethal", "Sweep"]},
+    {"name": "Kukri", "dice": "1d6", "type": "Slashing", "traits": ["Agile", "Finesse", "Trip"]},
+    {"name": "Sap", "dice": "1d6", "type": "Bludgeoning", "traits": ["Agile", "Finesse", "Nonlethal"]},
+]
+
+MARTIAL_RANGED = [
+    {"name": "Composite Longbow", "dice": "1d8", "type": "Piercing", "traits": ["Deadly d10", "Propulsive", "Range 100 ft", "Volley 30 ft"]},
+    {"name": "Composite Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Propulsive", "Range 60 ft"]},
+    {"name": "Longbow", "dice": "1d8", "type": "Piercing", "traits": ["Deadly d10", "Range 100 ft", "Volley 30 ft"]},
+    {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]},
+    {"name": "Heavy Crossbow", "dice": "1d10", "type": "Piercing", "traits": ["Range 120 ft", "Reload 2"]},
+]
+
+SIMPLE_MELEE = [
+    {"name": "Spear", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 20 ft"]},
+    {"name": "Morningstar", "dice": "1d6", "type": "Bludgeoning", "traits": ["Versatile P"]},
+    {"name": "Mace", "dice": "1d6", "type": "Bludgeoning", "traits": ["Shove"]},
+    {"name": "Club", "dice": "1d6", "type": "Bludgeoning", "traits": ["Thrown 10 ft"]},
+    {"name": "Longspear", "dice": "1d8", "type": "Piercing", "traits": ["Reach"]},
+    {"name": "Sickle", "dice": "1d4", "type": "Slashing", "traits": ["Agile", "Finesse", "Trip"]},
+    {"name": "Hatchet", "dice": "1d6", "type": "Slashing", "traits": ["Agile", "Sweep", "Thrown 10 ft"]},
+]
+
+SIMPLE_RANGED = [
+    {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]},
+    {"name": "Hand Crossbow", "dice": "1d6", "type": "Piercing", "traits": ["Range 60 ft", "Reload 1"]},
+    {"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]},
+    {"name": "Dart", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Thrown 20 ft"]},
+    {"name": "Javelin", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 30 ft"]},
+]
+
+SECONDARY_BACKUPS = [
+    {"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]},
+    {"name": "Hatchet", "dice": "1d6", "type": "Slashing", "traits": ["Agile", "Sweep", "Thrown 10 ft"]},
+    {"name": "Shortsword", "dice": "1d6", "type": "Piercing", "traits": ["Agile", "Finesse", "Versatile S"]},
+    {"name": "Light Hammer", "dice": "1d6", "type": "Bludgeoning", "traits": ["Agile", "Thrown 20 ft"]},
+    {"name": "Sap", "dice": "1d6", "type": "Bludgeoning", "traits": ["Agile", "Finesse", "Nonlethal"]},
+    {"name": "Gauntlet", "dice": "1d4", "type": "Bludgeoning", "traits": ["Agile", "Free-Hand"]},
+]
+
+
+# Ancestral Weapons (Restricted by Ancestry)
+ANCESTRAL_WEAPONS: Dict[str, List[Dict[str, Any]]] = {
+    "goblin": [
+        {"name": "Dogslicer", "dice": "1d6", "type": "Slashing", "traits": ["Agile", "Backstabber", "Finesse", "Goblin"]},
+        {"name": "Horsechopper", "dice": "1d8", "type": "Piercing", "traits": ["Goblin", "Reach", "Trip", "Versatile S"]},
     ],
-    "barbarian": [
-        {"name": "Greataxe", "dice": "1d12", "type": "Slashing", "traits": ["Sweep"]},
-        {"name": "Javelin", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 30 ft"]}
+    "dwarf": [
+        {"name": "Clan Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Dwarf", "Parry", "Versatile B"]},
+        {"name": "Dwarven War Axe", "dice": "1d8", "type": "Slashing", "traits": ["Dwarf", "Sweep", "Two-Hand d12"]},
+        {"name": "Dwarven Scattergun", "dice": "1d8", "type": "Piercing", "traits": ["Concussive", "Dwarf", "Kickback", "Range 50 ft", "Reload 1", "Scatter 10 ft"]},
     ],
-    "rogue": [
-        {"name": "Rapier", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d8", "Disarm", "Finesse"]},
-        {"name": "Shortsword", "dice": "1d6", "type": "Piercing", "traits": ["Agile", "Finesse", "Versatile S"]}
+    "elf": [
+        {"name": "Elven Curve Blade", "dice": "1d8", "type": "Slashing", "traits": ["Elf", "Finesse", "Forceful"]},
+        {"name": "Elven Branched Spear", "dice": "1d6", "type": "Piercing", "traits": ["Agile", "Deadly d8", "Elf", "Finesse", "Reach"]},
     ],
-    "wizard": [
-        {"name": "Staff", "dice": "1d4", "type": "Bludgeoning", "traits": ["Two-Hand d8"]},
-        {"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]}
+    "gnome": [
+        {"name": "Gnome Flickmace", "dice": "1d8", "type": "Bludgeoning", "traits": ["Gnome", "Reach"]},
+        {"name": "Gnome Hooked Hammer", "dice": "1d6", "type": "Bludgeoning", "traits": ["Gnome", "Trip", "Two-Hand d10", "Versatile P"]},
     ],
-    "cleric": [
-        {"name": "Warhammer", "dice": "1d8", "type": "Bludgeoning", "traits": ["Shove"]},
-        {"name": "Light Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]}
+    "orc": [
+        {"name": "Orc Knuckle Dagger", "dice": "1d6", "type": "Piercing", "traits": ["Agile", "Finesse", "Orc"]},
+        {"name": "Orc Necksplitter", "dice": "1d8", "type": "Slashing", "traits": ["Forceful", "Orc", "Sweep"]},
     ],
-    "default": [
-        {"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]},
-        {"name": "Staff", "dice": "1d4", "type": "Bludgeoning", "traits": ["Two-Hand d8"]}
+    "halfling": [
+        {"name": "Halfling Sling Staff", "dice": "1d10", "type": "Bludgeoning", "traits": ["Halfling", "Propulsive", "Range 80 ft", "Reload 1"]},
+        {"name": "Filcher's Fork", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Backstabber", "Deadly d6", "Finesse", "Halfling", "Thrown 20 ft"]},
+    ],
+    "kobold": [
+        {"name": "Fangwire", "dice": "1d4", "type": "Slashing", "traits": ["Agile", "Deadly d8", "Finesse", "Grapple", "Kobold"]},
     ]
 }
+
+def select_class_weapons(cls_key: str, str_mod: int, dex_mod: int, ancestry_name: str = "") -> List[Dict[str, Any]]:
+    """Dynamically selects a primary weapon and a distinct secondary backup."""
+    is_dex_build = dex_mod > str_mod
+    anc_key = (ancestry_name or "").lower().strip()
+    anc_options = ANCESTRAL_WEAPONS.get(anc_key, [])
+
+    # 1. Fighter, Champion, Barbarian
+    if cls_key in ["fighter", "barbarian", "champion"]:
+        if anc_options and random.random() < 0.35:
+            prim = random.choice(anc_options)
+        elif is_dex_build:
+            dex_pool = MARTIAL_FINESSE + [w for w in MARTIAL_RANGED if "Bow" in w["name"]]
+            if anc_options:
+                dex_pool += [w for w in anc_options if "Finesse" in w.get("traits", []) or "Ranged" in " ".join(w.get("traits", []))]
+            prim = random.choice(dex_pool)
+        else:
+            style_roll = random.random()
+            if style_roll < 0.40 and cls_key != "barbarian":
+                prim = random.choice(MARTIAL_ONE_HANDED)
+            elif style_roll < 0.75:
+                prim = random.choice(MARTIAL_TWO_HANDED)
+            else:
+                prim = random.choice(MARTIAL_ONE_HANDED + MARTIAL_TWO_HANDED)
+
+        sec_pool = [w for w in (SECONDARY_BACKUPS + MARTIAL_RANGED + SIMPLE_RANGED) if w["name"] != prim["name"]]
+        sec = random.choice(sec_pool)
+        return [prim, sec]
+
+    # 2. Ranger
+    if cls_key == "ranger":
+        prim = random.choice(MARTIAL_RANGED if is_dex_build else (MARTIAL_ONE_HANDED + MARTIAL_TWO_HANDED))
+        sec_pool = [w for w in (MARTIAL_FINESSE + SECONDARY_BACKUPS) if w["name"] != prim["name"]]
+        return [prim, random.choice(sec_pool)]
+
+    # 3. Rogue, Swashbuckler, Investigator
+    if cls_key in ["rogue", "swashbuckler", "investigator"]:
+        finesse_pool = list(MARTIAL_FINESSE)
+        if anc_options:
+            finesse_pool += [w for w in anc_options if "Finesse" in w.get("traits", []) or "Agile" in w.get("traits", [])]
+        prim = random.choice(finesse_pool)
+        sec_pool = [w for w in (SECONDARY_BACKUPS + SIMPLE_RANGED) if w["name"] != prim["name"]]
+        return [prim, random.choice(sec_pool)]
+
+    # 4. Monk
+    if cls_key == "monk":
+        monk_options = [
+            {"name": "Bo Staff", "dice": "1d8", "type": "Bludgeoning", "traits": ["Monk", "Parry", "Reach", "Trip"]},
+            {"name": "Temple Sword", "dice": "1d8", "type": "Slashing", "traits": ["Monk", "Trip"]},
+            {"name": "Tiger Fork", "dice": "1d8", "type": "Piercing", "traits": ["Monk", "Two-Hand d10"]},
+            {"name": "Kama", "dice": "1d6", "type": "Slashing", "traits": ["Agile", "Monk", "Trip"]},
+            {"name": "Nunchaku", "dice": "1d6", "type": "Bludgeoning", "traits": ["Backswing", "Disarm", "Finesse", "Monk"]},
+            {"name": "Shuriken", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Monk", "Reload 0", "Thrown 20 ft"]},
+        ]
+        prim = random.choice(monk_options)
+        sec = random.choice([w for w in monk_options if w["name"] != prim["name"]])
+        return [prim, sec]
+
+    # 5. Gunslinger
+    if cls_key == "gunslinger":
+        guns = [
+            {"name": "Dueling Pistol", "dice": "1d6", "type": "Piercing", "traits": ["Concussive", "Fatal d10", "Range 60 ft", "Reload 1"]},
+            {"name": "Flintlock Musket", "dice": "1d6", "type": "Piercing", "traits": ["Concussive", "Fatal d10", "Range 70 ft", "Reload 1", "Two-Hand d10"]},
+            {"name": "Arquebus", "dice": "1d8", "type": "Piercing", "traits": ["Concussive", "Fatal d12", "Kickback", "Range 150 ft", "Reload 1"]},
+        ]
+        prim = random.choice(guns)
+        sec = random.choice(MARTIAL_FINESSE + SECONDARY_BACKUPS)
+        return [prim, sec]
+
+    # 6. Cleric, Druid, Kineticist, Thaumaturge
+    if cls_key in ["cleric", "druid", "kineticist", "thaumaturge"]:
+        prim = random.choice(SIMPLE_MELEE + (MARTIAL_ONE_HANDED if cls_key in ["thaumaturge", "cleric"] else []))
+        sec = random.choice(SIMPLE_RANGED + SECONDARY_BACKUPS)
+        return [prim, sec]
+
+    # 7. Bard, Alchemist
+    if cls_key in ["bard", "alchemist"]:
+        prim = random.choice(MARTIAL_FINESSE + SIMPLE_MELEE)
+        sec = random.choice(SIMPLE_RANGED + SECONDARY_BACKUPS)
+        return [prim, sec]
+
+    # 8. Casters (Wizard, Witch, Sorcerer, Oracle, Psychic)
+    caster_primary = [
+        {"name": "Staff", "dice": "1d4", "type": "Bludgeoning", "traits": ["Two-Hand d8"]},
+        {"name": "Spear", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 20 ft"]},
+        {"name": "Morningstar", "dice": "1d6", "type": "Bludgeoning", "traits": ["Versatile P"]},
+        {"name": "Sickle", "dice": "1d4", "type": "Slashing", "traits": ["Agile", "Finesse", "Trip"]},
+        {"name": "Club", "dice": "1d6", "type": "Bludgeoning", "traits": ["Thrown 10 ft"]},
+    ]
+    caster_ranged = [
+        {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]},
+        {"name": "Hand Crossbow", "dice": "1d6", "type": "Piercing", "traits": ["Range 60 ft", "Reload 1"]},
+        {"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]},
+        {"name": "Dart", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Thrown 20 ft"]},
+        {"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]},
+    ]
+    prim = random.choice(caster_primary)
+    sec = random.choice([w for w in caster_ranged if w["name"] != prim["name"]])
+    return [prim, sec]
 
 def resolve_equipment(
     class_name: str,
     str_mod: int,
     dex_mod: int,
-    level: int = 1
+    level: int = 1,
+    ancestry_name: str = ""
 ) -> Tuple[EquipmentLoadout, int, int]:
     cls_key = class_name.lower()
     lvl = max(1, min(6, level))
@@ -62,7 +232,7 @@ def resolve_equipment(
     budget_gp = wealth_cfg["lump_gp"]
 
     # 1. Base Weapon Selection & Rune Progression
-    raw_weps = CLASS_WEAPONS.get(cls_key, CLASS_WEAPONS["default"])
+    raw_weps = select_class_weapons(cls_key, str_mod, dex_mod, ancestry_name=ancestry_name)
     weapons: List[Item] = []
     strikes: List[Strike] = []
 

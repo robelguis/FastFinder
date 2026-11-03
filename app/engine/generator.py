@@ -324,7 +324,8 @@ class PF2eGenerator:
             cls["name"],
             str_mod=mods["str"],
             dex_mod=mods["dex"],
-            level=level
+            level=level,
+            ancestry_name=anc["name"]
         )
 
         if level >= 5:
@@ -799,7 +800,8 @@ class PF2eGenerator:
             cls["name"],
             str_mod=mods["str"],
             dex_mod=mods["dex"],
-            level=target_level
+            level=target_level,
+            ancestry_name=anc["name"]
         )
 
         if target_level >= 5:
