@@ -10,6 +10,7 @@ from app.engine.models import (
     Proficiency,
     FeatSummary,
     SubclassSummary,
+    PartnerCreatureData,
 )
 from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
@@ -970,17 +971,17 @@ class PF2eGenerator:
             level=target_level
         )
 
-        # 9. Companions (Scale existing companion in place without re-rolling identity)
+        # 9. Companions (Preserve identity and scale stats in place)
         raw_companion = current_char.get("companion")
         if raw_companion and raw_companion.get("name"):
-            companion_data = scale_existing_companion(
+            scaled_dict = scale_existing_companion(
                 companion_data=raw_companion,
                 old_level=old_level,
                 target_level=target_level,
                 master_hp=total_hp
             )
+            companion_data = PartnerCreatureData(**scaled_dict)
         else:
-            # If the character didn't have one before, check if a newly gained archetype/feat grants one
             companion_data = resolve_companion(
                 class_name=cls["name"],
                 feats=chosen_feats,
