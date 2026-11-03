@@ -575,7 +575,8 @@ class PF2eGenerator:
             class_name=cls["name"],
             background_data=bg,
             attribute_mods=mods,
-            level=level
+            level=level,
+            feats=chosen_feats
         )
 
         if extra_trained_skill:
@@ -697,9 +698,24 @@ class PF2eGenerator:
             list(self.backgrounds.values())[0]
         )
 
-        # 2. Extract current attributes
+        # 2. Extract current attributes (supporting both short and full field names)
         raw_attrs = current_char.get("attributes", {})
-        mods = {attr: raw_attrs.get(attr, 0) for attr in ATTRIBUTES}
+        attr_alias = {
+            "str": ["str", "strength"],
+            "dex": ["dex", "dexterity"],
+            "con": ["con", "constitution"],
+            "int": ["int", "intelligence"],
+            "wis": ["wis", "wisdom"],
+            "cha": ["cha", "charisma"]
+        }
+        mods = {}
+        for short_name, aliases in attr_alias.items():
+            val = 0
+            for a in aliases:
+                if a in raw_attrs:
+                    val = raw_attrs[a]
+                    break
+            mods[short_name] = val
 
         key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
         key_attr = key_options[0] if key_options else "str"
@@ -974,7 +990,8 @@ class PF2eGenerator:
             class_name=cls["name"],
             background_data=bg,
             attribute_mods=mods,
-            level=target_level
+            level=target_level,
+            feats=chosen_feats
         )
 
         # 8. Spellcasting
