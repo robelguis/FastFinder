@@ -195,8 +195,15 @@ class PF2eGenerator:
         archetype_name = current_char.get("archetype")
         archetype_data = None
         if archetype_name:
-            from app.engine.archetypes import ARCHETYPES
-            archetype_data = next((a for a in ARCHETYPES.values() if a["name"].lower() == archetype_name.lower()), None)
+            import app.engine.archetypes as arch_module
+            # Check common dictionary names or fall back to pick_archetype
+            arch_dict = getattr(arch_module, "ARCHETYPES", None) or getattr(arch_module, "ARCHETYPE_DATA", None)
+            if arch_dict and isinstance(arch_dict, dict):
+                archetype_data = next((a for a in arch_dict.values() if a.get("name", "").lower() == archetype_name.lower()), None)
+            
+            if not archetype_data and hasattr(arch_module, "pick_archetype"):
+                # If exact dictionary isn't exposed, pick by class or dedication lookup
+                archetype_data = arch_module.pick_archetype(cls["name"])
 
         # Incrementally add feats for ungranted levels
         for lvl in range(old_level + 1, target_level + 1):
