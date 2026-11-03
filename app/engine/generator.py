@@ -114,6 +114,383 @@ def load_data(filename: str) -> Any:
         return json.load(f)
 
 class PF2eGenerator:
+    def level_up(self, current_char: Dict[str, Any], target_level: int) -> CharacterSheet:
+        target_level = max(1, min(6, int(target_level)))
+        old_level = int(current_char.get("level", 1))
+
+        # 1. Recover base info and core data
+        anc_name = current_char.get("ancestry", "").lower()
+        cls_name = current_char.get("character_class", "").lower()
+        bg_name = current_char.get("background", "").lower()
+        
+        anc = self.ancestries.get(anc_name, list(self.ancestries.values())[0])
+        cls = self.classes.get(cls_name, list(self.classes.values())[0])
+        bg = self.backgrounds.get(bg_name, list(self.backgrounds.values())[0])
+
+        # 2. Extract current attributes
+        raw_attrs = current_char.get("attributes", {})
+        mods = {attr: raw_attrs.get(attr, 0) for attr in ATTRIBUTES}
+
+        # Key attribute detection
+        key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
+        key_attr = key_options[0] if key_options else "str"
+
+        # Apply Level 5 Boosts if crossing the threshold
+        if old_level < 5 and target_level >= 5:
+            lvl5_boosts_applied: Set[str] = set()
+            lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl5_priority:
+                if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
+                    mods[attr] += 1
+                    lvl5_boosts_applied.add(attr)
+
+        # 3. Defenses & Proficiencies
+        fort_rank = cls.get("saving_throws", {}).get("fortitude", 1)
+        ref_rank = cls.get("saving_throws", {}).get("reflex", 1)
+        will_rank = cls.get("saving_throws", {}).get("will", 1)
+        perception_rank = cls.get("perception", 1)
+
+        if target_level >= 3 and cls["name"].lower() in ["fighter", "ranger"] and will_rank < 2:
+            will_rank = 2
+        if target_level >= 5:
+            if cls["name"].lower() == "barbarian" and fort_rank < 3:
+                fort_rank = 3
+            elif cls["name"].lower() in ["cleric", "druid", "sorcerer"] and perception_rank < 2:
+                perception_rank = 2
+            elif cls["name"].lower() in ["wizard", "witch", "bard"] and ref_rank < 2:
+                ref_rank = 2
+
+        fort_prof = self._calc_prof(fort_rank, target_level, mods["con"])
+        ref_prof = self._calc_prof(ref_rank, target_level, mods["dex"])
+        will_prof = self._calc_prof(will_rank, target_level, mods["wis"])
+        perception_prof = self._calc_prof(perception_rank, target_level, mods["wis"])
+
+        # 4. Equipment & Recalculated HP
+        equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
+            cls["name"],
+            str_mod=mods["str"],
+            dex_mod=mods["dex"],
+            level=target_level
+        )
+
+        if target_level >= 5:
+            for strike in equipment_loadout.strikes:
+                extra_prof = 2
+                strike.attack_bonus += extra_prof
+                strike.map_second += extra_prof
+                strike.map_third += extra_prof
+
+        con_mod = mods["con"]
+        class_hp_per_lvl = cls.get("hp_per_level", 8)
+        base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * target_level)
+        total_hp = max(1, base_hp)
+
+        # 5. Preserve existing feats and append new level feats
+        existing_feats_raw = current_char.get("feats", [])
+        chosen_feats: List[FeatSummary] = [FeatSummary(**f) for f in existing_feats_raw]
+        existing_feat_names = {f.name for f in chosen_feats}
+        cls_name_lower = cls["name"].lower()
+
+        # Check for archetype
+        archetype_name = current_char.get("archetype")
+        archetype_data = None
+        if archetype_name:
+            from app.engine.archetypes import ARCHETYPES
+            archetype_data = next((a for a in ARCHETYPES.values() if a["name"].lower() == archetype_name.lower()), None)
+
+        # Incrementally add feats for ungranted levels
+        for lvl in range(old_level + 1, target_level + 1):
+            if lvl == 2:
+                if archetype_data and archetype_data["level_2_dedication"]["name"] not in existing_feat_names:
+                    ded = archetype_data["level_2_dedication"]
+                    f_ded = FeatSummary(
+                        id=ded["id"],
+                        name=ded["name"],
+                        category=f"Archetype ({archetype_data['name']})",
+                        action_cost=ded.get("action_cost"),
+                        traits=ded.get("traits", []),
+                        description=clean_pf2e_text(ded["description"])
+                    )
+                    chosen_feats.append(f_ded)
+                    existing_feat_names.add(f_ded.name)
+                else:
+                    lvl2_feats = [
+                        f for f in self.feats
+                        if f.get("category") == "class"
+                        and f.get("level") == 2
+                        and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                        and f["name"] not in existing_feat_names
+                    ]
+                    if lvl2_feats:
+                        f2 = random.choice(lvl2_feats)
+                        f_obj = FeatSummary(
+                            id=f2["id"],
+                            name=f2["name"],
+                            category="Class (Level 2)",
+                            action_cost=f2.get("action_cost"),
+                            traits=f2.get("traits", []),
+                            description=clean_pf2e_text(f2.get("description", ""))
+                        )
+                        chosen_feats.append(f_obj)
+                        existing_feat_names.add(f_obj.name)
+
+                skill_feats_2 = [
+                    f for f in self.feats 
+                    if f.get("category") == "skill" 
+                    and f.get("level") in [1, 2]
+                    and f["name"] not in existing_feat_names
+                ]
+                if skill_feats_2:
+                    sf = random.choice(skill_feats_2)
+                    f_obj = FeatSummary(
+                        id=sf["id"],
+                        name=sf["name"],
+                        category="Skill (Level 2)",
+                        action_cost=sf.get("action_cost"),
+                        traits=sf.get("traits", []),
+                        description=clean_pf2e_text(sf.get("description", ""))
+                    )
+                    chosen_feats.append(f_obj)
+                    existing_feat_names.add(f_obj.name)
+
+            elif lvl == 3:
+                gf_pool = [f for f in GENERAL_FEATS_LVL3 if f["name"] not in existing_feat_names]
+                if gf_pool:
+                    gf = random.choice(gf_pool)
+                    chosen_feats.append(FeatSummary(
+                        id=gf["id"],
+                        name=gf["name"],
+                        category="General (Level 3)",
+                        action_cost=None,
+                        traits=["general"],
+                        description=clean_pf2e_text(gf["description"])
+                    ))
+                    existing_feat_names.add(gf["name"])
+
+                if cls_name_lower in CLASS_FEATURES_LVL3:
+                    cf = CLASS_FEATURES_LVL3[cls_name_lower]
+                    if cf["name"] not in existing_feat_names:
+                        chosen_feats.append(FeatSummary(
+                            id=f"class-feat-{cf['name'].lower().replace(' ', '-')}",
+                            name=cf["name"],
+                            category="Class Feature (Level 3)",
+                            action_cost=None,
+                            traits=[cls_name_lower],
+                            description=clean_pf2e_text(cf["description"])
+                        ))
+                        existing_feat_names.add(cf["name"])
+
+            elif lvl == 4:
+                if archetype_data:
+                    arch_lvl4 = [f for f in archetype_data["level_4_feats"] if f["name"] not in existing_feat_names]
+                    if arch_lvl4:
+                        af4 = random.choice(arch_lvl4)
+                        chosen_feats.append(FeatSummary(
+                            id=af4["id"],
+                            name=af4["name"],
+                            category=f"Archetype ({archetype_data['name']})",
+                            action_cost=af4.get("action_cost"),
+                            traits=af4.get("traits", []),
+                            description=clean_pf2e_text(af4["description"])
+                        ))
+                        existing_feat_names.add(af4["name"])
+                else:
+                    lvl4_feats = [
+                        f for f in self.feats
+                        if f.get("category") == "class"
+                        and f.get("level") in [1, 2, 4]
+                        and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                        and f["name"] not in existing_feat_names
+                    ]
+                    if lvl4_feats:
+                        f4 = random.choice(lvl4_feats)
+                        chosen_feats.append(FeatSummary(
+                            id=f4["id"],
+                            name=f4["name"],
+                            category="Class (Level 4)",
+                            action_cost=f4.get("action_cost"),
+                            traits=f4.get("traits", []),
+                            description=clean_pf2e_text(f4.get("description", ""))
+                        ))
+                        existing_feat_names.add(f4["name"])
+
+                skill_feats_4 = [
+                    f for f in self.feats 
+                    if f.get("category") == "skill" 
+                    and f.get("level") in [1, 2, 4]
+                    and f["name"] not in existing_feat_names
+                ]
+                if skill_feats_4:
+                    sf4 = random.choice(skill_feats_4)
+                    chosen_feats.append(FeatSummary(
+                        id=sf4["id"],
+                        name=sf4["name"],
+                        category="Skill (Level 4)",
+                        action_cost=sf4.get("action_cost"),
+                        traits=sf4.get("traits", []),
+                        description=clean_pf2e_text(sf4.get("description", ""))
+                    ))
+                    existing_feat_names.add(sf4["name"])
+
+            elif lvl == 5:
+                anc_name_lower = anc["name"].lower()
+                lvl5_anc_feats = [
+                    f for f in self.feats
+                    if f.get("category") == "ancestry"
+                    and f.get("level") == 5
+                    and anc_name_lower in [t.lower() for t in f.get("traits", [])]
+                    and f["name"] not in existing_feat_names
+                ]
+                if lvl5_anc_feats:
+                    af5 = random.choice(lvl5_anc_feats)
+                    chosen_feats.append(FeatSummary(
+                        id=af5["id"],
+                        name=af5["name"],
+                        category="Ancestry (Level 5)",
+                        action_cost=af5.get("action_cost"),
+                        traits=af5.get("traits", []),
+                        description=clean_pf2e_text(af5.get("description", ""))
+                    ))
+                    existing_feat_names.add(af5["name"])
+                else:
+                    fallback_af = CURATED_ANCESTRY_FEATS_LVL5.get(
+                        anc_name_lower,
+                        {"name": f"{anc['name']} Resiliency", "description": "You draw deep upon your heritage to endure hardships, gaining a +1 circumstance bonus to saving throws."}
+                    )
+                    chosen_feats.append(FeatSummary(
+                        id=f"anc-feat-{anc_name_lower}-5",
+                        name=fallback_af["name"],
+                        category="Ancestry (Level 5)",
+                        action_cost=None,
+                        traits=[anc_name_lower],
+                        description=clean_pf2e_text(fallback_af["description"])
+                    ))
+                    existing_feat_names.add(fallback_af["name"])
+
+                if cls_name_lower in CLASS_FEATURES_LVL5:
+                    cf5 = CLASS_FEATURES_LVL5[cls_name_lower]
+                    if cf5["name"] not in existing_feat_names:
+                        chosen_feats.append(FeatSummary(
+                            id=f"class-feat-{cf5['name'].lower().replace(' ', '-')}",
+                            name=cf5["name"],
+                            category="Class Feature (Level 5)",
+                            action_cost=None,
+                            traits=[cls_name_lower],
+                            description=clean_pf2e_text(cf5["description"])
+                        ))
+                        existing_feat_names.add(cf5["name"])
+
+            elif lvl == 6:
+                lvl6_class_feats = [
+                    f for f in self.feats
+                    if f.get("category") == "class"
+                    and f.get("level") in (4, 6)
+                    and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                    and f["name"] not in existing_feat_names
+                ]
+                if lvl6_class_feats:
+                    cf6 = random.choice(lvl6_class_feats)
+                    chosen_feats.append(FeatSummary(
+                        id=cf6["id"],
+                        name=cf6["name"],
+                        category="Class Feat (Level 6)",
+                        action_cost=cf6.get("action_cost"),
+                        traits=cf6.get("traits", []),
+                        description=clean_pf2e_text(cf6.get("description", ""))
+                    ))
+                    existing_feat_names.add(cf6["name"])
+
+        # Check if Toughness was gained to adjust HP
+        if any(f.name.lower() == "toughness" for f in chosen_feats):
+            total_hp += target_level
+
+        # 6. Recalculate Skills with updated level and mods
+        all_skills = resolve_character_skills(
+            class_name=cls["name"],
+            background_data=bg,
+            attribute_mods=mods,
+            level=target_level
+        )
+
+        # 7. Update Spellcasting & Focus Spells
+        spellcasting_data = resolve_spellcasting(
+            class_name=cls["name"],
+            attribute_mods=mods,
+            level=target_level
+        )
+
+        focus_data = resolve_focus_spells(
+            class_name=cls["name"],
+            feats=chosen_feats,
+            attribute_mods=mods,
+            subclass_name=current_char.get("subclass", {}).get("name") if current_char.get("subclass") else None,
+            level=target_level
+        )
+
+        # 8. Companion scaling
+        companion_data = current_char.get("companion")
+        if companion_data:
+            arch_name = archetype_name.lower() if archetype_name else ""
+            all_feat_str = " ".join([f.name.lower() for f in chosen_feats])
+            if cls_name_lower == "summoner":
+                companion_data = resolve_eidolon(master_hp=total_hp, level=target_level)
+            elif cls_name_lower == "inventor":
+                companion_data = resolve_construct_companion(master_int_mod=mods["int"], level=target_level)
+            elif "undead master" in arch_name or "undead companion" in all_feat_str:
+                companion_data = resolve_undead_companion(level=target_level)
+            elif "plant companion" in all_feat_str or (cls_name_lower == "druid" and "leaf" in all_feat_str):
+                companion_data = resolve_plant_companion(level=target_level)
+            elif cls_name_lower == "witch" or "familiar" in all_feat_str:
+                companion_data = resolve_familiar(
+                    master_ac=calculated_ac,
+                    master_fort=fort_prof.modifier,
+                    master_ref=ref_prof.modifier,
+                    master_will=will_prof.modifier,
+                    master_perception=perception_prof.modifier,
+                    class_name=cls["name"],
+                    level=target_level
+                )
+            else:
+                companion_data = resolve_companion(
+                    class_name=cls["name"],
+                    feats=chosen_feats,
+                    archetype=archetype_name,
+                    level=target_level
+                )
+
+        # 9. Return updated CharacterSheet model
+        subclass_obj = SubclassSummary(**current_char["subclass"]) if current_char.get("subclass") else None
+
+        return CharacterSheet(
+            name=current_char["name"],
+            level=target_level,
+            ancestry=current_char["ancestry"],
+            ancestry_description=current_char.get("ancestry_description", ""),
+            heritage=current_char["heritage"],
+            background=current_char["background"],
+            character_class=current_char["character_class"],
+            subclass=subclass_obj,
+            archetype=current_char.get("archetype"),
+            size=current_char.get("size", "med"),
+            speed=current_char.get("speed", 25),
+            attributes=AttributeModifiers(**mods),
+            defenses=Defenses(
+                ac=calculated_ac,
+                shield_bonus=shield_bonus,
+                hp=total_hp,
+                fortitude=fort_prof,
+                reflex=ref_prof,
+                will=will_prof,
+            ),
+            perception=perception_prof,
+            all_skills=all_skills,
+            equipment=equipment_loadout,
+            spellcasting=spellcasting_data,
+            focus_spells=focus_data,
+            companion=companion_data,
+            feats=chosen_feats,
+            traits=current_char.get("traits", [anc["name"].lower(), cls["name"].lower()]),
+        )
     def __init__(self):
         self.ancestries = {a["name"].lower(): a for a in load_data("ancestries.json")}
         self.classes = {c["name"].lower(): c for c in load_data("classes.json")}
