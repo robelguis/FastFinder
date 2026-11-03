@@ -112,7 +112,36 @@ def load_data(filename: str) -> Any:
         raise FileNotFoundError(f"Missing {filename}.")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
+        
+def extract_ancestry_description(anc: dict) -> str:
+    """Extracts raw text from various Foundry VTT compendium schema styles."""
+    if not isinstance(anc, dict):
+        return ""
+    
+    # 1. Standard Foundry VTT PF2e compendium schema: system.description.value
+    desc = anc.get("system", {}).get("description", {}).get("value")
+    
+    # 2. Flattened / custom extract schema alternatives
+    if not desc:
+        desc = anc.get("description")
+    if not desc:
+        desc = anc.get("summary") or anc.get("lore") or anc.get("text")
+        
+    if not desc or not isinstance(desc, str):
+        return ""
+        
+    # Clean up HTML tags, UUIDs, checks, etc.
+    cleaned = clean_pf2e_text(desc)
+    
+    # Optional: Take the first 1-2 introductory paragraphs if it's an entire 5-page article
+    paragraphs = [p.strip() for p in cleaned.split("\n\n") if p.strip()]
+    if paragraphs:
+        # Return first paragraph or first two if the first is very short
+        if len(paragraphs[0]) < 120 and len(paragraphs) > 1:
+            return f"{paragraphs[0]}\n\n{paragraphs[1]}"
+        return paragraphs[0]
+        
+    return cleaned
 class PF2eGenerator:
     def level_up(self, current_char: Dict[str, Any], target_level: int) -> CharacterSheet:
         target_level = max(1, min(6, int(target_level)))
@@ -476,8 +505,8 @@ class PF2eGenerator:
         subclass_obj = SubclassSummary(**current_char["subclass"]) if current_char.get("subclass") else None
         
         # Ensure the real ancestry description is returned directly from the loaded data
-        anc_desc = clean_pf2e_text(anc.get("description", "")) or current_char.get("ancestry_description", "")
-
+        anc_desc = extract_ancestry_description(anc) or current_char.get("ancestry_description", "")
+        
         return CharacterSheet(
             name=current_char["name"],
             level=target_level,
@@ -974,7 +1003,7 @@ class PF2eGenerator:
             name=resolved_name,
             level=level,
             ancestry=anc["name"],
-            ancestry_description=clean_pf2e_text(anc.get("description", "")),
+            ancestry_description=extract_ancestry_description(anc),
             heritage=heritage_data["name"],
             background=bg["name"],
             character_class=cls["name"],
