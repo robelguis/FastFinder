@@ -132,7 +132,7 @@ class PF2eGenerator:
         level: int = 1,
         use_dedication: bool = False
     ) -> CharacterSheet:
-        level = max(1, min(5, int(level)))
+        level = max(1, min(6, int(level)))
 
         # 1. Select Ancestry, Class, Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
@@ -478,6 +478,25 @@ class PF2eGenerator:
                     action_cost=None,
                     traits=[cls_name_lower],
                     description=clean_pf2e_text(cf5["description"])
+                ))
+
+        # Level 6 Progression (Class Feat / Archetype Feat)
+        if level >= 6:
+            lvl6_class_feats = [
+                f for f in self.feats
+                if f.get("category") == "class"
+                and f.get("level") in (4, 6)
+                and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+            ]
+            if lvl6_class_feats:
+                cf6 = random.choice(lvl6_class_feats)
+                chosen_feats.append(FeatSummary(
+                    id=cf6["id"],
+                    name=cf6["name"],
+                    category="Class Feat (Level 6)",
+                    action_cost=cf6.get("action_cost"),
+                    traits=cf6.get("traits", []),
+                    description=clean_pf2e_text(cf6.get("description", ""))
                 ))
 
         # 6. Skills
