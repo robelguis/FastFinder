@@ -738,6 +738,16 @@
             opt.textContent = a;
             archSelect.appendChild(opt);
           });
+          archSelect.addEventListener("change", () => {
+            const dedCheck = document.getElementById("dedicationToggle");
+            const lvlSelect = document.getElementById("levelSelect");
+            if (archSelect.value) {
+              if (dedCheck) dedCheck.checked = true;
+              if (lvlSelect && parseInt(lvlSelect.value) < 2) {
+                lvlSelect.value = "2";
+              }
+            }
+          });
         }
       } catch (err) {
         console.error("Failed to load options", err);
@@ -1103,7 +1113,8 @@
       params.append('dedication', useDedication ? 'true' : 'false');
 
       try {
-        const res = await fetch('/api/generate?' + params.toString());
+        console.log("Generating with params:", params.toString());
+      const res = await fetch('/api/generate?' + params.toString());
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error(err.detail || `Server error ${res.status}`);
