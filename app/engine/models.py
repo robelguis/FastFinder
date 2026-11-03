@@ -158,9 +158,11 @@ class CharacterSheet(BaseModel):
     ancestry_description: Optional[str] = None
     heritage: Optional[str] = None
     background: str
+    background_description: Optional[str] = None
     character_class: str
     subclass: Optional[SubclassSummary] = None
     archetype: Optional[str] = None
+    archetype_description: Optional[str] = None
     size: str
     speed: int
     attributes: AttributeModifiers

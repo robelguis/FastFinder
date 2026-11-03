@@ -602,6 +602,20 @@
               <p id="ancestryBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
             </div>
           </div>
+
+          <div class="sheet-box" id="backgroundBox" style="margin-top: 0.6rem;">
+            <div class="sheet-box-title" id="backgroundBoxTitle">Background Lore</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
+              <p id="backgroundBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
+            </div>
+          </div>
+
+          <div class="sheet-box" id="archetypeBox" style="margin-top: 0.6rem; display: none;">
+            <div class="sheet-box-title" id="archetypeBoxTitle">Archetype / Dedication</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
+              <p id="archetypeBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
+            </div>
+          </div>
         </div>
 
         <!-- RIGHT COLUMN: STRIKES, SPELLS, FEATS, CONSUMABLES & EQUIPMENT -->
@@ -951,6 +965,29 @@
       }
       if (ancDescEl) {
         ancDescEl.textContent = data.ancestry_description || "Lore details not found in compendium.";
+      }
+
+      // Populate Background Lore Box
+      const bgBoxEl = document.getElementById("backgroundBox");
+      const bgTitleEl = document.getElementById("backgroundBoxTitle");
+      const bgDescEl = document.getElementById("backgroundBoxDesc");
+      if (bgBoxEl) {
+        bgTitleEl.textContent = `${data.background || "Background"} Lore`;
+        bgDescEl.textContent = data.background_description || "Background details not found in compendium.";
+      }
+
+      // Populate Archetype / Dedication Box
+      const archBoxEl = document.getElementById("archetypeBox");
+      const archTitleEl = document.getElementById("archetypeBoxTitle");
+      const archDescEl = document.getElementById("archetypeBoxDesc");
+      if (archBoxEl) {
+        if (data.archetype && currentLevel >= 2) {
+          archBoxEl.style.display = "block";
+          archTitleEl.textContent = `${data.archetype} Dedication`;
+          archDescEl.textContent = data.archetype_description || `Grants dedication feats and training for the ${data.archetype} archetype.`;
+        } else {
+          archBoxEl.style.display = "none";
+        }
       }
 
       // Attributes
