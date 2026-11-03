@@ -1248,5 +1248,6 @@ class PF2eGenerator:
             focus_spells=focus_data,
             companion=companion_data,
             feats=chosen_feats,
+            languages=char_languages,
             traits=current_char.get("traits", [anc["name"].lower(), cls["name"].lower()]),
         )
