@@ -83,6 +83,12 @@ CURATED_ANCESTRY_FEATS_LVL5 = {
     "kobold": {"name": "Kobold Breath", "description": "You channel dragon blood to exhale an elemental blast in a 15-foot cone for 3d4 damage."}
 }
 
+ALL_SKILL_NAMES = [
+    "Acrobatics", "Athletics", "Deception", "Diplomacy", "Intimidation",
+    "Medicine", "Nature", "Occultism", "Performance", "Religion",
+    "Society", "Stealth", "Survival", "Thievery"
+]
+
 def clean_pf2e_text(text: str) -> str:
     if not text:
         return ""
@@ -200,7 +206,7 @@ class PF2eGenerator:
             if mods[attr] > 4:
                 mods[attr] = 4
 
-        # 2b. Level 5 Attribute Boosts (Apply 4 distinct boosts to top attributes)
+        # 2b. Level 5 Attribute Boosts (4 distinct boosts to top attributes)
         if level >= 5:
             lvl5_boosts_applied: Set[str] = set()
             lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
@@ -215,7 +221,7 @@ class PF2eGenerator:
         will_rank = cls.get("saving_throws", {}).get("will", 1)
         perception_rank = cls.get("perception", 1)
 
-        # Level 3 & Level 5 Save / Perception upgrades
+        # Scale saves & perception at Level 3 and Level 5
         if level >= 3 and cls["name"].lower() in ["fighter", "ranger"] and will_rank < 2:
             will_rank = 2
         if level >= 5:
@@ -239,12 +245,9 @@ class PF2eGenerator:
             level=level
         )
 
-        # Scale Strikes for Level 5 Weapon Mastery / Expertise
         if level >= 5:
             for strike in equipment_loadout.strikes:
-                # Fighters reach Master (+6 prof bonus, +2 over level 1-4 Expert); other martials reach Expert (+4, +2 over Trained)
-                is_fighter = cls["name"].lower() == "fighter"
-                extra_prof = 2  # Progression increment at 5th level
+                extra_prof = 2
                 strike.attack_bonus += extra_prof
                 strike.map_second += extra_prof
                 strike.map_third += extra_prof
@@ -258,9 +261,11 @@ class PF2eGenerator:
         cls_name_lower = cls["name"].lower()
         chosen_feats: List[FeatSummary] = []
 
-        # Heritage Feature
+        # Heritage Feature & Concrete Choice Resolution
         h_name = heritage_data["name"]
         h_desc = clean_pf2e_text(heritage_data["description"])
+        extra_trained_skill: Optional[str] = None
+
         if "Versatile" in h_name:
             v_choice = random.choice([
                 {"name": "Fleet", "desc": "Your Speed increases by 5 feet."},
@@ -270,6 +275,11 @@ class PF2eGenerator:
             ])
             h_name = f"Versatile Heritage: {v_choice['name']}"
             h_desc = f"Selected General Feat: {v_choice['name']}. {v_choice['desc']}"
+        elif "Skilled" in h_name:
+            chosen_skill = random.choice(ALL_SKILL_NAMES)
+            extra_trained_skill = chosen_skill
+            h_name = f"Skilled Heritage: {chosen_skill}"
+            h_desc = f"Selected Trained Skill: {chosen_skill}. You become trained in {chosen_skill}, gaining a +2 proficiency bonus plus level and key attribute modifier."
 
         chosen_feats.append(FeatSummary(
             id=f"heritage-{anc['name'].lower()}",
@@ -478,7 +488,14 @@ class PF2eGenerator:
             level=level
         )
 
-        # 7. Spellcasting (Level 5 unlocks Rank 3 spells)
+        if extra_trained_skill:
+            for sk in all_skills:
+                if sk.name.lower() == extra_trained_skill.lower() and sk.rank == 0:
+                    sk.rank = 2
+                    sk.rank_letter = "T"
+                    sk.modifier += (2 + level)
+
+        # 7. Spellcasting
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
