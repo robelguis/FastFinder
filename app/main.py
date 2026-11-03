@@ -32,7 +32,7 @@ async def generate_character(
     name: Optional[str] = None,
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
-    level: int = Query(1, ge=1, le=4),
+    level: int = Query(1, ge=1, le=6),
     dedication: bool = Query(False)
 ):
     try:
@@ -52,7 +52,7 @@ async def export_foundry(
     name: Optional[str] = None,
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
-    level: int = Query(1, ge=1, le=4),
+    level: int = Query(1, ge=1, le=6),
     dedication: bool = Query(False)
 ):
     try:
