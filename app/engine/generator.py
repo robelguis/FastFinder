@@ -689,16 +689,53 @@ class PF2eGenerator:
                 level=level
             )
 
-        # Resolve Languages
-        base_langs = list(anc.get("languages", ["Common"]))
-        if "Common" not in base_langs:
-            base_langs.insert(0, "Common")
+        # Resolve Languages (de-duplicated & distinct)
+        COMMON_LANG_POOL = [
+            "Common", "Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", 
+            "Orcish", "Draconic", "Sylvan", "Undercommon", "Jotun", "Necril", 
+            "Aklo", "Celestial", "Abyssal", "Infernal", "Shadowtongue", "Iruxi"
+        ]
+
+        assigned_langs = []
+        assigned_lower = set()
+
+        def add_language(lang_name: str):
+            clean_name = (lang_name or "").strip().title()
+            if not clean_name:
+                return
+            if clean_name.lower() in assigned_lower:
+                # Collision: pick a distinct fallback not yet assigned
+                fallback_choices = [l for l in COMMON_LANG_POOL if l.lower() not in assigned_lower]
+                if fallback_choices:
+                    chosen = random.choice(fallback_choices)
+                    assigned_langs.append(chosen)
+                    assigned_lower.add(chosen.lower())
+            else:
+                assigned_langs.append(clean_name)
+                assigned_lower.add(clean_name.lower())
+
+        # 1. Ancestry base languages
+        raw_anc_langs = anc.get("languages", ["Common"])
+        if isinstance(raw_anc_langs, list):
+            for l in raw_anc_langs:
+                add_language(l)
+        else:
+            add_language("Common")
+
+        if "common" not in assigned_lower:
+            add_language("Common")
+
+        # 2. Bonus languages from positive Intelligence modifier
         int_mod = mods.get("int", 0)
-        bonus_pool = ["Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", "Orcish", "Draconic", "Sylvan", "Undercommon"]
-        avail = [l for l in bonus_pool if l not in base_langs]
-        if int_mod > 0 and avail:
-            base_langs.extend(random.sample(avail, min(int_mod, len(avail))))
-        character_languages = base_langs
+        if int_mod > 0:
+            for _ in range(int_mod):
+                avail_pool = [l for l in COMMON_LANG_POOL if l.lower() not in assigned_lower]
+                if avail_pool:
+                    chosen_bonus = random.choice(avail_pool)
+                    assigned_langs.append(chosen_bonus)
+                    assigned_lower.add(chosen_bonus.lower())
+
+        character_languages = assigned_langs
 
         return CharacterSheet(
             name=resolved_name,
@@ -1111,16 +1148,75 @@ class PF2eGenerator:
         subclass_obj = SubclassSummary(**current_char["subclass"]) if current_char.get("subclass") else None
         anc_desc = clean_pf2e_text(anc.get("description", "")) or current_char.get("ancestry_description", "")
 
-        # Resolve Languages
-        base_langs = list(anc.get("languages", ["Common"]))
-        if "Common" not in base_langs:
-            base_langs.insert(0, "Common")
+        # Resolve Languages (de-duplicated & distinct)
+        COMMON_LANG_POOL = [
+            "Common", "Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", 
+            "Orcish", "Draconic", "Sylvan", "Undercommon", "Jotun", "Necril", 
+            "Aklo", "Celestial", "Abyssal", "Infernal", "Shadowtongue", "Iruxi"
+        ]
+
+        assigned_langs = []
+        assigned_lower = set()
+
+        def add_language(lang_name: str):
+            clean_name = (lang_name or "").strip().title()
+            if not clean_name:
+                return
+            if clean_name.lower() in assigned_lower:
+                # Collision: pick a distinct fallback not yet assigned
+                fallback_choices = [l for l in COMMON_LANG_POOL if l.lower() not in assigned_lower]
+                if fallback_choices:
+                    chosen = random.choice(fallback_choices)
+                    assigned_langs.append(chosen)
+                    assigned_lower.add(chosen.lower())
+            else:
+                assigned_langs.append(clean_name)
+                assigned_lower.add(clean_name.lower())
+
+        # 1. Ancestry base languages
+        raw_anc_langs = anc.get("languages", ["Common"])
+        if isinstance(raw_anc_langs, list):
+            for l in raw_anc_langs:
+                add_language(l)
+        else:
+            add_language("Common")
+
+        if "common" not in assigned_lower:
+            add_language("Common")
+
+        # 2. Bonus languages from positive Intelligence modifier
         int_mod = mods.get("int", 0)
-        bonus_pool = ["Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", "Orcish", "Draconic", "Sylvan", "Undercommon"]
-        avail = [l for l in bonus_pool if l not in base_langs]
-        if int_mod > 0 and avail:
-            base_langs.extend(random.sample(avail, min(int_mod, len(avail))))
-        character_languages = base_langs
+        if int_mod > 0:
+            for _ in range(int_mod):
+                avail_pool = [l for l in COMMON_LANG_POOL if l.lower() not in assigned_lower]
+                if avail_pool:
+                    chosen_bonus = random.choice(avail_pool)
+                    assigned_langs.append(chosen_bonus)
+                    assigned_lower.add(chosen_bonus.lower())
+
+        character_languages = assigned_langs
+
+        # 7. Preserve and scale Languages on level up
+        existing_langs = list(current_char.get("languages") or ["Common"])
+        lang_set_lower = {l.lower() for l in existing_langs}
+        old_int = raw_attrs.get("int", raw_attrs.get("intelligence", 0))
+        new_int = mods.get("int", 0)
+
+        COMMON_LANG_POOL = [
+            "Common", "Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", 
+            "Orcish", "Draconic", "Sylvan", "Undercommon", "Jotun", "Necril", 
+            "Aklo", "Celestial", "Abyssal", "Infernal", "Shadowtongue", "Iruxi"
+        ]
+
+        if new_int > old_int:
+            gained = new_int - old_int
+            for _ in range(gained):
+                available = [l for l in COMMON_LANG_POOL if l.lower() not in lang_set_lower]
+                if available:
+                    chosen = random.choice(available)
+                    existing_langs.append(chosen)
+                    lang_set_lower.add(chosen.lower())
+        char_languages = existing_langs
 
         return CharacterSheet(
             name=current_char["name"],
