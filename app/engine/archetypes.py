@@ -1,3 +1,5 @@
+import json
+from pathlib import Path
 import random
 from typing import Dict, Any, List
 
@@ -258,3 +260,70 @@ def pick_archetype(excluded_class: str) -> Dict[str, Any]:
         arch["level_4_feats"] = list(ROGUE_FEATS_POOL) + arch["level_4_feats"]
 
     return arch
+
+
+# --- DYNAMIC COMPENDIUM ARCHETYPES (250+ Feats) ---
+DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+
+def get_all_archetype_names() -> List[str]:
+    feats_file = DATA_DIR / "feats.json"
+    names = set()
+    # Add hardcoded catalog names first
+    for arch in ARCHETYPES_CATALOG.values():
+        names.add(arch["name"])
+    
+    if feats_file.exists():
+        with open(feats_file, "r", encoding="utf-8") as f:
+            feats = json.load(f)
+        for ft in feats:
+            traits = [t.lower() for t in ft.get("traits", [])]
+            name = ft.get("name", "")
+            if ("dedication" in traits or "Dedication" in name) and "multiclass" not in traits:
+                clean_name = name.replace(" Dedication", "").strip()
+                if clean_name:
+                    names.add(clean_name)
+    return sorted(list(names))
+
+
+def resolve_dynamic_archetype(archetype_name: str, feats_list: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """
+    Builds an archetype definition on the fly from feats.json if not in ARCHETYPES_CATALOG.
+    """
+    target = archetype_name.strip().lower()
+    # Check curated catalog first
+    for k, v in ARCHETYPES_CATALOG.items():
+        if k.lower() == target or v["name"].lower() == target:
+            return v
+
+    # Find the Dedication feat
+    dedication_feat = None
+    target_trait = target.replace("-", " ")
+    for ft in feats_list:
+        ft_name = ft.get("name", "")
+        traits = [t.lower() for t in ft.get("traits", [])]
+        if ("dedication" in traits or "Dedication" in ft_name):
+            clean_name = ft_name.replace(" Dedication", "").strip().lower()
+            if clean_name == target:
+                dedication_feat = ft
+                break
+
+    if not dedication_feat:
+        return None
+
+    # Find matching level 4 feats that carry the archetype trait
+    lvl4_feats = []
+    for ft in feats_list:
+        traits = [t.lower() for t in ft.get("traits", [])]
+        if target_trait in traits and ft.get("level") in (2, 4) and ft.get("id") != dedication_feat.get("id"):
+            lvl4_feats.append(ft)
+
+    if not lvl4_feats:
+        # Fallback if no specific lvl4 feat trait match
+        lvl4_feats = [dedication_feat]
+
+    return {
+        "id": dedication_feat["id"],
+        "name": dedication_feat["name"].replace(" Dedication", "").strip(),
+        "level_2_dedication": dedication_feat,
+        "level_4_feats": lvl4_feats
+    }

@@ -1,3 +1,4 @@
+from app.engine.archetypes import ARCHETYPES_CATALOG, get_all_archetype_names
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, Query, HTTPException
@@ -35,7 +36,7 @@ def get_options():
         "ancestries": sorted([a["name"] for a in generator.ancestries.values()]),
         "classes": sorted([c["name"] for c in generator.classes.values()]),
         "backgrounds": sorted([b["name"] for b in generator.backgrounds.values()]),
-        "archetypes": sorted(list(ARCHETYPES.keys())),
+"archetypes": get_all_archetype_names(),
     }
 
 

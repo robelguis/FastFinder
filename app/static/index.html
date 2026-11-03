@@ -390,6 +390,10 @@
         <select id="backgroundSelect"><option value="">Any Background</option></select>
       </div>
       <div class="field">
+        <label for="archetypeSelect">Archetype / Dedication</label>
+        <select id="archetypeSelect"><option value="">Any Archetype</option></select>
+      </div>
+      <div class="field">
         <label for="levelSelect">Level</label>
         <select id="levelSelect">
           <option value="1">Level 1</option>
@@ -722,6 +726,17 @@
             opt.value = b;
             opt.textContent = b;
             bgSelect.appendChild(opt);
+          });
+        }
+
+        const archSelect = document.getElementById("archetypeSelect");
+        if (archSelect && data.archetypes) {
+          archSelect.innerHTML = '<option value="">Any Archetype</option>';
+          data.archetypes.forEach(a => {
+            const opt = document.createElement("option");
+            opt.value = a;
+            opt.textContent = a;
+            archSelect.appendChild(opt);
           });
         }
       } catch (err) {
@@ -1074,10 +1089,12 @@
       const anc = document.getElementById('ancestrySelect').value;
       const cls = document.getElementById('classSelect').value;
       const bg = document.getElementById("backgroundSelect") ? document.getElementById("backgroundSelect").value : "";
+      const arch = document.getElementById("archetypeSelect") ? document.getElementById("archetypeSelect").value : "";
       const lvl = document.getElementById('levelSelect').value || 1;
       const useDedication = document.getElementById('dedicationToggle')?.checked;
 
       const params = new URLSearchParams();
+      if (arch) params.append('archetype', arch);
       if (nameInput) params.append('name', nameInput);
       if (anc) params.append('ancestry', anc);
       if (cls) params.append('class_name', cls);

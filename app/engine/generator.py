@@ -18,7 +18,7 @@ from app.engine.skills import resolve_character_skills
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
 from app.engine.subclasses import resolve_heritage, resolve_subclass
-from app.engine.archetypes import pick_archetype
+from app.engine.archetypes import pick_archetype, ARCHETYPES_CATALOG, resolve_dynamic_archetype
 from app.engine.companions import resolve_companion
 from app.engine.eidolons import resolve_eidolon
 from app.engine.familiars import resolve_familiar
@@ -176,6 +176,7 @@ class PF2eGenerator:
         ancestry_name: Optional[str] = None,
         class_name: Optional[str] = None,
         background_name: Optional[str] = None,
+        archetype_name: Optional[str] = None,
         char_name: Optional[str] = None,
         level: int = 1,
         use_dedication: bool = False
@@ -201,8 +202,12 @@ class PF2eGenerator:
         heritage_data = resolve_heritage(anc["name"])
         subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
-
-        archetype_data = pick_archetype(cls["name"]) if (use_dedication and level >= 2) else None
+        if archetype_name and archetype_name.strip():
+            archetype_data = resolve_dynamic_archetype(archetype_name.strip(), self.feats) if level >= 2 else None
+        elif use_dedication and level >= 2:
+            archetype_data = pick_archetype(cls["name"])
+        else:
+            archetype_data = None
 
         # 2. Track Attribute Boosts (Level 1)
         mods = {attr: 0 for attr in ATTRIBUTES}
