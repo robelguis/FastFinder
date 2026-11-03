@@ -444,52 +444,57 @@
       <p>Instant PF2e Remaster Character Generator & Tabletop Sheet</p>
     </header>
 
-    <div class="controls">
-      <div class="field">
-        <label for="charName">Name (Optional)</label>
-        <input type="text" id="charName" placeholder="(Auto by Ancestry)">
+    <div class="controls-wrapper">
+      <!-- Row 1: Core Character Parameters -->
+      <div class="controls-row-top">
+        <div class="field">
+          <label for="charName">Name (Optional)</label>
+          <input type="text" id="charName" placeholder="(Auto by Ancestry)">
+        </div>
+        <div class="field">
+          <label for="ancestrySelect">Ancestry</label>
+          <select id="ancestrySelect"><option value="">Any Ancestry</option></select>
+        </div>
+        <div class="field">
+          <label for="classSelect">Class</label>
+          <select id="classSelect"><option value="">Any Class</option></select>
+        </div>
+        <div class="field">
+          <label for="backgroundSelect">Background</label>
+          <select id="backgroundSelect"><option value="">Any Background</option></select>
+        </div>
+        <div class="field">
+          <label for="levelSelect">Level</label>
+          <select id="levelSelect">
+            <option value="1">Level 1</option>
+            <option value="2">Level 2</option>
+            <option value="3">Level 3</option>
+            <option value="4" selected>Level 4</option>
+            <option value="5">Level 5</option>
+            <option value="6">Level 6</option>
+          </select>
+        </div>
       </div>
-      <div class="field">
-        <label for="ancestrySelect">Ancestry</label>
-        <select id="ancestrySelect"><option value="">Any Ancestry</option></select>
-      </div>
-      <div class="field">
-        <label for="classSelect">Class</label>
-        <select id="classSelect"><option value="">Any Class</option></select>
-      </div>
-      <div class="field">
-        <label for="backgroundSelect">Background</label>
-        <select id="backgroundSelect"><option value="">Any Background</option></select>
-      </div>
-      <div class="field">
-        <label for="archetypeSelect">Archetype / Dedication</label>
-        <select id="archetypeSelect"><option value="">Any Archetype</option></select>
-      </div>
-      <div class="field">
-        <label for="levelSelect">Level</label>
-        <select id="levelSelect">
-          <option value="1">Level 1</option>
-          <option value="2">Level 2</option>
-          <option value="3">Level 3</option>
-          <option value="4" selected>Level 4</option>
-          <option value="5">Level 5</option>
-          <option value="6">Level 6</option>
-        </select>
-      </div>
-      <div class="field" style="justify-content: flex-end; padding-bottom: 0.2rem;">
-        <label style="cursor: pointer; display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; font-weight: 800; color: #f8fafc; background: #0f172a; padding: 0.55rem 0.75rem; border-radius: 6px; border: 1px solid var(--border);">
-          <input type="checkbox" id="dedicationToggle" checked style="width: 17px; height: 17px; cursor: pointer; accent-color: var(--accent-gold);">
-          Archetype Dedication
-        </label>
-      </div>
-      <div class="field btn-group">
-        <button class="primary-btn" id="generateBtn" onclick="generate()">Generate</button>
-        <button class="action-btn" id="foundryBtn" onclick="downloadFoundryJson()">Foundry JSON</button>
-        <button class="action-btn" id="printBtn" onclick="window.print()">Print / PDF</button>
-      </div>
-    </div>
 
-    <!-- STANDARD PF2E CHARACTER SHEET CONTAINER -->
+      <!-- Row 2: Archetype Dedication & Actions -->
+      <div class="controls-row-bottom">
+        <div class="field arch-field">
+          <label for="archetypeSelect">Archetype / Dedication</label>
+          <select id="archetypeSelect"><option value="">Any Archetype</option></select>
+        </div>
+
+        <label class="toggle-pill" for="dedicationToggle">
+          <input type="checkbox" id="dedicationToggle" checked>
+          <span>Archetype Dedication</span>
+        </label>
+
+        <div class="action-buttons-group">
+          <button class="primary-btn" id="generateBtn" onclick="generate()">Generate</button>
+          <button class="action-btn" id="foundryBtn" onclick="downloadFoundryJson()">Foundry JSON</button>
+          <button class="action-btn" id="printBtn" onclick="window.print()">Print / PDF</button>
+        </div>
+      </div>
+    </div><!-- STANDARD PF2E CHARACTER SHEET CONTAINER -->
     <div class="pf2e-sheet" id="sheetCard" style="display: none;">
       <div class="sheet-header-banner">
         <div class="banner-block">
