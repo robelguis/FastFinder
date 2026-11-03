@@ -155,6 +155,7 @@ class CharacterSheet(BaseModel):
     name: str
     level: int = 1
     ancestry: str
+    ancestry_description: Optional[str] = None
     heritage: Optional[str] = None
     background: str
     character_class: str
