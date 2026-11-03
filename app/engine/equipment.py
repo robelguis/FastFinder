@@ -1,266 +1,52 @@
 import random
-from typing import Dict, Any, Tuple, List, Optional
+from typing import Dict, Any, List, Tuple, Optional
 from app.engine.models import EquipmentLoadout, Item, Strike, Wealth, ConsumableItem
 
-# Class-specific weapon packages and strikes
-CLASS_WEAPON_CONFIGS: Dict[str, Dict[str, Any]] = {
-    "monk": {
-        "armor": None,
-        "shield": None,
-        "weapons": [
-            {"name": "Bo Staff", "bulk": 2}
-        ],
-        "strikes": [
-            {
-                "name": "Powerful Fist (Unarmed)",
-                "dice": "1d6",
-                "type": "Bludgeoning",
-                "traits": ["Agile", "Finesse", "Nonlethal", "Unarmed"],
-                "finesse": True
-            },
-            {
-                "name": "Tiger Claw (Stance)",
-                "dice": "1d8",
-                "type": "Slashing",
-                "traits": ["Agile", "Finesse", "Unarmed"],
-                "finesse": True
-            }
-        ],
-        "gear": ["Monk's Robes", "Bandolier", "Bedroll", "Rations (1 week)", "Waterskin"]
-    },
-    "gunslinger": {
-        "armor": {"name": "Leather Armor", "bulk": 1, "ac_bonus": 1, "dex_cap": 4},
-        "shield": None,
-        "weapons": [
-            {"name": "Dueling Pistol", "bulk": 1},
-            {"name": "Dagger", "bulk": "L"}
-        ],
-        "strikes": [
-            {
-                "name": "Dueling Pistol",
-                "dice": "1d6",
-                "type": "Piercing",
-                "traits": ["Concussive", "Fatal d10", "Range 60 ft", "Reload 1"],
-                "finesse": False,
-                "is_ranged": True
-            },
-            {
-                "name": "Dagger",
-                "dice": "1d4",
-                "type": "Piercing",
-                "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"],
-                "finesse": True
-            }
-        ],
-        "gear": ["Firearm Ammunition (30 rounds)", "Cleaning Kit", "Powder Horn", "Backpack", "Waterskin"]
-    },
-    "thaumaturge": {
-        "armor": {"name": "Studded Leather", "bulk": 1, "ac_bonus": 2, "dex_cap": 3},
-        "shield": None,
-        "weapons": [
-            {"name": "Warhammer", "bulk": 1},
-            {"name": "Esoteric Implement (Amulet/Chalice)", "bulk": "L"}
-        ],
-        "strikes": [
-            {
-                "name": "Warhammer",
-                "dice": "1d8",
-                "type": "Bludgeoning",
-                "traits": ["Shove"],
-                "finesse": False
-            }
-        ],
-        "gear": ["Esoteric Lore Components Pouch", "Grimoire", "Backpack", "Rations (1 week)", "Waterskin"]
-    },
-    "swashbuckler": {
-        "armor": {"name": "Leather Armor", "bulk": 1, "ac_bonus": 1, "dex_cap": 4},
-        "shield": {"name": "Buckler", "bulk": "L", "ac_bonus": 1},
-        "weapons": [
-            {"name": "Rapier", "bulk": 1},
-            {"name": "Main-Gauche", "bulk": "L"}
-        ],
-        "strikes": [
-            {
-                "name": "Rapier",
-                "dice": "1d6",
-                "type": "Piercing",
-                "traits": ["Deadly d8", "Disarm", "Finesse"],
-                "finesse": True
-            },
-            {
-                "name": "Main-Gauche",
-                "dice": "1d4",
-                "type": "Piercing",
-                "traits": ["Agile", "Disarm", "Finesse", "Parry", "Versatile S"],
-                "finesse": True
-            }
-        ],
-        "gear": ["Fine Clothes", "Disguise Kit", "Backpack", "Bedroll", "Waterskin"]
-    },
-    "rogue": {
-        "armor": {"name": "Leather Armor", "bulk": 1, "ac_bonus": 1, "dex_cap": 4},
-        "shield": None,
-        "weapons": [
-            {"name": "Shortsword", "bulk": "L"},
-            {"name": "Dagger", "bulk": "L"}
-        ],
-        "strikes": [
-            {
-                "name": "Shortsword",
-                "dice": "1d6",
-                "type": "Piercing",
-                "traits": ["Agile", "Finesse", "Versatile S"],
-                "finesse": True
-            },
-            {
-                "name": "Dagger",
-                "dice": "1d4",
-                "type": "Piercing",
-                "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"],
-                "finesse": True
-            }
-        ],
-        "gear": ["Thieves' Tools", "Backpack", "Bedroll", "Rations (1 week)", "50ft Silk Rope"]
-    },
-    "fighter": {
-        "armor": {"name": "Scale Mail", "bulk": 2, "ac_bonus": 3, "dex_cap": 2},
-        "shield": {"name": "Steel Shield", "bulk": 1, "ac_bonus": 2},
-        "weapons": [
-            {"name": "Longsword", "bulk": 1},
-            {"name": "Shortbow", "bulk": 1}
-        ],
-        "strikes": [
-            {
-                "name": "Longsword",
-                "dice": "1d8",
-                "type": "Slashing",
-                "traits": ["Versatile P"],
-                "finesse": False
-            },
-            {
-                "name": "Shortbow",
-                "dice": "1d6",
-                "type": "Piercing",
-                "traits": ["Deadly d10", "Range 60 ft", "Reload 0"],
-                "finesse": False,
-                "is_ranged": True
-            }
-        ],
-        "gear": ["Arrows (20)", "Backpack", "Bedroll", "Rations (1 week)", "Waterskin"]
-    },
-    "champion": {
-        "armor": {"name": "Splint Mail", "bulk": 3, "ac_bonus": 4, "dex_cap": 1},
-        "shield": {"name": "Steel Shield", "bulk": 1, "ac_bonus": 2},
-        "weapons": [
-            {"name": "Warhammer", "bulk": 1}
-        ],
-        "strikes": [
-            {
-                "name": "Warhammer",
-                "dice": "1d8",
-                "type": "Bludgeoning",
-                "traits": ["Shove"],
-                "finesse": False
-            }
-        ],
-        "gear": ["Religious Symbol (Silver)", "Backpack", "Bedroll", "Rations (1 week)", "Waterskin"]
-    },
-    "kineticist": {
-        "armor": {"name": "Leather Armor", "bulk": 1, "ac_bonus": 1, "dex_cap": 4},
-        "shield": None,
-        "weapons": [
-            {"name": "Kinetic Gate Focus", "bulk": "L"}
-        ],
-        "strikes": [
-            {
-                "name": "Elemental Blast (Melee)",
-                "dice": "1d8",
-                "type": "Elemental",
-                "traits": ["Impulse", "Kinetic", "Primal"],
-                "finesse": False,
-                "add_con_damage": True
-            },
-            {
-                "name": "Elemental Blast (Ranged)",
-                "dice": "1d8",
-                "type": "Elemental",
-                "traits": ["Impulse", "Kinetic", "Primal", "Range 60 ft"],
-                "finesse": False,
-                "is_ranged": True
-            }
-        ],
-        "gear": ["Adventurer's Pack", "Bedroll", "Rations (1 week)", "Waterskin"]
-    },
-    "alchemist": {
-        "armor": {"name": "Studded Leather", "bulk": 1, "ac_bonus": 2, "dex_cap": 3},
-        "shield": None,
-        "weapons": [
-            {"name": "Dagger", "bulk": "L"},
-            {"name": "Sling", "bulk": "L"}
-        ],
-        "strikes": [
-            {
-                "name": "Dagger",
-                "dice": "1d4",
-                "type": "Piercing",
-                "traits": ["Agile", "Finesse", "Thrown 10 ft"],
-                "finesse": True
-            },
-            {
-                "name": "Alchemical Bomb (Lesser)",
-                "dice": "1d8",
-                "type": "Fire / Acid",
-                "traits": ["Bomb", "Consumable", "Splash 1", "Range 20 ft"],
-                "finesse": False,
-                "is_ranged": True
-            }
-        ],
-        "gear": ["Alchemist's Toolkit", "Formula Book", "Sling Bullets (20)", "Backpack", "Waterskin"]
-    }
+# PF2e Remaster Character Wealth by Level (Lump sum alternative)
+# Level: (lump_sum_gp, min_consumables, typical_permanent_items)
+WEALTH_BY_LEVEL: Dict[int, Dict[str, Any]] = {
+    1: {"lump_gp": 15, "consumable_tier": "minor", "permanent_count": 0},
+    2: {"lump_gp": 30, "consumable_tier": "minor", "permanent_count": 0},
+    3: {"lump_gp": 75, "consumable_tier": "lesser", "permanent_count": 1},
+    4: {"lump_gp": 140, "consumable_tier": "lesser", "permanent_count": 2},
+    5: {"lump_gp": 270, "consumable_tier": "moderate", "permanent_count": 3},
+    6: {"lump_gp": 450, "consumable_tier": "moderate", "permanent_count": 4},
 }
 
-DEFAULT_CASTER_CONFIG = {
-    "armor": {"name": "Explorer's Clothing", "bulk": "L", "ac_bonus": 0, "dex_cap": 5},
-    "shield": None,
-    "weapons": [
-        {"name": "Staff", "bulk": 1},
-        {"name": "Dagger", "bulk": "L"}
-    ],
-    "strikes": [
-        {
-            "name": "Staff",
-            "dice": "1d4",
-            "type": "Bludgeoning",
-            "traits": ["Two-Hand d8"],
-            "finesse": False
-        },
-        {
-            "name": "Dagger",
-            "dice": "1d4",
-            "type": "Piercing",
-            "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"],
-            "finesse": True
-        }
-    ],
-    "gear": ["Backpack", "Bedroll", "Rations (1 week)", "Waterskin", "Torch (5)", "Flint and Steel", "50ft Rope"]
-}
+PERMANENT_MAGIC_ITEMS: List[Dict[str, Any]] = [
+    {"name": "Healer's Gloves", "level": 3, "cost_gp": 50, "bulk": "L", "description": "+1 item bonus to Medicine; 1/day activate to heal 2d6+7 HP."},
+    {"name": "Crafter's Eyepiece", "level": 3, "cost_gp": 60, "bulk": "-", "description": "+1 item bonus to Crafting checks and repairing."},
+    {"name": "Hat of Disguise", "level": 2, "cost_gp": 30, "bulk": "L", "description": "Cast illusory disguise as an innate arcane spell at will."},
+    {"name": "Boots of Elvenkind", "level": 5, "cost_gp": 145, "bulk": "L", "description": "+1 item bonus to Acrobatics; ignore difficult terrain 1/day."},
+    {"name": "Cloak of the Bat", "level": 5, "cost_gp": 160, "bulk": "L", "description": "+1 item bonus to Stealth; 1/day fly or turn into a bat."},
+    {"name": "Bracers of Missile Deflection", "level": 3, "cost_gp": 52, "bulk": "L", "description": "+1 circumstance bonus to AC against ranged attacks with reaction."}
+]
 
-DEFAULT_MARTIAL_CONFIG = {
-    "armor": {"name": "Hide Armor", "bulk": 2, "ac_bonus": 3, "dex_cap": 2},
-    "shield": {"name": "Wooden Shield", "bulk": 1, "ac_bonus": 2},
-    "weapons": [
-        {"name": "Longsword", "bulk": 1}
+CLASS_WEAPONS: Dict[str, List[Dict[str, Any]]] = {
+    "fighter": [
+        {"name": "Longsword", "dice": "1d8", "type": "Slashing", "traits": ["Versatile P"]},
+        {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
     ],
-    "strikes": [
-        {
-            "name": "Longsword",
-            "dice": "1d8",
-            "type": "Slashing",
-            "traits": ["Versatile P"],
-            "finesse": False
-        }
+    "barbarian": [
+        {"name": "Greataxe", "dice": "1d12", "type": "Slashing", "traits": ["Sweep"]},
+        {"name": "Javelin", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 30 ft"]}
     ],
-    "gear": ["Backpack", "Bedroll", "Rations (1 week)", "Waterskin", "50ft Rope"]
+    "rogue": [
+        {"name": "Rapier", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d8", "Disarm", "Finesse"]},
+        {"name": "Shortsword", "dice": "1d6", "type": "Piercing", "traits": ["Agile", "Finesse", "Versatile S"]}
+    ],
+    "wizard": [
+        {"name": "Staff", "dice": "1d4", "type": "Bludgeoning", "traits": ["Two-Hand d8"]},
+        {"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]}
+    ],
+    "cleric": [
+        {"name": "Warhammer", "dice": "1d8", "type": "Bludgeoning", "traits": ["Shove"]},
+        {"name": "Light Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]}
+    ],
+    "default": [
+        {"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]},
+        {"name": "Staff", "dice": "1d4", "type": "Bludgeoning", "traits": ["Two-Hand d8"]}
+    ]
 }
 
 def resolve_equipment(
@@ -270,107 +56,123 @@ def resolve_equipment(
     level: int = 1
 ) -> Tuple[EquipmentLoadout, int, int]:
     cls_key = class_name.lower()
-    
-    # 1. Resolve equipment config
-    if cls_key in CLASS_WEAPON_CONFIGS:
-        cfg = CLASS_WEAPON_CONFIGS[cls_key]
-    elif cls_key in ["wizard", "witch", "sorcerer", "oracle", "psychic", "animist", "cleric", "bard", "druid"]:
-        cfg = DEFAULT_CASTER_CONFIG
-    else:
-        cfg = DEFAULT_MARTIAL_CONFIG
+    lvl = max(1, min(6, level))
+    wealth_cfg = WEALTH_BY_LEVEL.get(lvl, WEALTH_BY_LEVEL[1])
 
-    # 2. Calculate AC
-    armor_data = cfg.get("armor")
-    shield_data = cfg.get("shield")
-    
-    shield_bonus = shield_data.get("ac_bonus", 0) if shield_data else 0
+    budget_gp = wealth_cfg["lump_gp"]
 
-    if armor_data:
-        ac_bonus = armor_data.get("ac_bonus", 0)
-        dex_cap = armor_data.get("dex_cap", 5)
-        applied_dex = min(dex_mod, dex_cap)
-        # Standard trained proficiency bonus: 2 + level
-        prof_bonus = 2 + level
-        calc_ac = 10 + ac_bonus + applied_dex + prof_bonus
-        armor_item = Item(name=armor_data["name"], bulk=armor_data.get("bulk", 1))
-    else:
-        # Unarmored (e.g. Monk) - full DEX, standard unarmored trained/expert
-        prof_rank = 4 if cls_key == "monk" else 2  # Monks start Expert in unarmored
-        calc_ac = 10 + dex_mod + (prof_rank + level)
-        armor_item = Item(name="Unarmored Defense", bulk="0")
-
-    shield_item = Item(name=shield_data["name"], bulk=shield_data.get("bulk", 1)) if shield_data else None
-
-    # 3. Resolve Strikes
+    # 1. Base Weapon Selection & Rune Progression
+    raw_weps = CLASS_WEAPONS.get(cls_key, CLASS_WEAPONS["default"])
+    weapons: List[Item] = []
     strikes: List[Strike] = []
-    # Fighter and Gunslinger start Expert (+4) with weapons
-    attack_prof_rank = 4 if cls_key in ["fighter", "gunslinger"] else 2
-    base_prof_bonus = attack_prof_rank + level
 
-    for st in cfg.get("strikes", []):
-        is_finesse = st.get("finesse", False)
-        is_ranged = st.get("is_ranged", False)
+    has_potency = lvl >= 2
+    has_striking = lvl >= 4
+    has_armor_potency = lvl >= 5
 
-        if is_ranged:
-            atk_bonus = base_prof_bonus + dex_mod
-            dmg_mod = str_mod if "Propulsive" in st.get("traits", []) else 0
-        elif is_finesse:
-            chosen_mod = max(str_mod, dex_mod)
-            atk_bonus = base_prof_bonus + chosen_mod
-            dmg_mod = str_mod
-        else:
-            atk_bonus = base_prof_bonus + str_mod
-            dmg_mod = str_mod
+    # Runes cost tracking
+    if has_potency:
+        budget_gp -= 35
+    if has_striking:
+        budget_gp -= 65
+    if has_armor_potency:
+        budget_gp -= 160
 
-        # Kineticist adds CON to blast damage
-        if st.get("add_con_damage", False):
-            dmg_mod = str_mod
+    potency_bonus = 1 if has_potency else 0
+    dice_count = 2 if has_striking else 1
 
-        # Level 4 Potency Rune bonus (+1 to attack)
-        if level >= 4 and not is_ranged:
-            atk_bonus += 1
+    for w in raw_weps:
+        w_name = w["name"]
+        if has_striking:
+            w_name = f"+1 Striking {w['name']}"
+        elif has_potency:
+            w_name = f"+1 {w['name']}"
 
-        is_agile = "Agile" in st.get("traits", [])
-        map_second = atk_bonus - (4 if is_agile else 5)
-        map_third = atk_bonus - (8 if is_agile else 10)
+        weapons.append(Item(name=w_name, bulk="1", cost_sp=10))
 
-        dmg_str = f"{st['dice']}+{dmg_mod}" if dmg_mod > 0 else (f"{st['dice']}{dmg_mod}" if dmg_mod < 0 else st['dice'])
+        # Strike calculations
+        is_finesse = "Finesse" in w.get("traits", [])
+        is_ranged = "Range" in " ".join(w.get("traits", []))
+        atk_stat = dex_mod if (is_finesse or is_ranged) else max(str_mod, dex_mod if is_finesse else -99)
 
+        base_prof = 4 if cls_key == "fighter" else 2
+        total_atk = base_prof + lvl + atk_stat + potency_bonus
+
+        dice_str = f"{dice_count}{w['dice'][1:]}"
+        dmg_str = f"{dice_str}+{str_mod}" if not is_ranged else dice_str
+
+        is_agile = "Agile" in w.get("traits", [])
         strikes.append(Strike(
-            name=st["name"],
-            attack_bonus=atk_bonus,
-            map_second=map_second,
-            map_third=map_third,
+            name=w_name,
+            attack_bonus=total_atk,
+            map_second=total_atk - (4 if is_agile else 5),
+            map_third=total_atk - (8 if is_agile else 10),
             damage_dice=dmg_str,
-            damage_type=st["type"],
-            traits=st.get("traits", [])
+            damage_type=w["type"],
+            traits=w.get("traits", [])
         ))
 
-    # 4. Consumables scaling with level
-    potion_count = 2 if level >= 3 else 1
-    potion_name = "Lesser Healing Potion" if level >= 3 else "Minor Healing Potion"
-    potion_desc = "Drink to restore 2d8+5 Hit Points (1 Action)." if level >= 3 else "Drink to restore 1d8 Hit Points (1 Action)."
+    # 2. Armor and Shield Selection
+    shield_bonus = 0
+    if cls_key in ["champion", "fighter", "cleric"]:
+        armor_name = "+1 Breastplate" if has_armor_potency else "Breastplate"
+        armor_item = Item(name=armor_name, bulk="2", cost_sp=80)
+        calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + (1 if has_armor_potency else 0)
+        shield_item = Item(name="Steel Shield", bulk="1", cost_sp=20)
+        shield_bonus = 2
+    elif cls_key in ["rogue", "ranger", "bard"]:
+        armor_name = "+1 Leather Armor" if has_armor_potency else "Leather Armor"
+        armor_item = Item(name=armor_name, bulk="1", cost_sp=20)
+        calculated_ac = 10 + 1 + min(dex_mod, 4) + (2 + lvl) + (1 if has_armor_potency else 0)
+        shield_item = None
+    elif cls_key in ["wizard", "witch", "sorcerer", "oracle", "psychic"]:
+        armor_name = "+1 Explorer's Clothing" if has_armor_potency else "Explorer's Clothing"
+        armor_item = Item(name=armor_name, bulk="L", cost_sp=1)
+        calculated_ac = 10 + 0 + min(dex_mod, 5) + (2 + lvl) + (1 if has_armor_potency else 0)
+        shield_item = None
+    else:
+        armor_name = "+1 Hide Armor" if has_armor_potency else "Hide Armor"
+        armor_item = Item(name=armor_name, bulk="2", cost_sp=20)
+        calculated_ac = 10 + 2 + min(dex_mod, 2) + (2 + lvl) + (1 if has_armor_potency else 0)
+        shield_item = Item(name="Wooden Shield", bulk="1", cost_sp=10)
+        shield_bonus = 2
 
-    consumables = [
-        ConsumableItem(
-            name=potion_name,
-            quantity=potion_count,
-            item_type="potion",
-            bulk="L",
-            description=potion_desc
-        )
-    ]
+    # 3. Permanent Magic Item Purchases
+    gear: List[str] = ["Adventurer's Pack (Backpack, Bedroll, Rations, Torches, Waterskin, Rope)"]
+    num_perm = wealth_cfg.get("permanent_count", 0)
+    if num_perm > 0:
+        eligible_items = [i for i in PERMANENT_MAGIC_ITEMS if i["level"] <= lvl]
+        chosen_items = random.sample(eligible_items, min(num_perm, len(eligible_items)))
+        for item in chosen_items:
+            gear.append(f"{item['name']} ({item['description']})")
+            budget_gp -= min(item["cost_gp"], budget_gp // 2)
 
-    weapons_items = [Item(name=w["name"], bulk=w.get("bulk", 1)) for w in cfg.get("weapons", [])]
+    # 4. Consumables Scaling by Level
+    consumables: List[ConsumableItem] = []
+    if lvl == 1:
+        consumables.append(ConsumableItem(name="Minor Healing Potion", quantity=2, bulk="L", description="Restores 1d8 HP (1 Action)."))
+    elif lvl in [2, 3]:
+        consumables.append(ConsumableItem(name="Lesser Healing Potion", quantity=2, bulk="L", description="Restores 2d8+5 HP (1 Action)."))
+        consumables.append(ConsumableItem(name="Silversheen", quantity=1, bulk="L", description="Grants weapon silver property for 1 hour."))
+    else:
+        consumables.append(ConsumableItem(name="Moderate Healing Potion", quantity=2, bulk="L", description="Restores 3d8+10 HP (1 Action)."))
+        consumables.append(ConsumableItem(name="Elixir of Life (Lesser)", quantity=1, bulk="L", description="Restores 3d6+6 HP and +1 bonus vs disease/poison."))
+
+    # 5. Remaining Coin Purse (GP, SP, CP)
+    remaining_gp = max(3, budget_gp)
+    sp = random.randint(1, 9)
+    cp = random.randint(1, 9)
+    formatted_wealth = f"{remaining_gp} GP, {sp} SP, {cp} CP"
+    wealth = Wealth(pp=0, gp=remaining_gp, sp=sp, cp=cp, formatted=formatted_wealth)
 
     loadout = EquipmentLoadout(
-        weapons=weapons_items,
+        weapons=weapons,
         armor=armor_item,
         shield=shield_item,
-        gear=cfg.get("gear", []),
+        gear=gear,
         consumables=consumables,
-        money=Wealth(gp=10 + level * 5, sp=4, cp=8),
+        money=wealth,
         strikes=strikes
     )
 
-    return loadout, calc_ac, shield_bonus
+    return loadout, calculated_ac, shield_bonus
