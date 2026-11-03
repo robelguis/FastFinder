@@ -1,8 +1,9 @@
+from pathlib import Path
+from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
-from pathlib import Path
-from typing import Optional
+from pydantic import BaseModel, Field
 
 from app.engine.generator import PF2eGenerator
 from app.engine.foundry import export_to_foundry_actor
@@ -16,17 +17,25 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 generator = PF2eGenerator()
 
+
+class LevelUpPayload(BaseModel):
+    character: Dict[str, Any]
+    target_level: int = Field(..., ge=2, le=6)
+
+
 @app.get("/")
 async def root():
     return FileResponse(STATIC_DIR / "index.html")
+
 
 @app.get("/api/options")
 async def get_options():
     return {
         "ancestries": sorted(list(generator.ancestries.keys())),
         "classes": sorted(list(generator.classes.keys())),
-        "backgrounds": sorted(list(generator.backgrounds.keys()))
+        "backgrounds": sorted(list(generator.backgrounds.keys())),
     }
+
 
 @app.get("/api/generate")
 async def generate_character(
@@ -35,7 +44,7 @@ async def generate_character(
     class_name: Optional[str] = None,
     background: Optional[str] = None,
     level: int = Query(1, ge=1, le=6),
-    dedication: bool = Query(False)
+    dedication: bool = Query(False),
 ):
     try:
         sheet = generator.generate(
@@ -44,11 +53,27 @@ async def generate_character(
             background_name=background,
             char_name=name,
             level=level,
-            use_dedication=dedication
+            use_dedication=dedication,
         )
         return sheet
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/levelup")
+async def level_up_endpoint(payload: LevelUpPayload):
+    current_level = int(payload.character.get("level", 1))
+    if payload.target_level <= current_level:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Target level {payload.target_level} must be greater than current level {current_level}.",
+        )
+    try:
+        updated_sheet = generator.level_up(payload.character, payload.target_level)
+        return updated_sheet
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 @app.get("/api/export/foundry")
 async def export_foundry(
@@ -56,7 +81,7 @@ async def export_foundry(
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
     level: int = Query(1, ge=1, le=6),
-    dedication: bool = Query(False)
+    dedication: bool = Query(False),
 ):
     try:
         sheet = generator.generate(
@@ -64,13 +89,13 @@ async def export_foundry(
             class_name=class_name,
             char_name=name,
             level=level,
-            use_dedication=dedication
+            use_dedication=dedication,
         )
         foundry_actor = export_to_foundry_actor(sheet)
         filename = f"{sheet.name.lower().replace(' ', '_')}_foundry.json"
         return JSONResponse(
             content=foundry_actor,
-            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
