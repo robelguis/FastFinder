@@ -106,7 +106,48 @@ ANCESTRY_NAMES: Dict[str, Dict[str, List[str]]] = {
             "Warsnout", "Ironfang", "Shieldbreaker"
         ]
     },
-    "kobold": {
+    
+    "shoony": {
+        "first": [
+            "Buster", "Barnaby", "Pippa", "Roscoe", "Daisy", "Toby", "Waffles",
+            "Mochi", "Otis", "Biscuit", "Clover", "Benton", "Gordo", "Penny"
+        ],
+        "last": [
+            "Pugwash", "Snoutworthy", "Shortpaw", "Barksdale", "Puddlejumper",
+            "Trundlefoot", "Waggles", "Cozyhearth", "Bristlechin"
+        ]
+    },
+    "catfolk": {
+        "first": [
+            "Alyara", "Kallik", "Mizra", "Raza", "Sikari", "Tani", "Zaida",
+            "Malkin", "Silas", "Caelum", "Nyra", "Soraya", "Zephyr"
+        ],
+        "last": [
+            "Nimbleclaw", "Shadowstalker", "Silentstride", "Moonpounce",
+            "Duskwalker", "Swiftpaw", "Graceblade"
+        ]
+    },
+    "lizardfolk": {
+        "first": [
+            "Darask", "Kess", "Morok", "Slark", "Veska", "Zilka", "Gartok",
+            "Hassk", "Isskar", "Krogar", "Ssith", "Zhar"
+        ],
+        "last": [
+            "Basker", "Swampstrider", "Sunbasker", "Deepwalker", "Coldscale",
+            "Mudwalker", "Riverfang"
+        ]
+    },
+    "ratfolk": {
+        "first": [
+            "Barnaby", "Chitter", "Gnash", "Kip", "Nib", "Rik", "Snick",
+            "Titch", "Whiskers", "Zik", "Scamp", "Patter"
+        ],
+        "last": [
+            "Cheesemonger", "Quickwhiskers", "Packbound", "Tailtwister",
+            "Shadowscamper", "Barrowsnoop"
+        ]
+    },
+"kobold": {
         "first": [
             "Mikmek", "Enga", "Sniv", "Varn", "Kael", "Rax", "Zul", "Skel",
             "Tik", "Vesk", "Zik", "Kip", "Dax", "Droop", "Meepo", "Nark",
