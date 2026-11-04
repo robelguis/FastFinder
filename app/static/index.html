@@ -1316,8 +1316,9 @@
       window.location.href = '/api/export/foundry?' + params.toString();
     }
 
-    window.onload = () => {
-      loadOptions();
+    window.onload = async () => {
+      await loadOptions();
+      generate();
     };
   </script>
 </body>
