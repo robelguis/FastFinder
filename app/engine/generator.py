@@ -480,16 +480,16 @@ class PF2eGenerator:
             skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2]]
             sf = pick_weighted_feat(skill_feats_2, cls["name"], owned_names, skill_ranks, mods, 2)
             if sf:
-                resolved_name = resolve_feat_subchoices(sf["name"], owned_names)
+                resolved_feat_name2 = resolve_feat_subchoices(sf["name"], owned_names)
                 chosen_feats.append(FeatSummary(
                     id=sf["id"],
-                    name=resolved_name,
+                    name=resolved_feat_name2,
                     category="Skill (Level 2)",
                     action_cost=sf.get("action_cost"),
                     traits=sf.get("traits", []),
                     description=clean_pf2e_text(sf.get("description", ""))
                 ))
-                owned_names.add(resolved_name)
+                owned_names.add(resolved_feat_name2)
 
         # Level 3 Progression
         if level >= 3:
@@ -696,31 +696,28 @@ class PF2eGenerator:
             level=level
         )
 
-        # 9. Partner Creature
-        companion_data = None
+        # 9. Partner Creatures (collect all concurrent partners, e.g., Eidolon + Beastmaster)
+        collected_partners = []
         arch_name = archetype_data["name"].lower() if archetype_data else ""
         all_feat_str = " ".join([f.name.lower() for f in chosen_feats])
 
+        # 9a. Class-intrinsic partners
         if cls_name_lower == "summoner":
-            companion_data = resolve_eidolon(master_hp=total_hp, level=level)
+            collected_partners.append(resolve_eidolon(master_hp=total_hp, level=level))
         elif cls_name_lower == "inventor":
-            companion_data = resolve_construct_companion(master_int_mod=mods["int"], level=level)
-        elif "undead master" in arch_name or "undead companion" in all_feat_str:
-            companion_data = resolve_undead_companion(level=level)
-        elif "plant companion" in all_feat_str or (cls_name_lower == "druid" and "leaf" in all_feat_str):
-            companion_data = resolve_plant_companion(level=level)
-        elif cls_name_lower == "witch" or "familiar" in all_feat_str:
+            collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
+        elif cls_name_lower == "witch":
             if level >= 4 and random.random() < 0.5:
-                companion_data = resolve_specific_familiar(
+                collected_partners.append(resolve_specific_familiar(
                     master_ac=calculated_ac,
                     master_fort=fort_prof.modifier,
                     master_ref=ref_prof.modifier,
                     master_will=will_prof.modifier,
                     master_perception=perception_prof.modifier,
                     level=level
-                )
+                ))
             else:
-                companion_data = resolve_familiar(
+                collected_partners.append(resolve_familiar(
                     master_ac=calculated_ac,
                     master_fort=fort_prof.modifier,
                     master_ref=ref_prof.modifier,
@@ -728,14 +725,35 @@ class PF2eGenerator:
                     master_perception=perception_prof.modifier,
                     class_name=cls["name"],
                     level=level
-                )
-        else:
-            companion_data = resolve_companion(
+                ))
+
+        # 9b. Archetype / Feat companions (Undead Master, Plant, Animal Companion, Familiar)
+        if "undead master" in arch_name or "undead companion" in all_feat_str:
+            collected_partners.append(resolve_undead_companion(level=level))
+        elif "plant companion" in all_feat_str or (cls_name_lower == "druid" and "leaf" in all_feat_str):
+            collected_partners.append(resolve_plant_companion(level=level))
+        elif "beastmaster" in arch_name or "animal companion" in all_feat_str or cls_name_lower in ["druid", "ranger", "champion"]:
+            comp = resolve_companion(
                 class_name=cls["name"],
                 feats=chosen_feats,
                 archetype=clean_arch_input or (archetype_data["name"] if archetype_data and level >= 2 else None),
                 level=level
             )
+            if comp:
+                collected_partners.append(comp)
+        elif "familiar" in all_feat_str and cls_name_lower != "witch":
+            collected_partners.append(resolve_familiar(
+                master_ac=calculated_ac,
+                master_fort=fort_prof.modifier,
+                master_ref=ref_prof.modifier,
+                master_will=will_prof.modifier,
+                master_perception=perception_prof.modifier,
+                class_name=cls["name"],
+                level=level
+            ))
+
+        primary_companion = collected_partners[0] if collected_partners else None
+        extra_partners = collected_partners[1:] if len(collected_partners) > 1 else []
 
         # Resolve Languages (de-duplicated & distinct)
         COMMON_LANG_POOL = [
@@ -813,7 +831,8 @@ class PF2eGenerator:
             equipment=equipment_loadout,
             spellcasting=spellcasting_data,
             focus_spells=focus_data,
-            companion=companion_data,
+            companion=primary_companion,
+            additional_partners=extra_partners,
             feats=chosen_feats,
             languages=character_languages,
             traits=[anc["name"].lower(), cls["name"].lower()],
@@ -974,10 +993,10 @@ class PF2eGenerator:
                 ]
                 if skill_feats_2:
                     sf = random.choice(skill_feats_2)
-                    resolved_name = resolve_feat_subchoices(sf["name"], existing_feat_names)
+                    resolved_feat_name2 = resolve_feat_subchoices(sf["name"], existing_feat_names)
                     chosen_feats.append(FeatSummary(
                         id=sf["id"],
-                        name=resolved_name,
+                        name=resolved_feat_name2,
                         category="Skill (Level 2)",
                         action_cost=sf.get("action_cost"),
                         traits=sf.get("traits", []),
@@ -1271,6 +1290,17 @@ class PF2eGenerator:
                     lang_set_lower.add(chosen.lower())
         char_languages = existing_langs
 
+        # Carry over companion and additional partners across level up
+        existing_companion = current_char.get("companion")
+        if isinstance(existing_companion, dict):
+            existing_companion = PartnerCreatureData(**existing_companion)
+
+        raw_extra_partners = current_char.get("additional_partners") or []
+        existing_extra_partners = [
+            PartnerCreatureData(**p) if isinstance(p, dict) else p
+            for p in raw_extra_partners
+        ]
+
         return CharacterSheet(
             name=current_char["name"],
             level=target_level,
@@ -1299,7 +1329,8 @@ class PF2eGenerator:
             equipment=equipment_loadout,
             spellcasting=spellcasting_data,
             focus_spells=focus_data,
-            companion=companion_data,
+            companion=existing_companion,
+            additional_partners=existing_extra_partners,
             feats=chosen_feats,
             languages=char_languages,
             traits=current_char.get("traits", [anc["name"].lower(), cls["name"].lower()]),
