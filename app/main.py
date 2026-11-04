@@ -23,6 +23,8 @@ generator = PF2eGenerator()
 class LevelUpPayload(BaseModel):
     character: Dict[str, Any]
     target_level: int = Field(..., ge=2, le=6)
+    use_dedication: bool = False
+    archetype: Optional[str] = None
 
 
 @app.get("/")
@@ -51,14 +53,15 @@ async def generate_character(
     dedication: bool = Query(False),
 ):
     try:
+        clean_arch = None if not archetype or archetype.lower() in ["any", "any archetype", "none"] else archetype
         sheet = generator.generate(
             ancestry_name=ancestry,
             class_name=class_name,
             background_name=background,
-            archetype_name=archetype,
+            archetype_name=clean_arch,
             char_name=name,
             level=level,
-            use_dedication=dedication or bool(archetype),
+            use_dedication=dedication or bool(clean_arch),
         )
         return sheet
     except Exception as e:
@@ -74,7 +77,13 @@ async def level_up_endpoint(payload: LevelUpPayload):
             detail=f"Target level {payload.target_level} must be greater than current level {current_level}.",
         )
     try:
-        updated_sheet = generator.level_up(payload.character, payload.target_level)
+        clean_arch = None if not payload.archetype or payload.archetype.lower() in ["any", "any archetype", "none"] else payload.archetype
+        updated_sheet = generator.level_up(
+            payload.character,
+            payload.target_level,
+            use_dedication=payload.use_dedication or bool(clean_arch),
+            archetype_name=clean_arch
+        )
         return updated_sheet
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -251,15 +251,15 @@ class PF2eGenerator:
         heritage_data = resolve_heritage(anc["name"])
         subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
-        clean_arch_input = archetype_name.strip() if archetype_name and archetype_name.strip() else None
+        raw_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else ""
+        if raw_arch.lower() in ["", "any", "any archetype", "none", "random"]:
+            clean_arch_input = None
+        else:
+            clean_arch_input = raw_arch
+
+        archetype_data = None
         if clean_arch_input:
             archetype_data = resolve_dynamic_archetype(clean_arch_input, self.feats)
-        elif use_dedication and level >= 2:
-            current_ranks = {s.name: s.rank for s in all_skills} if "all_skills" in locals() else {}
-            current_mods = mods if "mods" in locals() else {}
-            archetype_data = pick_archetype(cls["name"], current_ranks, current_mods)
-        else:
-            archetype_data = None
 
         # 2. Track Attribute Boosts (Level 1)
         mods = {attr: 0 for attr in ATTRIBUTES}
@@ -314,6 +314,10 @@ class PF2eGenerator:
                 free_boosts_applied.add(attr)
             if mods[attr] > 4:
                 mods[attr] = 4
+
+        # Resolve archetype if dedication toggle is enabled and no specific archetype was forced
+        if not archetype_data and use_dedication and level >= 2:
+            archetype_data = pick_archetype(cls["name"], {}, mods)
 
         # 2b. Level 5 Attribute Boosts (4 distinct boosts to top attributes)
         if level >= 5:
@@ -716,15 +720,19 @@ class PF2eGenerator:
                 ))
 
         # 9b. Archetype / Feat companions (Undead Master, Plant, Animal Companion, Familiar)
-        if "undead master" in arch_name or "undead companion" in all_feat_str:
+        # Archetype companions are only active at Level 2+ once the Dedication feat is taken
+        has_undead_master = (level >= 2 and archetype_data and "undead master" in arch_name)
+        has_beastmaster = (level >= 2 and archetype_data and "beastmaster" in arch_name)
+
+        if has_undead_master or "undead companion" in all_feat_str:
             collected_partners.append(resolve_undead_companion(level=level))
         elif "plant companion" in all_feat_str or (cls_name_lower == "druid" and "leaf" in all_feat_str):
             collected_partners.append(resolve_plant_companion(level=level))
-        elif "beastmaster" in arch_name or "animal companion" in all_feat_str or cls_name_lower in ["druid", "ranger", "champion"]:
+        elif has_beastmaster or "animal companion" in all_feat_str:
             comp = resolve_companion(
                 class_name=cls["name"],
                 feats=chosen_feats,
-                archetype=clean_arch_input or (archetype_data["name"] if archetype_data and level >= 2 else None),
+                archetype=archetype_data["name"] if (archetype_data and level >= 2) else None,
                 level=level
             )
             if comp:
@@ -844,7 +852,13 @@ class PF2eGenerator:
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
 
-    def level_up(self, current_char: Dict[str, Any], target_level: int) -> CharacterSheet:
+    def level_up(
+        self,
+        current_char: Dict[str, Any],
+        target_level: int,
+        use_dedication: bool = False,
+        archetype_name: Optional[str] = None
+    ) -> CharacterSheet:
         target_level = max(1, min(6, int(target_level)))
         old_level = int(current_char.get("level", 1))
 
@@ -938,12 +952,20 @@ class PF2eGenerator:
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * target_level)
         total_hp = max(1, base_hp)
 
-        # 5. Resolve Archetype (respect existing choice; do not force one if none was selected)
+        # 5. Resolve Archetype (respect existing choice or select new dedication on level up)
         archetype_data = None
         existing_arch_name = current_char.get("archetype")
-        if existing_arch_name:
+        clean_target_arch = archetype_name.strip() if archetype_name and archetype_name.strip().lower() not in ["", "any", "any archetype", "none"] else None
+
+        if existing_arch_name and existing_arch_name.lower() not in ["any", "any archetype", "none"]:
             archetype_data = resolve_dynamic_archetype(existing_arch_name, self.feats)
             resolved_arch_name = existing_arch_name
+        elif clean_target_arch:
+            archetype_data = resolve_dynamic_archetype(clean_target_arch, self.feats)
+            resolved_arch_name = clean_target_arch
+        elif use_dedication and target_level >= 2:
+            archetype_data = pick_archetype(cls["name"], {}, mods)
+            resolved_arch_name = archetype_data["name"] if archetype_data else None
         else:
             resolved_arch_name = None
 
@@ -1308,15 +1330,43 @@ class PF2eGenerator:
         char_languages = existing_langs
 
         # Carry over companion and additional partners across level up
-        existing_companion = current_char.get("companion")
-        if isinstance(existing_companion, dict):
-            existing_companion = PartnerCreatureData(**existing_companion)
+        existing_companion = companion_data
 
         raw_extra_partners = current_char.get("additional_partners") or []
         existing_extra_partners = [
-            PartnerCreatureData(**p) if isinstance(p, dict) else p
+            PartnerCreatureData(**scale_existing_companion(p, old_level, target_level, total_hp)) if isinstance(p, dict)
+            else p
             for p in raw_extra_partners
         ]
+
+        # Check if a newly gained archetype unlocks an additional companion at level 2+
+        all_partner_types = [
+            (existing_companion.creature_type or "").lower() if existing_companion else ""
+        ] + [
+            (p.creature_type or "").lower() for p in existing_extra_partners
+        ]
+
+        arch_str = (resolved_arch_name or "").lower()
+        if old_level < 2 and target_level >= 2:
+            if "beastmaster" in arch_str and not any("animal" in t or "companion" in t for t in all_partner_types):
+                new_partner = resolve_companion(
+                    class_name=cls["name"],
+                    feats=chosen_feats,
+                    archetype=resolved_arch_name,
+                    level=target_level
+                )
+                if new_partner:
+                    if not existing_companion:
+                        existing_companion = new_partner
+                    else:
+                        existing_extra_partners.append(new_partner)
+            elif "undead master" in arch_str and not any("undead" in t for t in all_partner_types):
+                new_partner = resolve_undead_companion(level=target_level)
+                if new_partner:
+                    if not existing_companion:
+                        existing_companion = new_partner
+                    else:
+                        existing_extra_partners.append(new_partner)
 
         return CharacterSheet(
             name=current_char["name"],

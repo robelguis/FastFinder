@@ -647,7 +647,8 @@
             </div>
           </div>
 
-          <!-- ANIMAL COMPANION DOSSIER -->
+          <!-- PARTNER CREATURES (EIDOLON, ANIMAL COMPANION, FAMILIAR) -->
+          <div id="partnerCreaturesContainer"></div>
           <div class="sheet-box" id="companionSection" style="display: none; border-left: 3.5px solid #16a34a;">
             <div class="sheet-box-title" style="background: #14532d;">
                <span id="companionTitleHeader">Partner Creature</span>
@@ -1125,80 +1126,102 @@
       
       renderConsumables(data.equipment?.consumables || []);
 
-      // Render Partner Creature / Animal Companion / Eidolon
-      const compSection = document.getElementById("companionSection");
-      if (data.companion && data.companion.name) {
-        compSection.style.display = "block";
-        const comp = data.companion;
+      // Render Partner Creatures (Eidolon, Animal Companion, Familiar)
+      const container = document.getElementById("partnerCreaturesContainer");
+      if (container) {
+        container.innerHTML = "";
+        const allPartners = [];
+        if (data.companion && data.companion.name) allPartners.push(data.companion);
+        if (Array.isArray(data.additional_partners)) {
+          data.additional_partners.forEach(p => { if (p && p.name) allPartners.push(p); });
+        }
 
-        // 1. Dynamic Header Title (Eidolon, Construct Companion, Familiar, Animal Companion)
-        const headerTitle = comp.creature_type ? comp.creature_type.toUpperCase() : "ANIMAL COMPANION";
-        const headerEl = document.getElementById("companionTitleHeader");
-        if (headerEl) headerEl.textContent = headerTitle;
+        allPartners.forEach((comp) => {
+          const isEidolon = (comp.creature_type || "").toLowerCase().includes("eidolon");
+          const headerTitle = comp.creature_type ? comp.creature_type.toUpperCase() : "ANIMAL COMPANION";
+          const typeDetail = comp.sub_type || comp.species || comp.tradition || "";
+          const stageText = comp.stage || "";
+          const badgeText = typeDetail ? `${stageText} (${typeDetail})`.trim() : stageText;
 
-        // 2. Stage Badge: Resolve species, sub_type, or tradition cleanly without (UNDEFINED)
-        const typeDetail = comp.sub_type || comp.species || comp.tradition || "";
-        const stageText = comp.stage || "";
-        const badgeText = typeDetail ? `${stageText} (${typeDetail})`.trim() : stageText;
-        document.getElementById("companionStageBadge").textContent = badgeText;
+          const strikesHtml = (comp.strikes || []).map(st => `
+            <tr>
+              <td><span class="w-name">${st.name}</span></td>
+              <td class="w-map">${formatMod(st.attack_bonus)} / ${formatMod(st.map_second)} / ${formatMod(st.map_third)}</td>
+              <td class="w-dmg">${st.damage_dice} ${st.damage_type}</td>
+              <td class="w-traits">${(st.traits || []).join(", ")}</td>
+            </tr>
+          `).join("");
 
-        // 3. Name & Core Metadata
-        document.getElementById("companionName").textContent = comp.name;
-        document.getElementById("companionMeta").textContent = `Size: ${comp.size || "Med"} | Speed: ${comp.speed || "25 ft"} | Perception: ${formatMod(comp.perception)}`;
-        document.getElementById("compAc").textContent = comp.ac;
-        
-        const isEidolon = (comp.creature_type || "").toLowerCase().includes("eidolon");
-        document.getElementById("compHp").textContent = isEidolon ? `${comp.hp} (Shared)` : comp.hp;
-        document.getElementById("compFort").textContent = formatMod(comp.fortitude);
-        document.getElementById("compRef").textContent = formatMod(comp.reflex);
-        document.getElementById("compWill").textContent = formatMod(comp.will);
+          const primaryTitle = comp.primary_ability ? "Primary Ability" : (comp.support_benefit ? "Support Benefit" : "");
+          const primaryText = comp.primary_ability || comp.support_benefit || "";
+          const secondaryTitle = comp.secondary_ability ? "Unique Ability" : (comp.advanced_maneuver ? "Advanced Maneuver" : "");
+          const secondaryText = comp.secondary_ability || comp.advanced_maneuver || "";
 
-        // 4. Strikes
-        const compStrikesTbody = document.getElementById("compStrikesTbody");
-        compStrikesTbody.innerHTML = "";
-        (comp.strikes || []).forEach(st => {
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
-            <td><span class="w-name">${st.name}</span></td>
-            <td class="w-map">${formatMod(st.attack_bonus)} / ${formatMod(st.map_second)} / ${formatMod(st.map_third)}</td>
-            <td class="w-dmg">${st.damage_dice} ${st.damage_type}</td>
-            <td class="w-traits">${(st.traits || []).join(", ")}</td>
+          const card = document.createElement("div");
+          card.className = "sheet-box";
+          card.style.cssText = "margin-bottom: 0.8rem; border-left: 3.5px solid #16a34a;";
+          card.innerHTML = `
+            <div class="sheet-box-title" style="background: #14532d;">
+              <span>${headerTitle}</span>
+              <span style="font-size: 0.65rem; color: #86efac; font-weight: 800; text-transform: uppercase;">${badgeText}</span>
+            </div>
+            <div class="sheet-box-content">
+              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
+                <span style="font-size: 0.95rem; font-weight: 800; color: #0f172a;">${comp.name}</span>
+                <span style="font-size: 0.72rem; color: #475569; font-weight: 700;">Size: ${comp.size || "Med"} | Speed: ${comp.speed || "25 ft"} | Perception: ${formatMod(comp.perception)}</span>
+              </div>
+              <div class="defense-row" style="margin-bottom: 0.4rem;">
+                <div class="defense-metric">
+                  <span class="lbl">AC</span>
+                  <span class="val">${comp.ac}</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Max HP</span>
+                  <span class="val" style="color: #15803d;">${isEidolon ? `${comp.hp} (Shared)` : comp.hp}</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Fort</span>
+                  <span class="val">${formatMod(comp.fortitude)}</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Ref</span>
+                  <span class="val">${formatMod(comp.reflex)}</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Will</span>
+                  <span class="val">${formatMod(comp.will)}</span>
+                </div>
+              </div>
+              <div style="margin-top: 0.4rem;">
+                <div class="table-caption-bar">STRIKES & OFFENSIVE ATTACKS</div>
+                <table class="fast-table">
+                  <thead>
+                    <tr><th>Action</th><th>Attack</th><th>Damage</th><th>Traits</th></tr>
+                  </thead>
+                  <tbody>${strikesHtml}</tbody>
+                </table>
+              </div>
+              ${primaryText ? `
+                <div class="detail-card" style="margin-top: 0.4rem;">
+                  <div class="detail-card-head">${primaryTitle}</div>
+                  <div class="detail-card-body">${primaryText}</div>
+                </div>
+              ` : ""}
+              ${secondaryText ? `
+                <div class="detail-card" style="margin-top: 0.4rem;">
+                  <div class="detail-card-head">${secondaryTitle}</div>
+                  <div class="detail-card-body">${secondaryText}</div>
+                </div>
+              ` : ""}
+            </div>
           `;
-          compStrikesTbody.appendChild(tr);
+          container.appendChild(card);
         });
-
-        // 5. Primary Benefit / Support Benefit (Handles both Animal Companions and Eidolons)
-        const benefitTitleEl = document.querySelector("#companionSection .detail-card-head");
-        const benefitBodyEl = document.getElementById("compSupport");
-        
-        if (comp.primary_ability) {
-          if (benefitTitleEl) benefitTitleEl.textContent = "Primary Ability";
-          benefitBodyEl.textContent = comp.primary_ability;
-          benefitBodyEl.parentElement.style.display = "block";
-        } else if (comp.support_benefit) {
-          if (benefitTitleEl) benefitTitleEl.textContent = "Support Benefit";
-          benefitBodyEl.textContent = comp.support_benefit;
-          benefitBodyEl.parentElement.style.display = "block";
-        } else {
-          benefitBodyEl.parentElement.style.display = "none";
-        }
-
-        // 6. Advanced Maneuver / Secondary Ability
-        const advCard = document.getElementById("compAdvCard");
-        const advTitleEl = advCard ? advCard.querySelector(".detail-card-head") : null;
-        const advBodyEl = document.getElementById("compAdv");
-        
-        const secondaryText = comp.secondary_ability || comp.advanced_maneuver;
-        if (secondaryText) {
-          advCard.style.display = "block";
-          if (advTitleEl) advTitleEl.textContent = comp.secondary_ability ? "Unique Ability" : "Advanced Maneuver";
-          advBodyEl.textContent = secondaryText;
-        } else {
-          advCard.style.display = "none";
-        }
-      } else {
-        compSection.style.display = "none";
       }
+
+      // Hide legacy static container
+      const legacyComp = document.getElementById("companionSection");
+      if (legacyComp) legacyComp.style.display = "none";
 
       // Render Focus Spells & Pool
       const focusSection = document.getElementById("focusSection");
@@ -1237,7 +1260,9 @@
       const useDedication = document.getElementById('dedicationToggle')?.checked;
 
       const params = new URLSearchParams();
-      if (arch) params.append('archetype', arch);
+      if (arch && !["any", "any archetype", "none"].includes(arch.toLowerCase())) {
+        params.append('archetype', arch);
+      }
       if (nameInput) params.append('name', nameInput);
       if (anc) params.append('ancestry', anc);
       if (cls) params.append('class_name', cls);
@@ -1280,13 +1305,18 @@
         btn.disabled = true;
         btn.textContent = `...`;
 
-        const res = await fetch('/api/levelup', {
+          const archVal = document.getElementById("archetypeSelect") ? document.getElementById("archetypeSelect").value : "";
+          const useDed = document.getElementById('dedicationToggle')?.checked;
+          const reqBody = {
+            character: currentCharacterData,
+            target_level: targetLvl,
+            use_dedication: !!useDed,
+            archetype: (archVal && !["any", "any archetype", "none"].includes(archVal.toLowerCase())) ? archVal : null
+          };
+          const res = await fetch('/api/levelup', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            character: currentCharacterData,
-            target_level: targetLvl
-          })
+          body: JSON.stringify(reqBody)
         });
 
         if (!res.ok) {
