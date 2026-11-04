@@ -106,15 +106,111 @@ CLASS_TRADITION_MAP = {
     "witch": {"tradition": "Occult", "attr": "int", "catalog": "occult"},
     "oracle": {"tradition": "Divine", "attr": "cha", "catalog": "divine"},
     "animist": {"tradition": "Divine", "attr": "wis", "catalog": "divine"},
-    "psychic": {"tradition": "Occult", "attr": "int", "catalog": "occult"}
+    "psychic": {"tradition": "Occult", "attr": "int", "catalog": "occult"},
+    "magus": {"tradition": "Arcane", "attr": "int", "catalog": "arcane"}
 }
 
 def resolve_spellcasting(
     class_name: str,
     attribute_mods: Dict[str, int],
-    level: int = 1
+    level: int = 1,
+    subclass_name: Optional[str] = None
 ) -> Optional[SpellcastingData]:
     cls_key = class_name.lower()
+    if cls_key == "magus":
+        trad_name, cat_key = "Arcane", "arcane"
+        attr_mod = attribute_mods.get("int", 3)
+        prof_bonus = 2 + level
+        spell_dc = 10 + prof_bonus + attr_mod
+        spell_attack = prof_bonus + attr_mod
+        cat_data = SPELL_CATALOG["arcane"]
+        cantrips = [SpellSummary(rank=0, **s) for s in cat_data["cantrips"]]
+
+        if level <= 2:
+            slots = [SpellSlotTracker(rank=1, max_slots=1 if level == 1 else 2)]
+            rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
+            rank_2, rank_3 = [], []
+        elif level in [3, 4]:
+            slots = [
+                SpellSlotTracker(rank=1, max_slots=2),
+                SpellSlotTracker(rank=2, max_slots=2)
+            ]
+            rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
+            rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])]
+            rank_3 = []
+        else:
+            slots = [
+                SpellSlotTracker(rank=2, max_slots=2),
+                SpellSlotTracker(rank=3, max_slots=2)
+            ]
+            rank_1 = []
+            rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])]
+            rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])]
+
+        return SpellcastingData(
+            tradition=trad_name,
+            casting_attribute="INT",
+            spell_dc=spell_dc,
+            spell_attack=spell_attack,
+            cantrips=cantrips,
+            rank_1_spells=rank_1,
+            rank_2_spells=rank_2,
+            rank_3_spells=rank_3,
+            slots=slots
+        )
+
+    if cls_key == "summoner":
+        sub_lower = (subclass_name or "").lower()
+        if any(w in sub_lower for w in ["dragon", "construct"]):
+            trad_name, cat_key = "Arcane", "arcane"
+        elif any(w in sub_lower for w in ["angel", "demon", "devil", "psychopomp", "undead"]):
+            trad_name, cat_key = "Divine", "divine"
+        elif any(w in sub_lower for w in ["beast", "elemental", "plant"]):
+            trad_name, cat_key = "Primal", "primal"
+        else:
+            trad_name, cat_key = "Occult", "occult"
+
+        attr_mod = attribute_mods.get("cha", 3)
+        prof_bonus = 2 + level
+        spell_dc = 10 + prof_bonus + attr_mod
+        spell_attack = prof_bonus + attr_mod
+
+        cat_data = SPELL_CATALOG.get(cat_key, SPELL_CATALOG["occult"])
+        cantrips = [SpellSummary(rank=0, **s) for s in cat_data["cantrips"]]
+
+        if level <= 2:
+            slots = [SpellSlotTracker(rank=1, max_slots=1 if level == 1 else 2)]
+            rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
+            rank_2, rank_3 = [], []
+        elif level in [3, 4]:
+            slots = [
+                SpellSlotTracker(rank=1, max_slots=2),
+                SpellSlotTracker(rank=2, max_slots=2)
+            ]
+            rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
+            rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])]
+            rank_3 = []
+        else:
+            slots = [
+                SpellSlotTracker(rank=2, max_slots=2),
+                SpellSlotTracker(rank=3, max_slots=2)
+            ]
+            rank_1 = []
+            rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])]
+            rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])]
+
+        return SpellcastingData(
+            tradition=trad_name,
+            casting_attribute="CHA",
+            spell_dc=spell_dc,
+            spell_attack=spell_attack,
+            cantrips=cantrips,
+            rank_1_spells=rank_1,
+            rank_2_spells=rank_2,
+            rank_3_spells=rank_3,
+            slots=slots
+        )
+
     if cls_key not in CLASS_TRADITION_MAP:
         return None
 

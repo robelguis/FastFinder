@@ -680,30 +680,18 @@ class PF2eGenerator:
                     sk.rank_letter = "T"
                     sk.modifier += (2 + level)
 
-        # 7. Spellcasting
-        spellcasting_data = resolve_spellcasting(
-            class_name=cls["name"],
-            attribute_mods=mods,
-            level=level
-        )
-
-        # 8. Focus Spells & Pool
-        focus_data = resolve_focus_spells(
-            class_name=cls["name"],
-            feats=chosen_feats,
-            attribute_mods=mods,
-            subclass_name=subclass_data["name"] if subclass_data else None,
-            level=level
-        )
-
-        # 9. Partner Creatures (collect all concurrent partners, e.g., Eidolon + Beastmaster)
+        # 7. Partner Creatures (collect all concurrent partners, e.g., Eidolon + Beastmaster)
         collected_partners = []
         arch_name = archetype_data["name"].lower() if archetype_data else ""
         all_feat_str = " ".join([f.name.lower() for f in chosen_feats])
 
-        # 9a. Class-intrinsic partners
+        # 7a. Class-intrinsic partners
         if cls_name_lower == "summoner":
-            collected_partners.append(resolve_eidolon(master_hp=total_hp, level=level))
+            eidolon_partner = resolve_eidolon(master_hp=total_hp, level=level)
+            collected_partners.append(eidolon_partner)
+            if not subclass_data and eidolon_partner:
+                subclass_data = {"name": eidolon_partner.name, "title": "Eidolon", "description": f"{eidolon_partner.creature_type} partner"}
+                subclass_obj = SubclassSummary(title="Eidolon", name=eidolon_partner.name, description=f"{eidolon_partner.creature_type} partner")
         elif cls_name_lower == "inventor":
             collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
         elif cls_name_lower == "witch":
@@ -754,6 +742,24 @@ class PF2eGenerator:
 
         primary_companion = collected_partners[0] if collected_partners else None
         extra_partners = collected_partners[1:] if len(collected_partners) > 1 else []
+
+        # 8. Spellcasting
+        sub_name = subclass_data["name"] if subclass_data else None
+        spellcasting_data = resolve_spellcasting(
+            class_name=cls["name"],
+            attribute_mods=mods,
+            level=level,
+            subclass_name=sub_name
+        )
+
+        # 9. Focus Spells & Pool
+        focus_data = resolve_focus_spells(
+            class_name=cls["name"],
+            feats=chosen_feats,
+            attribute_mods=mods,
+            subclass_name=sub_name,
+            level=level
+        )
 
         # Resolve Languages (de-duplicated & distinct)
         COMMON_LANG_POOL = [
@@ -932,19 +938,14 @@ class PF2eGenerator:
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * target_level)
         total_hp = max(1, base_hp)
 
-        # 5. Resolve Archetype
+        # 5. Resolve Archetype (respect existing choice; do not force one if none was selected)
         archetype_data = None
         existing_arch_name = current_char.get("archetype")
-        if target_level >= 2:
-            if existing_arch_name:
-                archetype_data = resolve_dynamic_archetype(existing_arch_name, self.feats)
-                resolved_arch_name = existing_arch_name
-            else:
-                current_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
-                archetype_data = pick_archetype(cls["name"], current_ranks, mods)
-                resolved_arch_name = archetype_data["name"] if archetype_data else None
-        else:
+        if existing_arch_name:
+            archetype_data = resolve_dynamic_archetype(existing_arch_name, self.feats)
             resolved_arch_name = existing_arch_name
+        else:
+            resolved_arch_name = None
 
         # 6. Preserve and advance feats
         existing_feats_raw = current_char.get("feats", [])
@@ -1183,18 +1184,35 @@ class PF2eGenerator:
             feats=chosen_feats
         )
 
+        # Resolve Subclass / Eidolon info before spells & focus
+        raw_sub = current_char.get("subclass")
+        if raw_sub and raw_sub.get("name"):
+            subclass_obj = SubclassSummary(**raw_sub)
+        elif current_char.get("companion") and current_char["companion"].get("name"):
+            comp = current_char["companion"]
+            subclass_obj = SubclassSummary(
+                title="Eidolon" if cls_name_lower == "summoner" else "Companion",
+                name=comp["name"],
+                description=comp.get("creature_type", "")
+            )
+        else:
+            subclass_obj = None
+
+        sub_name = subclass_obj.name if subclass_obj else None
+
         # 8. Spellcasting
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
-            level=target_level
+            level=target_level,
+            subclass_name=sub_name
         )
 
         focus_data = resolve_focus_spells(
             class_name=cls["name"],
             feats=chosen_feats,
             attribute_mods=mods,
-            subclass_name=current_char.get("subclass", {}).get("name") if current_char.get("subclass") else None,
+            subclass_name=sub_name,
             level=target_level
         )
 
@@ -1217,7 +1235,6 @@ class PF2eGenerator:
             )
 
         # 10. Assemble and Return
-        subclass_obj = SubclassSummary(**current_char["subclass"]) if current_char.get("subclass") else None
         anc_desc = clean_pf2e_text(anc.get("description", "")) or current_char.get("ancestry_description", "")
 
         # Resolve Languages (de-duplicated & distinct)
