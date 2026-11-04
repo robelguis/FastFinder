@@ -15,6 +15,7 @@ from app.engine.models import (
 from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
+from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_weight
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
 from app.engine.subclasses import resolve_heritage, resolve_subclass
@@ -185,12 +186,35 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
 
     return feat_name
 
+
+def pick_weighted_feat(candidates, class_name, owned_names, skill_ranks, mods, char_level):
+    valid = [
+        f for f in candidates
+        if f["name"] not in owned_names
+        and check_feat_prerequisites(f, skill_ranks, owned_names, mods, char_level)
+    ]
+    if not valid:
+        # Fallback to general pool without prereqs if list is starved
+        valid = [f for f in candidates if f["name"] not in owned_names]
+    if not valid:
+        return None
+    weights = [calculate_feat_weight(f, class_name, owned_names, skill_ranks) for f in valid]
+    return random.choices(valid, weights=weights, k=1)[0]
+
 class PF2eGenerator:
     def __init__(self):
         self.ancestries = {a["name"].lower(): a for a in load_data("ancestries.json")}
         self.classes = {c["name"].lower(): c for c in load_data("classes.json")}
         self.backgrounds = {b["name"].lower(): b for b in load_data("backgrounds.json")}
-        self.feats = load_data("feats.json")
+        raw_feats = load_data("feats.json")
+        # Sanitize feat compendium: filter out empty traits, joke/test entries, and malformed records
+        self.feats = [
+            f for f in raw_feats
+            if f.get("name")
+            and f.get("traits")
+            and len(f.get("traits", [])) > 0
+            and f.get("name") not in ["Speedrun Strats"]
+        ]
 
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
         prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
@@ -227,10 +251,12 @@ class PF2eGenerator:
         heritage_data = resolve_heritage(anc["name"])
         subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
-        if archetype_name and archetype_name.strip():
-            archetype_data = resolve_dynamic_archetype(archetype_name.strip(), self.feats) if level >= 2 else None
+        clean_arch_input = archetype_name.strip() if archetype_name and archetype_name.strip() else None
+        if clean_arch_input:
+            archetype_data = resolve_dynamic_archetype(clean_arch_input, self.feats)
         elif use_dedication and level >= 2:
-            archetype_data = pick_archetype(cls["name"])
+            current_ranks = {s.name: s.rank for s in all_skills} if "all_skills" in locals() else {}
+            archetype_data = pick_archetype(cls["name"], current_ranks, mods)
         else:
             archetype_data = None
 
@@ -446,10 +472,14 @@ class PF2eGenerator:
                         description=clean_pf2e_text(f2.get("description", ""))
                     ))
 
+            # Derive skill ranks for prerequisite validation
+            skill_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
+            owned_names = {f.name for f in chosen_feats}
+
             skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2]]
-            if skill_feats_2:
-                sf = random.choice(skill_feats_2)
-                resolved_name = resolve_feat_subchoices(sf["name"], {f.name for f in chosen_feats})
+            sf = pick_weighted_feat(skill_feats_2, cls["name"], owned_names, skill_ranks, mods, 2)
+            if sf:
+                resolved_name = resolve_feat_subchoices(sf["name"], owned_names)
                 chosen_feats.append(FeatSummary(
                     id=sf["id"],
                     name=resolved_name,
@@ -458,6 +488,7 @@ class PF2eGenerator:
                     traits=sf.get("traits", []),
                     description=clean_pf2e_text(sf.get("description", ""))
                 ))
+                owned_names.add(resolved_name)
 
         # Level 3 Progression
         if level >= 3:
@@ -598,15 +629,16 @@ class PF2eGenerator:
                     description=clean_pf2e_text(cf6.get("description", ""))
                 ))
 
+            skill_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
+            owned_names = {f.name for f in chosen_feats}
             skill_feats_6 = [
                 f for f in self.feats
                 if f.get("category") == "skill"
                 and f.get("level") in [1, 2, 4, 6]
-                and f["name"] not in [cf.name for cf in chosen_feats]
             ]
-            if skill_feats_6:
-                sf6 = random.choice(skill_feats_6)
-                resolved_name6 = resolve_feat_subchoices(sf6["name"], {f.name for f in chosen_feats})
+            sf6 = pick_weighted_feat(skill_feats_6, cls["name"], owned_names, skill_ranks, mods, 6)
+            if sf6:
+                resolved_name6 = resolve_feat_subchoices(sf6["name"], owned_names)
                 chosen_feats.append(FeatSummary(
                     id=sf6["id"],
                     name=resolved_name6,
@@ -615,6 +647,20 @@ class PF2eGenerator:
                     traits=sf6.get("traits", []),
                     description=clean_pf2e_text(sf6.get("description", ""))
                 ))
+                owned_names.add(resolved_name6)
+
+
+        # Determine planned archetype to seed prerequisites backwards
+        planned_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else None
+
+        # Ensure planned multiclass archetype minimum attributes (+2 / 14) are satisfied
+        if planned_arch:
+            arch_lower = planned_arch.lower()
+            if "champion" in arch_lower:
+                mods["str"] = max(mods.get("str", 0), 2)
+                mods["cha"] = max(mods.get("cha", 0), 2)
+            elif "rogue" in arch_lower:
+                mods["dex"] = max(mods.get("dex", 0), 2)
 
         # 6. Skills
         all_skills = resolve_character_skills(
@@ -622,7 +668,8 @@ class PF2eGenerator:
             background_data=bg,
             attribute_mods=mods,
             level=level,
-            feats=chosen_feats
+            feats=chosen_feats,
+            planned_archetype=planned_arch
         )
 
         if extra_trained_skill:
@@ -685,7 +732,7 @@ class PF2eGenerator:
             companion_data = resolve_companion(
                 class_name=cls["name"],
                 feats=chosen_feats,
-                archetype=archetype_data["name"] if archetype_data else None,
+                archetype=clean_arch_input or (archetype_data["name"] if archetype_data and level >= 2 else None),
                 level=level
             )
 
@@ -747,7 +794,7 @@ class PF2eGenerator:
             background_description=clean_pf2e_text(bg.get("description", "")),
             character_class=cls["name"],
             subclass=SubclassSummary(**subclass_data) if subclass_data else None,
-            archetype=archetype_data["name"] if archetype_data else None,
+            archetype=clean_arch_input or (archetype_data["name"] if archetype_data and level >= 2 else None),
             archetype_description=clean_pf2e_text(archetype_data.get("level_2_dedication", {}).get("description", "")) if archetype_data else None,
             size=anc.get("size", "med"),
             speed=anc.get("speed", 25),
@@ -869,10 +916,15 @@ class PF2eGenerator:
         archetype_data = None
         existing_arch_name = current_char.get("archetype")
         if target_level >= 2:
-            archetype_data = pick_archetype(cls["name"])
-            resolved_arch_name = existing_arch_name or (archetype_data["name"] if archetype_data else None)
+            if existing_arch_name:
+                archetype_data = resolve_dynamic_archetype(existing_arch_name, self.feats)
+                resolved_arch_name = existing_arch_name
+            else:
+                current_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
+                archetype_data = pick_archetype(cls["name"], current_ranks, mods)
+                resolved_arch_name = archetype_data["name"] if archetype_data else None
         else:
-            resolved_arch_name = None
+            resolved_arch_name = existing_arch_name
 
         # 6. Preserve and advance feats
         existing_feats_raw = current_char.get("feats", [])
@@ -1080,14 +1132,14 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add(cf6["name"])
 
+                skill_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
                 skill_feats_6 = [
                     f for f in self.feats
                     if f.get("category") == "skill"
                     and f.get("level") in [1, 2, 4, 6]
-                    and f["name"] not in existing_feat_names
                 ]
-                if skill_feats_6:
-                    sf6 = random.choice(skill_feats_6)
+                sf6 = pick_weighted_feat(skill_feats_6, cls["name"], existing_feat_names, skill_ranks, mods, 6)
+                if sf6:
                     resolved_name6 = resolve_feat_subchoices(sf6["name"], existing_feat_names)
                     chosen_feats.append(FeatSummary(
                         id=sf6["id"],

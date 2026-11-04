@@ -248,11 +248,120 @@ ARCHETYPES_CATALOG: Dict[str, Dict[str, Any]] = {
     }
 }
 
-def pick_archetype(excluded_class: str) -> Dict[str, Any]:
+
+# Prerequisite checks and granted proficiencies for Dedications
+ARCHETYPE_RULES: Dict[str, Dict[str, Any]] = {
+    "acrobat": {
+        "req_skills": {"Acrobatics": 2},
+        "req_attrs": {},
+        "grants_skill": "Acrobatics",
+        "grants_rank": 4  # Auto-expert
+    },
+    "medic": {
+        "req_skills": {"Medicine": 2},
+        "req_attrs": {},
+        "grants_skill": "Medicine",
+        "grants_rank": 4  # Expert at 2
+    },
+    "wrestler": {
+        "req_skills": {"Athletics": 2},
+        "req_attrs": {},
+        "grants_skill": "Athletics",
+        "grants_rank": 4  # Expert at 2
+    },
+    "scout": {
+        "req_skills": {},
+        "req_attrs": {},
+        "grants_skill": "Stealth",
+        "grants_rank": 2
+    },
+    "marshal": {
+        "req_any_skill": [{"Diplomacy": 2}, {"Intimidation": 2}],
+        "req_attrs": {},
+        "grants_skill": "Diplomacy",
+        "grants_rank": 4
+    },
+    "champion-multiclass": {
+        "req_skills": {},
+        "req_attrs": {"str": 2, "cha": 2},
+        "grants_skill": "Religion",
+        "grants_rank": 2
+    },
+    "rogue-multiclass": {
+        "req_skills": {},
+        "req_attrs": {"dex": 2},
+        "grants_skill": "Stealth",
+        "grants_rank": 2
+    },
+    "beastmaster": {
+        "req_skills": {},
+        "req_attrs": {},
+        "grants_skill": "Nature",
+        "grants_rank": 2
+    },
+    "undead-master": {
+        "req_skills": {},
+        "req_attrs": {},
+        "grants_skill": "Religion",
+        "grants_rank": 2
+    }
+}
+
+def is_archetype_eligible(
+    arch_key: str,
+    skill_ranks: Dict[str, int],
+    mods: Dict[str, int],
+    excluded_class: str
+) -> bool:
+    if arch_key.startswith(excluded_class.lower()):
+        return False
+    
+    rule = ARCHETYPE_RULES.get(arch_key)
+    if not rule:
+        return True
+
+    # 1. Attribute requirements (e.g. 14 = +2 mod)
+    for attr, min_mod in rule.get("req_attrs", {}).items():
+        if mods.get(attr, 0) < min_mod:
+            return False
+
+    # 2. Strict skill rank requirements
+    for sk, min_rank in rule.get("req_skills", {}).items():
+        if skill_ranks.get(sk, 0) < min_rank:
+            return False
+
+    # 3. Any-skill requirements (e.g. Diplomacy OR Intimidation)
+    if "req_any_skill" in rule:
+        satisfied = False
+        for option in rule["req_any_skill"]:
+            if all(skill_ranks.get(sk, 0) >= rank for sk, rank in option.items()):
+                satisfied = True
+                break
+        if not satisfied:
+            return False
+
+    return True
+
+def pick_archetype(
+    excluded_class: str,
+    skill_ranks: Dict[str, int] = None,
+    mods: Dict[str, int] = None
+) -> Dict[str, Any]:
     exc = excluded_class.lower()
-    valid_keys = [k for k in ARCHETYPES_CATALOG.keys() if not k.startswith(exc)]
-    chosen_key = random.choice(valid_keys)
+    skill_ranks = skill_ranks or {}
+    mods = mods or {}
+
+    eligible = [
+        k for k in ARCHETYPES_CATALOG.keys()
+        if is_archetype_eligible(k, skill_ranks, mods, exc)
+    ]
+    if not eligible:
+        # Fallback to any non-class-matching archetype
+        eligible = [k for k in ARCHETYPES_CATALOG.keys() if not k.startswith(exc)]
+
+    chosen_key = random.choice(eligible)
     arch = dict(ARCHETYPES_CATALOG[chosen_key])
+    arch["key"] = chosen_key
     
     if chosen_key == "champion-multiclass":
         arch["level_4_feats"] = list(CHAMPION_FEATS_POOL) + arch["level_4_feats"]

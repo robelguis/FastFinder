@@ -1,3 +1,17 @@
+
+ARCHETYPE_LEVEL1_REQUIRED_SKILLS: Dict[str, List[str]] = {
+    "acrobat": ["Acrobatics"],
+    "medic": ["Medicine"],
+    "wrestler": ["Athletics"],
+    "marshal": ["Diplomacy"],  # Default primary choice for Marshal
+    "scout": ["Stealth"],
+    "champion-multiclass": ["Religion"],
+    "rogue-multiclass": ["Stealth"],
+    "beastmaster": ["Nature"],
+    "undead-master": ["Religion"],
+}
+
+from app.engine.feat_prereqs import CLASS_PRIORITY_SKILLS
 import re
 import random
 from typing import Dict, Any, List
@@ -75,7 +89,8 @@ def resolve_character_skills(
     background_data: Dict[str, Any],
     attribute_mods: Dict[str, int],
     level: int = 1,
-    feats: List[Any] = None
+    feats: List[Any] = None,
+    planned_archetype: str = None
 ) -> List[SkillEntry]:
     cls_key = class_name.lower()
 
@@ -102,19 +117,33 @@ def resolve_character_skills(
 
     lore_name = raw_lore if raw_lore.endswith("Lore") else f"{raw_lore} Lore"
 
+    # Reverse-engineering: ensure planned archetype skill requirement is met at Level 1
+    if planned_archetype:
+        clean_arch = planned_archetype.strip().lower().replace(" ", "-")
+        needed_skills = ARCHETYPE_LEVEL1_REQUIRED_SKILLS.get(clean_arch, [])
+        for req_skill in needed_skills:
+            if req_skill in CORE_SKILLS and req_skill not in base_trained:
+                base_trained.append(req_skill)
+
     # 3. Extra skill picks (2 + INT mod, min 1; Rogue/Investigator get 7)
     int_mod = attribute_mods.get("int", 0)
     extra_count = 7 + int_mod if cls_key in ["rogue", "investigator"] else 2 + int_mod
     extra_count = max(1, extra_count)
 
     remaining_pool = [s for s in CORE_SKILLS.keys() if s not in base_trained]
-    random.shuffle(remaining_pool)
+    priority = CLASS_PRIORITY_SKILLS.get(cls_key, [])
+
+    # Sort remaining pool prioritizing thematic class skills
+    remaining_pool.sort(key=lambda s: (0 if s in priority else 1, random.random()))
     trained_skills_set = set(base_trained + remaining_pool[:extra_count])
 
     # 4. Standard Level 3+ Skill Increase: promote 1 trained skill to Expert (rank 4)
+    # Thematically favors class priority skills
     expert_skills_set = set()
     if level >= 3 and trained_skills_set:
-        promoted = random.choice(list(trained_skills_set))
+        eligible_for_expert = list(trained_skills_set)
+        weights = [4.0 if s in priority else 1.0 for s in eligible_for_expert]
+        promoted = random.choices(eligible_for_expert, weights=weights, k=1)[0]
         expert_skills_set.add(promoted)
 
     # 5. Build base skill entries
