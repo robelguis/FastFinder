@@ -930,7 +930,7 @@
       const lvl = parseInt(level, 10) || 1;
       if (!btn) return;
 
-      if (lvl >= 6) {
+      if (lvl >= 7) {
         btn.disabled = true;
         btn.textContent = "Max Level";
         btn.style.display = "none";
@@ -1293,8 +1293,8 @@
       }
 
       const currentLvl = currentCharacterData.level || 1;
-      if (currentLvl >= 6) {
-        alert("Maximum supported level is 6.");
+      if (currentLvl >= 7) {
+        alert("Maximum supported level is 7.");
         return;
       }
 
