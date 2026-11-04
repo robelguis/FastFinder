@@ -11,6 +11,7 @@ WEALTH_BY_LEVEL: Dict[int, Dict[str, Any]] = {
     4: {"lump_gp": 140, "consumable_tier": "lesser", "permanent_count": 2},
     5: {"lump_gp": 270, "consumable_tier": "moderate", "permanent_count": 3},
     6: {"lump_gp": 450, "consumable_tier": "moderate", "permanent_count": 4},
+    7: {"lump_gp": 720, "consumable_tier": "moderate_plus", "permanent_count": 5},
 }
 
 PERMANENT_MAGIC_ITEMS: List[Dict[str, Any]] = [
@@ -226,7 +227,7 @@ def resolve_equipment(
     ancestry_name: str = ""
 ) -> Tuple[EquipmentLoadout, int, int]:
     cls_key = class_name.lower()
-    lvl = max(1, min(6, level))
+    lvl = max(1, min(7, level))
     wealth_cfg = WEALTH_BY_LEVEL.get(lvl, WEALTH_BY_LEVEL[1])
 
     budget_gp = wealth_cfg["lump_gp"]
@@ -324,12 +325,22 @@ def resolve_equipment(
     elif lvl in [2, 3]:
         consumables.append(ConsumableItem(name="Lesser Healing Potion", quantity=2, bulk="L", description="Restores 2d8+5 HP (1 Action)."))
         consumables.append(ConsumableItem(name="Silversheen", quantity=1, bulk="L", description="Grants weapon silver property for 1 hour."))
-    else:
+    elif lvl == 6:
         consumables.append(ConsumableItem(name="Moderate Healing Potion", quantity=2, bulk="L", description="Restores 3d8+10 HP (1 Action)."))
         consumables.append(ConsumableItem(name="Elixir of Life (Lesser)", quantity=1, bulk="L", description="Restores 3d6+6 HP and +1 bonus vs disease/poison."))
+    else:
+        # Level 7 Loadout
+        consumables.append(ConsumableItem(name="Moderate Healing Potion", quantity=2, bulk="L", description="Restores 3d8+10 HP (1 Action)."))
+        consumables.append(ConsumableItem(name="Elixir of Life (Moderate)", quantity=1, bulk="L", description="Restores 3d6+6 HP and +1 bonus vs disease/poison."))
+        consumables.append(ConsumableItem(name="Mistform Elixir (Lesser)", quantity=1, bulk="L", description="Gain concealment (DC 5 flat check) for 3 rounds."))
 
     # 5. Remaining Coin Purse (GP, SP, CP)
-    remaining_gp = max(3, budget_gp)
+    if lvl == 7:
+        remaining_gp = 45
+    elif lvl == 6:
+        remaining_gp = 25
+    else:
+        remaining_gp = max(3, budget_gp)
     sp = random.randint(1, 9)
     cp = random.randint(1, 9)
     formatted_wealth = f"{remaining_gp} GP, {sp} SP, {cp} CP"

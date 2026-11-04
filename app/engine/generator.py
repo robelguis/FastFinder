@@ -201,6 +201,15 @@ def pick_weighted_feat(candidates, class_name, owned_names, skill_ranks, mods, c
     weights = [calculate_feat_weight(f, class_name, owned_names, skill_ranks) for f in valid]
     return random.choices(valid, weights=weights, k=1)[0]
 
+BACKGROUND_CUSTOM_ACTIONS = {
+    "hunt the razer's pawn": {
+        "name": "Hunt the Razer's Pawn",
+        "action_cost": 1,
+        "traits": ["Concentrate", "Exploration", "Secret"],
+        "description": "You study the demeanor, iconography, or residual essence of a creature to determine if it is an agent or pawn of Treerazer. Attempt a Religion check against the creature's Deception DC. On a success, you learn whether the creature is allied with, dominated by, or in the service of Treerazer or his cult."
+    }
+}
+
 class PF2eGenerator:
     def __init__(self):
         self.ancestries = {a["name"].lower(): a for a in load_data("ancestries.json")}
@@ -230,7 +239,7 @@ class PF2eGenerator:
         level: int = 1,
         use_dedication: bool = False
     ) -> CharacterSheet:
-        level = max(1, min(6, int(level)))
+        level = max(1, min(7, int(level)))
 
         # 1. Select Ancestry, Class, Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
@@ -344,6 +353,13 @@ class PF2eGenerator:
                 perception_rank = 2
             elif cls["name"].lower() in ["wizard", "witch", "bard"] and ref_rank < 2:
                 ref_rank = 2
+        if level >= 7:
+            if cls["name"].lower() in ["ranger", "rogue"] and perception_rank < 3:
+                perception_rank = 3
+            elif cls["name"].lower() == "barbarian" and will_rank < 2:
+                will_rank = 2
+            elif cls["name"].lower() == "champion" and fort_rank < 3:
+                fort_rank = 3
 
         fort_prof = self._calc_prof(fort_rank, level, mods["con"])
         ref_prof = self._calc_prof(ref_rank, level, mods["dex"])
@@ -365,6 +381,11 @@ class PF2eGenerator:
                 strike.attack_bonus += extra_prof
                 strike.map_second += extra_prof
                 strike.map_third += extra_prof
+        if level >= 7:
+            for strike in equipment_loadout.strikes:
+                # Weapon Specialization (+2 damage)
+                if "+2" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
+                    strike.damage_dice = f"{strike.damage_dice} + 2" 
 
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
@@ -374,9 +395,9 @@ class PF2eGenerator:
         # 5. Feat Progression
         cls_name_lower = cls["name"].lower()
         chosen_feats: List[FeatSummary] = []
-        # Extract background skill feat if present
+                        # Extract background skill feat if present
         bg_desc = bg.get("description", "")
-        bg_feat_match = re.search(r"Item\.([^\]]+)\] skill feat", bg_desc) or re.search(r"gain the @UUID\[[^\]]*\.Item\.([^\]]+)\]", bg_desc)
+        bg_feat_match = re.search(r"@UUID\[[^\]]*feats-srd\.Item\.([^\]]+)\]", bg_desc) or re.search(r"Item\.([^\]]+)\]\s+skill feat", bg_desc)
         bg_feat_name = bg_feat_match.group(1).strip() if bg_feat_match else None
         if bg_feat_name:
             chosen_feats.append(FeatSummary(
@@ -388,6 +409,36 @@ class PF2eGenerator:
                 description=f"Granted by the {bg['name']} background."
             ))
 
+        # Extract background custom actions (e.g. gain the @UUID[...actionspf2e.Item.Hunt the Razer's Pawn] action)
+        # Avoid standard inline actions like Seek or Sense Motive
+        action_match = (
+            re.search(r"gain the\s+@UUID\[[^\]]*actionspf2e\.Item\.([^\]]+)\]\s+action", bg_desc, re.IGNORECASE)
+            or re.search(r"gain the\s+([A-Z][a-zA-Z0-9'\s\-]+?)\s+action", bg_desc, re.IGNORECASE)
+        )
+        if action_match:
+            action_name = action_match.group(1).strip()
+            action_key = action_name.lower()
+            if action_key not in ["seek", "sense motive"]:
+                clean_action_id = action_key.replace(" ", "-").replace("'", "")
+                if action_key in BACKGROUND_CUSTOM_ACTIONS:
+                    c_act = BACKGROUND_CUSTOM_ACTIONS[action_key]
+                    chosen_feats.append(FeatSummary(
+                        id=f"feat-bg-action-{clean_action_id}",
+                        name=c_act["name"],
+                        category="Background Action",
+                        action_cost=c_act.get("action_cost"),
+                        traits=c_act.get("traits", ["Background"]),
+                        description=c_act["description"]
+                    ))
+                else:
+                    chosen_feats.append(FeatSummary(
+                        id=f"feat-bg-action-{clean_action_id}",
+                        name=action_name,
+                        category="Background Action",
+                        action_cost=None,
+                        traits=["Background"],
+                        description=f"Special action granted by the {bg['name']} background."
+                    ))
 
         # Heritage Feature & Concrete Choice Resolution
         h_name = heritage_data["name"]
@@ -654,6 +705,31 @@ class PF2eGenerator:
                 ))
                 owned_names.add(resolved_name6)
 
+        # Level 7 Progression (General Feat & Weapon Specialization Feature)
+        if level >= 7:
+            gf_pool_7 = [f for f in GENERAL_FEATS_LVL3 if f["name"] not in owned_names]
+            if gf_pool_7:
+                gf7 = random.choice(gf_pool_7)
+                chosen_feats.append(FeatSummary(
+                    id=f"{gf7['id']}-7",
+                    name=gf7["name"],
+                    category="General (Level 7)",
+                    action_cost=None,
+                    traits=["general"],
+                    description=clean_pf2e_text(gf7["description"])
+                ))
+                owned_names.add(gf7["name"])
+
+            chosen_feats.append(FeatSummary(
+                id="class-feat-weapon-specialization",
+                name="Weapon Specialization",
+                category="Class Feature (Level 7)",
+                action_cost=None,
+                traits=[cls_name_lower],
+                description="You have learned how to inflict greater injuries with your favored weapons. You deal 2 additional damage with weapons and unarmed attacks in which you are trained."
+            ))
+            owned_names.add("Weapon Specialization")
+
 
         # Determine planned archetype to seed prerequisites backwards
         planned_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else None
@@ -859,7 +935,7 @@ class PF2eGenerator:
         use_dedication: bool = False,
         archetype_name: Optional[str] = None
     ) -> CharacterSheet:
-        target_level = max(1, min(6, int(target_level)))
+        target_level = max(1, min(7, int(target_level)))
         old_level = int(current_char.get("level", 1))
 
         # 1. Recover base info and core data
@@ -925,6 +1001,13 @@ class PF2eGenerator:
                 perception_rank = 2
             elif cls["name"].lower() in ["wizard", "witch", "bard"] and ref_rank < 2:
                 ref_rank = 2
+        if target_level >= 7:
+            if cls["name"].lower() in ["ranger", "rogue"] and perception_rank < 3:
+                perception_rank = 3
+            elif cls["name"].lower() == "barbarian" and will_rank < 2:
+                will_rank = 2
+            elif cls["name"].lower() == "champion" and fort_rank < 3:
+                fort_rank = 3
 
         fort_prof = self._calc_prof(fort_rank, target_level, mods["con"])
         ref_prof = self._calc_prof(ref_rank, target_level, mods["dex"])
@@ -946,6 +1029,11 @@ class PF2eGenerator:
                 strike.attack_bonus += extra_prof
                 strike.map_second += extra_prof
                 strike.map_third += extra_prof
+        if target_level >= 7:
+            for strike in equipment_loadout.strikes:
+                # Weapon Specialization (+2 damage)
+                if "+2" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
+                    strike.damage_dice = f"{strike.damage_dice} + 2" 
 
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
@@ -1174,6 +1262,31 @@ class PF2eGenerator:
                         description=clean_pf2e_text(cf6.get("description", ""))
                     ))
                     existing_feat_names.add(cf6["name"])
+
+            elif lvl == 7:
+                gf_pool_7 = [f for f in GENERAL_FEATS_LVL3 if f["name"] not in existing_feat_names]
+                if gf_pool_7:
+                    gf7 = random.choice(gf_pool_7)
+                    chosen_feats.append(FeatSummary(
+                        id=f"{gf7['id']}-7",
+                        name=gf7["name"],
+                        category="General (Level 7)",
+                        action_cost=None,
+                        traits=["general"],
+                        description=clean_pf2e_text(gf7["description"])
+                    ))
+                    existing_feat_names.add(gf7["name"])
+
+                if "Weapon Specialization" not in existing_feat_names:
+                    chosen_feats.append(FeatSummary(
+                        id="class-feat-weapon-specialization",
+                        name="Weapon Specialization",
+                        category="Class Feature (Level 7)",
+                        action_cost=None,
+                        traits=[cls_name_lower],
+                        description="You have learned how to inflict greater injuries with your favored weapons. You deal 2 additional damage with weapons and unarmed attacks in which you are trained."
+                    ))
+                    existing_feat_names.add("Weapon Specialization")
 
                 skill_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
                 skill_feats_6 = [
