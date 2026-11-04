@@ -256,7 +256,8 @@ class PF2eGenerator:
             archetype_data = resolve_dynamic_archetype(clean_arch_input, self.feats)
         elif use_dedication and level >= 2:
             current_ranks = {s.name: s.rank for s in all_skills} if "all_skills" in locals() else {}
-            archetype_data = pick_archetype(cls["name"], current_ranks, mods)
+            current_mods = mods if "mods" in locals() else {}
+            archetype_data = pick_archetype(cls["name"], current_ranks, current_mods)
         else:
             archetype_data = None
 
