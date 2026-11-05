@@ -1,3 +1,42 @@
+
+FEAT_FAMILIES = {
+    "monk": [
+        {"dragon stance", "dragon roar"},
+        {"crane stance", "crane flutter", "crane wing"},
+        {"tiger stance", "tiger slash"},
+        {"wolf stance", "wolf drag"},
+        {"mountain stance", "mountain stronghold", "mountain quake"},
+        {"gorilla stance", "gorilla pound"},
+        {"stumbling stance", "stumbling feint"},
+        {"ironblood stance", "ironblood surge"},
+        {"rain of embers stance", "blazing streak"},
+        {"clinging shadows stance", "shadow's web"},
+        {"monastic weaponry", "shooting stars", "peafowl stance", "pinning fire"},
+        {"ki strike", "ki rush", "wholeness of body", "abundant step", "wind jumper", "ki blast"}
+    ],
+    "barbarian": [
+        {"animal rage", "predator's pounce", "animal skin"},
+        {"dragon rage", "dragon breath", "wings of the dragon"},
+        {"giant's stature", "titan's stature", "giant stature"},
+        {"spirit's wrath", "spirit guide", "spirit's fury"},
+        {"raging intimidation", "scare to death", "terrifying howl"}
+    ],
+    "fighter": [
+        {"double slice", "twin parry", "dual-weapon blitz", "flurry of blows"},
+        {"power attack", "furious focus", "brutal finish"},
+        {"point-blank shot", "double shot", "triple shot", "debilitating shot"},
+        {"snagging strike", "combat grab", "dazing blow"}
+    ],
+    "swashbuckler": [
+        {"confident finisher", "bleeding finisher", "unbalancing finisher", "finishing follow-through"},
+        {"tumble behind", "acrobatic performer", "swaggering initiative"}
+    ],
+    "rogue": [
+        {"sneak attack", "gang up", "nimble dodge", "sidestep", "twist the knife"},
+        {"trap finder", "delay trap", "dismantle"}
+    ]
+}
+
 import re
 from typing import Dict, List, Set, Any, Optional
 
@@ -116,6 +155,59 @@ def calculate_feat_weight(
             if p_lower == owned or p_lower == base_owned or p_lower in owned:
                 weight *= 6.0
                 break
+
+        # 1b. Thematic Feat Family Affinity (Stances, Ki chains, Styles -> 10x weight)
+    families = FEAT_FAMILIES.get(cls_key, [])
+    feat_name_lower = feat.get("name", "").lower().strip()
+    clean_feat_name = re.sub(r"\s*\([^)]*\)", "", feat_name_lower).strip()
+
+    for fam in families:
+        # Check if candidate feat belongs to this family
+        in_fam = any(m in clean_feat_name for m in fam)
+        if in_fam:
+            # Check if any currently owned feat belongs to this same family
+            for owned in owned_lower:
+                clean_owned = re.sub(r"\s*\([^)]*\)", "", owned).strip()
+                if any(m in clean_owned for m in fam):
+                    weight *= 10.0
+                    break
+            break
+
+    # 1c. Hard-depress redundant base stances if already in a stance family
+    is_candidate_stance = "stance" in clean_feat_name or "stance" in [t.lower() for t in feat.get("traits", [])]
+    if is_candidate_stance:
+        owned_stances = [o for o in owned_lower if "stance" in o]
+        if owned_stances:
+            # Check if this stance shares an established feat family with an owned stance
+            shares_family = False
+            for fam in families:
+                if any(m in clean_feat_name for m in fam):
+                    if any(any(m in ost for m in fam) for ost in owned_stances):
+                        shares_family = True
+                        break
+            # If not in the same stance tree, drop weight to virtually 0 so it is never picked
+            if not shares_family:
+                return 0.0
+
+    # 1d. Monk Ki Discipline Selection Balancing
+    if cls_key == "monk":
+        is_ki_candidate = any(k in clean_feat_name for k in ["ki", "qi", "wholeness", "abundant"]) or "focus" in [t.lower() for t in feat.get("traits", [])]
+        has_ki_feat = any(any(k in o for k in ["ki", "qi", "wholeness", "abundant"]) for o in owned_lower)
+        
+        # At initial selection (no ki feats owned yet), boost Ki candidate to contend against large stance pool
+        if is_ki_candidate and not has_ki_feat:
+            weight *= 8.0
+            
+        # If the monk has already begun walking the Ki path, prioritize scaling the discipline
+        elif is_ki_candidate and has_ki_feat:
+            weight *= 35.0
+            # Explicit progression priority per milestone tier
+            if "wholeness of body" in clean_feat_name and not any("wholeness" in o for o in owned_lower):
+                weight *= 3.0
+            elif "abundant step" in clean_feat_name and not any("abundant" in o for o in owned_lower):
+                weight *= 3.0
+            elif "ki rush" in clean_feat_name and not any("rush" in o for o in owned_lower):
+                weight *= 2.0
 
     # 2. Class Skill Thematic Bonus (3x weight if feat uses class-priority skill)
     priority_skills = CLASS_PRIORITY_SKILLS.get(cls_key, [])

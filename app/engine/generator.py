@@ -47,6 +47,25 @@ GENERAL_FEATS_LVL3 = [
     {"id": "untrained-improvisation", "name": "Untrained Improvisation", "description": "You add your level to untrained skill checks instead of 0."},
 ]
 
+CLASS_FEATURES_LVL1 = {
+    "rogue": {
+        "name": "Sneak Attack",
+        "description": "When your Strike hits an off-guard target and deals damage, you deal an extra {sneak_dice} precision damage."
+    },
+    "swashbuckler": {
+        "name": "Panache & Finisher",
+        "description": "When you have panache, your Strikes deal +{panache_flat} precision damage. Using a Finisher ends panache and deals +{finisher_dice} precision damage."
+    },
+    "investigator": {
+        "name": "Devise a Stratagem",
+        "description": "You assess a foe's defenses. Once per round (1 action or free action against your lead), roll a d20 and use it for your next Strike against that creature with your Intelligence modifier to attack."
+    },
+    "thaumaturge": {
+        "name": "Exploit Vulnerability",
+        "description": "You identify a mortal weakness in your target, dealing mortal weakness or personal antithesis bonus damage."
+    }
+}
+
 CLASS_FEATURES_LVL3 = {
     "fighter": {"name": "Bravery", "description": "Your proficiency rank in Will saves increases to expert. When you roll a success on a Will save against a fear effect, you get a critical success instead."},
     "rogue": {"name": "Deny Advantage", "description": "You aren't off-guard to hidden, undetected, or flanking creatures of your level or lower."},
@@ -90,6 +109,20 @@ ALL_SKILL_NAMES = [
     "Medicine", "Nature", "Occultism", "Performance", "Religion",
     "Society", "Stealth", "Survival", "Thievery"
 ]
+
+def safe_action_cost(val):
+    if val is None:
+        return None
+    if isinstance(val, int):
+        return val
+    if isinstance(val, str):
+        import re
+        m = re.search(r"\d+", val)
+        if m:
+            return int(m.group())
+        if any(w in val.lower() for w in ["reaction", "free"]):
+            return 0
+    return None
 
 def clean_pf2e_text(text: str) -> str:
     if not text:
@@ -480,6 +513,22 @@ class PF2eGenerator:
                 description=clean_pf2e_text(subclass_data["description"])
             ))
 
+        # Level 1 Core Identity Features (Sneak Attack, Panache, Stratagem)
+        if cls_name_lower in CLASS_FEATURES_LVL1:
+            base_cf1 = CLASS_FEATURES_LVL1[cls_name_lower]
+            s_dice = "2d6" if level >= 5 else "1d6"
+            f_dice = "3d6" if level >= 5 else "2d6"
+            p_flat = "3" if level >= 5 else "2"
+            desc = base_cf1["description"].format(sneak_dice=s_dice, finisher_dice=f_dice, panache_flat=p_flat)
+            chosen_feats.append(FeatSummary(
+                id=f"{cls_name_lower}-lvl1-feature",
+                name=base_cf1["name"],
+                category="Class Feature (Level 1)",
+                action_cost=None,
+                traits=[cls_name_lower],
+                description=desc
+            ))
+
         # Level 1 Class Feat
         lvl1_feats = [
             f for f in self.feats
@@ -488,12 +537,13 @@ class PF2eGenerator:
             and cls_name_lower in [t.lower() for t in f.get("traits", [])]
         ]
         if lvl1_feats:
-            f1 = random.choice(lvl1_feats)
+            skill_ranks_tmp = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
+            f1 = pick_weighted_feat(lvl1_feats, cls["name"], {f.name for f in chosen_feats}, skill_ranks_tmp, mods, 1) or random.choice(lvl1_feats)
             chosen_feats.append(FeatSummary(
                 id=f1["id"],
                 name=f1["name"],
                 category="Class (Level 1)",
-                action_cost=f1.get("action_cost"),
+                action_cost=safe_action_cost(f1.get("action_cost")),
                 traits=f1.get("traits", []),
                 description=clean_pf2e_text(f1.get("description", ""))
             ))
@@ -518,12 +568,13 @@ class PF2eGenerator:
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
                 ]
                 if lvl2_feats:
-                    f2 = random.choice(lvl2_feats)
+                    skill_ranks_tmp = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
+                    f2 = pick_weighted_feat(lvl2_feats, cls["name"], {f.name for f in chosen_feats}, skill_ranks_tmp, mods, 2) or random.choice(lvl2_feats)
                     chosen_feats.append(FeatSummary(
                         id=f2["id"],
                         name=f2["name"],
                         category="Class (Level 2)",
-                        action_cost=f2.get("action_cost"),
+                        action_cost=safe_action_cost(f2.get("action_cost")),
                         traits=f2.get("traits", []),
                         description=clean_pf2e_text(f2.get("description", ""))
                     ))
@@ -598,7 +649,7 @@ class PF2eGenerator:
                         id=f4["id"],
                         name=f4["name"],
                         category="Class (Level 4)",
-                        action_cost=f4.get("action_cost"),
+                        action_cost=safe_action_cost(f4.get("action_cost")),
                         traits=f4.get("traits", []),
                         description=clean_pf2e_text(f4.get("description", ""))
                     ))
@@ -675,12 +726,13 @@ class PF2eGenerator:
                 and cls_name_lower in [t.lower() for t in f.get("traits", [])]
             ]
             if lvl6_class_feats:
-                cf6 = random.choice(lvl6_class_feats)
+                skill_ranks_tmp = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
+                cf6 = pick_weighted_feat(lvl6_class_feats, cls["name"], {f.name for f in chosen_feats}, skill_ranks_tmp, mods, 6) or random.choice(lvl6_class_feats)
                 chosen_feats.append(FeatSummary(
                     id=cf6["id"],
                     name=cf6["name"],
                     category="Class Feat (Level 6)",
-                    action_cost=cf6.get("action_cost"),
+                    action_cost=safe_action_cost(cf6.get("action_cost")),
                     traits=cf6.get("traits", []),
                     description=clean_pf2e_text(cf6.get("description", ""))
                 ))
@@ -1090,7 +1142,7 @@ class PF2eGenerator:
                             id=f2["id"],
                             name=f2["name"],
                             category="Class (Level 2)",
-                            action_cost=f2.get("action_cost"),
+                            action_cost=safe_action_cost(f2.get("action_cost")),
                             traits=f2.get("traits", []),
                             description=clean_pf2e_text(f2.get("description", ""))
                         ))
@@ -1170,7 +1222,7 @@ class PF2eGenerator:
                             id=f4["id"],
                             name=f4["name"],
                             category="Class (Level 4)",
-                            action_cost=f4.get("action_cost"),
+                            action_cost=safe_action_cost(f4.get("action_cost")),
                             traits=f4.get("traits", []),
                             description=clean_pf2e_text(f4.get("description", ""))
                         ))
@@ -1252,12 +1304,13 @@ class PF2eGenerator:
                     and f["name"] not in existing_feat_names
                 ]
                 if lvl6_class_feats:
-                    cf6 = random.choice(lvl6_class_feats)
+                    skill_ranks_tmp = {s.name: s.rank for s in character.skills} if hasattr(character, "skills") else {}
+                    cf6 = pick_weighted_feat(lvl6_class_feats, cls_name_lower, existing_feat_names, skill_ranks_tmp, {}, 6) or random.choice(lvl6_class_feats)
                     chosen_feats.append(FeatSummary(
                         id=cf6["id"],
                         name=cf6["name"],
                         category="Class Feat (Level 6)",
-                        action_cost=cf6.get("action_cost"),
+                        action_cost=safe_action_cost(cf6.get("action_cost")),
                         traits=cf6.get("traits", []),
                         description=clean_pf2e_text(cf6.get("description", ""))
                     ))

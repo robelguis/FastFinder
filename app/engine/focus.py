@@ -101,6 +101,44 @@ ORACLE_MYSTERY_CURSES: Dict[str, Dict[str, Any]] = {
     }
 }
 
+
+FEAT_FOCUS_SPELLS = {
+    # Monk Ki Spells
+    "ki rush": {
+        "name": "Ki Rush",
+        "actions": "1 action",
+        "traits": ["Concentrate", "Divine", "Focus"],
+        "range": "Self",
+        "defense": "None",
+        "description": "Accelerate your body. Stride, Step, or Leap twice. During this movement, you gain concealment against attacks of opportunity / reactive strikes."
+    },
+    "wholeness of body": {
+        "name": "Wholeness of Body",
+        "actions": "1 action",
+        "traits": ["Concentrate", "Divine", "Focus", "Healing", "Manipulate"],
+        "range": "Self",
+        "defense": "None",
+        "description": "You restore your body with ki. You regain 8 Hit Points per spell rank and cure one poison or disease affecting you."
+    },
+    "abundant step": {
+        "name": "Abundant Step",
+        "actions": "1 action",
+        "traits": ["Concentrate", "Divine", "Focus", "Teleportation"],
+        "range": "Variable",
+        "defense": "None",
+        "description": "You step through the ethereal membrane, teleporting up to your Speed to a space you can see."
+    },
+    # Champion Devotion Spells
+    "litany against wrath": {
+        "name": "Litany Against Wrath",
+        "actions": "1 action",
+        "traits": ["Concentrate", "Divine", "Focus", "Litany"],
+        "range": "30 feet",
+        "defense": "Will",
+        "description": "Your words condemn anger. Target takes 3d6 spirit damage whenever it attacks a good creature."
+    }
+}
+
 CLASS_FOCUS_SPELLS: Dict[str, Dict[str, Any]] = {
     "champion": {
         "tradition": "Divine",
@@ -183,6 +221,54 @@ def resolve_focus_spells(
 ) -> Optional[FocusSpellData]:
     cls_key = class_name.lower()
 
+    if cls_key == "summoner":
+        sub_lower = (subclass_name or "").lower()
+        if any(w in sub_lower for w in ["dragon", "construct"]):
+            trad = "Arcane"
+        elif any(w in sub_lower for w in ["angel", "demon", "devil", "psychopomp", "undead"]):
+            trad = "Divine"
+        elif any(w in sub_lower for w in ["beast", "elemental", "plant"]):
+            trad = "Primal"
+        else:
+            trad = "Occult"
+
+        attr_mod = attribute_mods.get("cha", 3)
+        prof_bonus = 2 + level
+        spell_dc = 10 + prof_bonus + attr_mod
+        spell_attack = prof_bonus + attr_mod
+        curr_rank = max(1, (level + 1) // 2)
+
+        spells = [
+            SpellSummary(
+                name="Evolution Surge",
+                rank=curr_rank,
+                actions="1 action",
+                traits=["Focus", "Manipulate", trad.lower()],
+                description="Target eidolon gains your choice of: low-light vision & scent (30 ft), a +20 ft status bonus to Speed, or a swim/climb Speed equal to its land Speed (duration: 1 minute)."
+            )
+        ]
+
+        if any("reinforce eidolon" in f.name.lower() for f in feats):
+            spells.append(
+                SpellSummary(
+                    name="Reinforce Eidolon",
+                    rank=curr_rank,
+                    actions="1 action",
+                    traits=["Cantrip", "Focus", "Manipulate", trad.lower()],
+                    description="You focus your energy to boost your eidolon defenses. Your eidolon gains a +1 status bonus to AC and saving throws until the start of your next turn."
+                )
+            )
+
+        return FocusSpellData(
+            focus_points=1,
+            max_focus_points=1,
+            tradition=trad,
+            casting_attribute="CHA",
+            spell_dc=spell_dc,
+            spell_attack=spell_attack,
+            spells=spells
+        )
+
     # Special handling for Oracle Remaster
     if cls_key == "oracle":
         # Resolve Mystery
@@ -221,6 +307,98 @@ def resolve_focus_spells(
             cursebound_effects=cfg["effects"]
         )
 
+    # Monk Ki Spells handling (Remaster)
+    if cls_key == "monk":
+        curr_rank = max(1, (level + 1) // 2)
+        attr_key = "wis"
+        attr_mod = attribute_mods.get(attr_key, 0)
+        prof_bonus = 2 + level
+        spell_dc = 10 + prof_bonus + attr_mod
+        spell_attack = prof_bonus + attr_mod
+
+        ki_spells = []
+        feat_names_lower = [f.name.lower() for f in feats]
+
+        # Map feats to Ki spells (supports Remaster & legacy Qi entries)
+        ki_map = {
+            "ki strike": {
+                "name": "Ki Strike",
+                "actions": "1 action",
+                "traits": ["Concentrate", "Divine", "Focus"],
+                "range": "Self",
+                "defense": "None",
+                "description": "Make an unarmed Strike with a +1 status bonus to hit and extra 1d6 force or elemental damage per rank."
+            },
+            "qi spells": {
+                "name": "Ki Strike",
+                "actions": "1 action",
+                "traits": ["Concentrate", "Divine", "Focus"],
+                "range": "Self",
+                "defense": "None",
+                "description": "Make an unarmed Strike with a +1 status bonus to hit and extra 1d6 force or elemental damage per rank."
+            },
+            "ki rush": {
+                "name": "Ki Rush",
+                "actions": "1 action",
+                "traits": ["Concentrate", "Divine", "Focus"],
+                "range": "Self",
+                "defense": "None",
+                "description": "Stride, Step, or Leap twice with concealment during movement."
+            },
+            "wholeness of body": {
+                "name": "Wholeness of Body",
+                "actions": "1 action",
+                "traits": ["Concentrate", "Divine", "Focus", "Healing", "Manipulate"],
+                "range": "Self",
+                "defense": "None",
+                "description": "Regain 8 HP per spell rank and cure one poison or disease."
+            },
+            "abundant step": {
+                "name": "Abundant Step",
+                "actions": "1 action",
+                "traits": ["Concentrate", "Divine", "Focus", "Teleportation"],
+                "range": "Variable",
+                "defense": "None",
+                "description": "Teleport up to your land Speed to an unoccupied space you can see."
+            },
+            "advanced qi spells": {
+                "name": "Wholeness of Body",
+                "actions": "1 action",
+                "traits": ["Concentrate", "Divine", "Focus", "Healing", "Manipulate"],
+                "range": "Self",
+                "defense": "None",
+                "description": "Regain 8 HP per spell rank and cure one poison or disease."
+            },
+            "ki blast": {
+                "name": "Ki Blast",
+                "actions": "1 to 3 actions",
+                "traits": ["Concentrate", "Divine", "Focus"],
+                "range": "Cone or Burst",
+                "defense": "Fortitude",
+                "description": "Unleash a blast of force dealing 2d6 damage per action spent, heightened +1d6 per rank."
+            }
+        }
+
+        for feat_key, sp_data in ki_map.items():
+            if any(feat_key in fn for fn in feat_names_lower):
+                if not any(s.name.lower() == sp_data["name"].lower() for s in ki_spells):
+                    ki_spells.append(SpellSummary(rank=curr_rank, **sp_data))
+
+        # If the monk took no Ki feats, they do not have a Focus Pool
+        if not ki_spells:
+            return None
+
+        pool_points = min(3, len(ki_spells))
+        return FocusSpellData(
+            focus_points=pool_points,
+            max_focus_points=pool_points,
+            tradition="Divine",
+            casting_attribute="WIS",
+            spell_dc=spell_dc,
+            spell_attack=spell_attack,
+            spells=ki_spells
+        )
+
     # Standard classes
     if cls_key not in CLASS_FOCUS_SPELLS:
         return None
@@ -228,15 +406,29 @@ def resolve_focus_spells(
     cfg = CLASS_FOCUS_SPELLS[cls_key]
     attr_key = cfg["attr"]
     attr_mod = attribute_mods.get(attr_key, 0)
-    prof_bonus = 2 + level
+
+    # Expert proficiency at level 7 for primary casters
+    prof_mult = 4 if (level >= 7 and cls_key in ["cleric", "druid", "bard", "sorcerer", "oracle", "witch", "wizard", "psychic"]) else 2
+    prof_bonus = prof_mult + level
     spell_dc = 10 + prof_bonus + attr_mod
     spell_attack = prof_bonus + attr_mod
 
-    spells = [SpellSummary(rank=max(1, (level + 1) // 2), **s) for s in cfg["spells"]]
+    curr_rank = max(1, (level + 1) // 2)
+    spells = [SpellSummary(rank=curr_rank, **s) for s in cfg["spells"]]
+
+    # Dynamically discover additional focus spells gained via feats
+    feat_names_lower = [f.name.lower() for f in feats]
+    for feat_trigger, spell_def in FEAT_FOCUS_SPELLS.items():
+        if any(feat_trigger in fn for fn in feat_names_lower):
+            if not any(s.name.lower() == spell_def["name"].lower() for s in spells):
+                spells.append(SpellSummary(rank=curr_rank, **spell_def))
+
+    # Remaster rules: 1 Focus Point per known focus spell, capped at 3
+    calculated_pool = min(3, max(1, len(spells)))
 
     return FocusSpellData(
-        focus_points=1,
-        max_focus_points=1,
+        focus_points=calculated_pool,
+        max_focus_points=calculated_pool,
         tradition=cfg["tradition"],
         casting_attribute=attr_key.upper(),
         spell_dc=spell_dc,
