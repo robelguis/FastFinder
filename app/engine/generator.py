@@ -1304,7 +1304,7 @@ class PF2eGenerator:
                     and f["name"] not in existing_feat_names
                 ]
                 if lvl6_class_feats:
-                    skill_ranks_tmp = {s.name: s.rank for s in character.skills} if hasattr(character, "skills") else {}
+                    skill_ranks_tmp = {s.get("name"): s.get("rank", 0) for s in current_char.get("skills", []) if isinstance(s, dict)}
                     cf6 = pick_weighted_feat(lvl6_class_feats, cls_name_lower, existing_feat_names, skill_ranks_tmp, {}, 6) or random.choice(lvl6_class_feats)
                     chosen_feats.append(FeatSummary(
                         id=cf6["id"],
