@@ -600,16 +600,44 @@ class PF2eGenerator:
         # Level 3 Progression
         if level >= 3:
             gf = random.choice(GENERAL_FEATS_LVL3)
+            gf_name = gf["name"]
+            gf_desc = clean_pf2e_text(gf["description"])
+
             if gf["id"] == "toughness":
                 total_hp += level
+            elif gf["id"] == "fleet":
+                speed += 5
+            elif gf["id"] == "ancestral-paragon":
+                anc_trait = anc["name"].lower()
+                owned_f_names = {f.name.lower() for f in chosen_feats}
+                avail_anc_feats = [
+                    f for f in self.feats
+                    if f.get("category") == "ancestry"
+                    and f.get("level") == 1
+                    and anc_trait in [t.lower() for t in f.get("traits", [])]
+                    and f["name"].lower() not in owned_f_names
+                ]
+                if not avail_anc_feats:
+                    avail_anc_feats = [
+                        f for f in self.feats
+                        if f.get("category") == "ancestry"
+                        and f.get("level") == 1
+                        and f["name"].lower() not in owned_f_names
+                    ]
+                if avail_anc_feats:
+                    sub_f = random.choice(avail_anc_feats)
+                    gf_name = f"Ancestral Paragon: {sub_f['name']}"
+                    gf_desc = f"Selected 1st-level Ancestry Feat: {sub_f['name']}. You gain a 1st-level ancestry feat.\n\n[{sub_f['name']}]: {clean_pf2e_text(sub_f.get('description', ''))}"
+                    if "speed" in sub_f["name"].lower() or "nimble" in sub_f["name"].lower():
+                        speed += 5
 
             chosen_feats.append(FeatSummary(
                 id=gf["id"],
-                name=gf["name"],
+                name=gf_name,
                 category="General (Level 3)",
                 action_cost=None,
                 traits=["general"],
-                description=clean_pf2e_text(gf["description"])
+                description=gf_desc
             ))
 
             if cls_name_lower in CLASS_FEATURES_LVL3:
