@@ -532,6 +532,10 @@
           <select id="classSelect"><option value="">Any Class</option></select>
         </div>
         <div class="field">
+          <label for="subclassSelect">Subclass</label>
+          <select id="subclassSelect"><option value="">Any Subclass</option></select>
+        </div>
+        <div class="field">
           <label for="backgroundSelect">Background</label>
           <select id="backgroundSelect"><option value="">Any Background</option></select>
         </div>
@@ -892,7 +896,25 @@
           });
         }
 
+        window.cachedSubclasses = data.subclasses || {};
+        const subSelect = document.getElementById('subclassSelect');
         const clsSelect = document.getElementById('classSelect');
+
+        function updateSubclassesForClass(selectedClass) {
+          if (!subSelect) return;
+          subSelect.innerHTML = '<option value="">Any Subclass</option>';
+          if (!selectedClass) return;
+
+          const key = selectedClass.toLowerCase().trim();
+          const opts = (window.cachedSubclasses && window.cachedSubclasses[key]) ? window.cachedSubclasses[key] : [];
+          opts.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s;
+            opt.textContent = s;
+            subSelect.appendChild(opt);
+          });
+        }
+
         if (clsSelect && data.classes) {
           clsSelect.innerHTML = '<option value="">Any Class</option>';
           data.classes.forEach(c => {
@@ -901,6 +923,12 @@
             opt.textContent = c;
             clsSelect.appendChild(opt);
           });
+          clsSelect.addEventListener('change', () => {
+            updateSubclassesForClass(clsSelect.value);
+          });
+          if (clsSelect.value) {
+            updateSubclassesForClass(clsSelect.value);
+          }
         }
 
         const bgSelect = document.getElementById("backgroundSelect");
@@ -1338,6 +1366,7 @@
       const nameInput = document.getElementById('charName').value.trim();
       const anc = document.getElementById('ancestrySelect').value;
       const cls = document.getElementById('classSelect').value;
+      const sub = document.getElementById("subclassSelect") ? document.getElementById("subclassSelect").value : "";
       const bg = document.getElementById("backgroundSelect") ? document.getElementById("backgroundSelect").value : "";
       const arch = document.getElementById("archetypeSelect") ? document.getElementById("archetypeSelect").value : "";
       const lvl = document.getElementById('levelSelect').value || 1;
@@ -1350,6 +1379,9 @@
       if (nameInput) params.append('name', nameInput);
       if (anc) params.append('ancestry', anc);
       if (cls) params.append('class_name', cls);
+      if (sub && !["any", "any subclass", "none"].includes(sub.toLowerCase())) {
+        params.append('subclass', sub);
+      }
       if (bg) params.append("background", bg);
       params.append('level', lvl);
       params.append('dedication', useDedication ? 'true' : 'false');

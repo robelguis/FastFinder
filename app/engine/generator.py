@@ -1,3 +1,13 @@
+def strip_foundry_tags(val: str) -> str:
+    if not isinstance(val, str):
+        return val
+    # Strip @UUID[...]{Display} or @UUID[...]
+    cleaned = re.sub(r'@UUID\[[^\]]+\]\{([^}]+)\}', r'', val)
+    cleaned = re.sub(r'@UUID\[[^\]]+\]', '', cleaned)
+    cleaned = re.sub(r'@Compendium\[[^\]]+\]\{([^}]+)\}', r'', cleaned)
+    cleaned = re.sub(r'@Compendium\[[^\]]+\]', '', cleaned)
+    return cleaned.strip()
+
 import json
 import re
 import random
@@ -443,12 +453,16 @@ class PF2eGenerator:
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
         # 4. Equipment & HP
+        sub_n = subclass_data["name"] if subclass_data else ""
+        arch_n = clean_arch_input or (archetype_data["name"] if archetype_data else "")
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
             dex_mod=mods["dex"],
             level=level,
-            ancestry_name=anc["name"]
+            ancestry_name=anc["name"],
+            subclass_name=sub_n,
+            archetype_name=arch_n,
         )
 
         if level >= 5:
@@ -1185,12 +1199,16 @@ class PF2eGenerator:
         perception_prof = self._calc_prof(perception_rank, target_level, mods["wis"])
 
         # 4. Equipment & Recalculated HP
+        current_sub = (current_char.get("subclass") or {}).get("name", "")
+        current_arch = current_char.get("archetype") or ""
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
             dex_mod=mods["dex"],
             level=target_level,
-            ancestry_name=anc["name"]
+            ancestry_name=anc["name"],
+            subclass_name=current_sub,
+            archetype_name=current_arch
         )
 
         if target_level >= 5:

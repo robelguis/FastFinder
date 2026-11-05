@@ -72,10 +72,27 @@ SIMPLE_MELEE = [
 
 SIMPLE_RANGED = [
     {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]},
-    {"name": "Hand Crossbow", "dice": "1d6", "type": "Piercing", "traits": ["Range 60 ft", "Reload 1"]},
     {"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]},
     {"name": "Dart", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Thrown 20 ft"]},
     {"name": "Javelin", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 30 ft"]},
+]
+
+
+ONE_HANDED_FIREARMS = [
+    {"name": "Dueling Pistol", "dice": "1d6", "type": "Piercing", "traits": ["Concussive", "Fatal d10", "Range 60 ft", "Reload 1"]},
+    {"name": "Flintlock Pistol", "dice": "1d4", "type": "Piercing", "traits": ["Concussive", "Fatal d8", "Range 40 ft", "Reload 1"]},
+    {"name": "Slide Pistol", "dice": "1d6", "type": "Piercing", "traits": ["Capacity 5", "Concussive", "Fatal d10", "Range 30 ft", "Reload 1"]},
+]
+
+TWO_HANDED_SNIPER_FIREARMS = [
+    {"name": "Arquebus", "dice": "1d8", "type": "Piercing", "traits": ["Concussive", "Fatal d12", "Kickback", "Range 150 ft", "Reload 1"]},
+    {"name": "Flintlock Musket", "dice": "1d6", "type": "Piercing", "traits": ["Concussive", "Fatal d10", "Range 70 ft", "Reload 1", "Two-Hand d10"]},
+    {"name": "Heavy Crossbow", "dice": "1d10", "type": "Piercing", "traits": ["Range 120 ft", "Reload 2"]},
+]
+
+VANGUARD_FIREARMS = [
+    {"name": "Blunderbuss", "dice": "1d8", "type": "Piercing", "traits": ["Concussive", "Scatter 10 ft", "Range 40 ft", "Reload 1"]},
+    {"name": "Dwarven Scattergun", "dice": "1d8", "type": "Piercing", "traits": ["Concussive", "Dwarf", "Kickback", "Range 50 ft", "Reload 1", "Scatter 10 ft"]},
 ]
 
 SECONDARY_BACKUPS = [
@@ -120,13 +137,96 @@ ANCESTRAL_WEAPONS: Dict[str, List[Dict[str, Any]]] = {
     ]
 }
 
-def select_class_weapons(cls_key: str, str_mod: int, dex_mod: int, ancestry_name: str = "") -> List[Dict[str, Any]]:
-    """Dynamically selects a primary weapon and a distinct secondary backup."""
+COMBINATION_FIREARMS = [
+    {"name": "Triggerbrand", "dice": "1d6", "type": "Piercing", "traits": ["Combination", "Concussive", "Fatal d8", "Range 30 ft", "Reload 1"]},
+    {"name": "Gun Sword", "dice": "1d8", "type": "Piercing", "traits": ["Combination", "Concussive", "Fatal d10", "Range 30 ft", "Reload 1"]},
+    {"name": "Dagger Pistol", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Combination", "Concussive", "Fatal d8", "Finesse", "Range 30 ft", "Reload 1"]},
+]
+
+def select_class_weapons(
+    cls_key: str,
+    str_mod: int,
+    dex_mod: int,
+    ancestry_name: str = "",
+    subclass_name: str = "",
+    archetype_name: str = ""
+) -> List[Dict[str, Any]]:
+    """Dynamically selects rule-compliant weapons calibrated to class, subclass, and archetype restrictions."""
     is_dex_build = dex_mod > str_mod
     anc_key = (ancestry_name or "").lower().strip()
+    sub_key = (subclass_name or "").lower().strip()
+    arch_key = (archetype_name or "").lower().strip()
     anc_options = ANCESTRAL_WEAPONS.get(anc_key, [])
 
-    # 1. Fighter, Champion, Barbarian
+    # Archetype Overrides
+    if "archer" in arch_key:
+        bows = [w for w in MARTIAL_RANGED if "Bow" in w["name"]]
+        prim = random.choice(bows if bows else MARTIAL_RANGED)
+        sec = random.choice(MARTIAL_FINESSE + SECONDARY_BACKUPS)
+        return [prim, sec]
+
+    if "mauler" in arch_key:
+        prim = random.choice(MARTIAL_TWO_HANDED)
+        sec = random.choice([w for w in MARTIAL_TWO_HANDED if w["name"] != prim["name"]] + SECONDARY_BACKUPS)
+        return [prim, sec]
+
+    if "dual-weapon" in arch_key or "dual weapon" in arch_key:
+        prim = random.choice(MARTIAL_ONE_HANDED + MARTIAL_FINESSE)
+        sec = random.choice([w for w in (MARTIAL_FINESSE + SECONDARY_BACKUPS) if "Agile" in w.get("traits", []) and w["name"] != prim["name"]])
+        return [prim, sec]
+
+    # 1. Gunslinger Subclasses (Ways)
+    if cls_key == "gunslinger":
+        if "pistolero" in sub_key or "pistol" in arch_key:
+            prim = random.choice(ONE_HANDED_FIREARMS)
+            sec = random.choice(MARTIAL_FINESSE)
+            return [prim, sec]
+        elif "sniper" in sub_key:
+            prim = random.choice(TWO_HANDED_SNIPER_FIREARMS)
+            sec = random.choice(SECONDARY_BACKUPS)
+            return [prim, sec]
+        elif "vanguard" in sub_key:
+            prim = random.choice(VANGUARD_FIREARMS)
+            sec = random.choice([w for w in (SECONDARY_BACKUPS + MARTIAL_FINESSE) if w["name"] != prim["name"]])
+            return [prim, sec]
+        elif "drifter" in sub_key:
+            prim = random.choice(ONE_HANDED_FIREARMS)
+            sec = random.choice(MARTIAL_FINESSE)
+            return [prim, sec]
+        elif "triggerbrand" in sub_key:
+            prim = random.choice(COMBINATION_FIREARMS)
+            sec = random.choice(SECONDARY_BACKUPS)
+            return [prim, sec]
+        else:
+            guns = ONE_HANDED_FIREARMS + TWO_HANDED_SNIPER_FIREARMS
+            prim = random.choice(guns)
+            sec = random.choice(MARTIAL_FINESSE + SECONDARY_BACKUPS)
+            return [prim, sec]
+
+    # 2. Rogue & Swashbuckler (Ruffian vs Finesse/Agile)
+    if cls_key == "rogue":
+        if "ruffian" in sub_key:
+            ruffian_pool = [w for w in (SIMPLE_MELEE + MARTIAL_ONE_HANDED) if w.get("dice") in ["1d6", "1d8", "1d4"]]
+            prim = random.choice(ruffian_pool if ruffian_pool else SIMPLE_MELEE)
+            sec = random.choice(SIMPLE_RANGED + SECONDARY_BACKUPS)
+            return [prim, sec]
+        else:
+            finesse_pool = list(MARTIAL_FINESSE)
+            if anc_options:
+                finesse_pool += [w for w in anc_options if "Finesse" in w.get("traits", []) or "Agile" in w.get("traits", [])]
+            prim = random.choice(finesse_pool)
+            sec = random.choice([w for w in (SECONDARY_BACKUPS + SIMPLE_RANGED) if w["name"] != prim["name"]])
+            return [prim, sec]
+
+    if cls_key in ["swashbuckler", "investigator"]:
+        finesse_pool = list(MARTIAL_FINESSE)
+        if anc_options:
+            finesse_pool += [w for w in anc_options if "Finesse" in w.get("traits", []) or "Agile" in w.get("traits", [])]
+        prim = random.choice(finesse_pool)
+        sec = random.choice([w for w in (SECONDARY_BACKUPS + SIMPLE_RANGED) if w["name"] != prim["name"]])
+        return [prim, sec]
+
+    # 3. Fighter, Champion, Barbarian
     if cls_key in ["fighter", "barbarian", "champion"]:
         if anc_options and random.random() < 0.35:
             prim = random.choice(anc_options)
@@ -148,22 +248,13 @@ def select_class_weapons(cls_key: str, str_mod: int, dex_mod: int, ancestry_name
         sec = random.choice(sec_pool)
         return [prim, sec]
 
-    # 2. Ranger
+    # 4. Ranger
     if cls_key == "ranger":
         prim = random.choice(MARTIAL_RANGED if is_dex_build else (MARTIAL_ONE_HANDED + MARTIAL_TWO_HANDED))
         sec_pool = [w for w in (MARTIAL_FINESSE + SECONDARY_BACKUPS) if w["name"] != prim["name"]]
         return [prim, random.choice(sec_pool)]
 
-    # 3. Rogue, Swashbuckler, Investigator
-    if cls_key in ["rogue", "swashbuckler", "investigator"]:
-        finesse_pool = list(MARTIAL_FINESSE)
-        if anc_options:
-            finesse_pool += [w for w in anc_options if "Finesse" in w.get("traits", []) or "Agile" in w.get("traits", [])]
-        prim = random.choice(finesse_pool)
-        sec_pool = [w for w in (SECONDARY_BACKUPS + SIMPLE_RANGED) if w["name"] != prim["name"]]
-        return [prim, random.choice(sec_pool)]
-
-    # 4. Monk
+    # 5. Monk
     if cls_key == "monk":
         monk_options = [
             {"name": "Bo Staff", "dice": "1d8", "type": "Bludgeoning", "traits": ["Monk", "Parry", "Reach", "Trip"]},
@@ -175,17 +266,6 @@ def select_class_weapons(cls_key: str, str_mod: int, dex_mod: int, ancestry_name
         ]
         prim = random.choice(monk_options)
         sec = random.choice([w for w in monk_options if w["name"] != prim["name"]])
-        return [prim, sec]
-
-    # 5. Gunslinger
-    if cls_key == "gunslinger":
-        guns = [
-            {"name": "Dueling Pistol", "dice": "1d6", "type": "Piercing", "traits": ["Concussive", "Fatal d10", "Range 60 ft", "Reload 1"]},
-            {"name": "Flintlock Musket", "dice": "1d6", "type": "Piercing", "traits": ["Concussive", "Fatal d10", "Range 70 ft", "Reload 1", "Two-Hand d10"]},
-            {"name": "Arquebus", "dice": "1d8", "type": "Piercing", "traits": ["Concussive", "Fatal d12", "Kickback", "Range 150 ft", "Reload 1"]},
-        ]
-        prim = random.choice(guns)
-        sec = random.choice(MARTIAL_FINESSE + SECONDARY_BACKUPS)
         return [prim, sec]
 
     # 6. Cleric, Druid, Kineticist, Thaumaturge
@@ -210,7 +290,6 @@ def select_class_weapons(cls_key: str, str_mod: int, dex_mod: int, ancestry_name
     ]
     caster_ranged = [
         {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]},
-        {"name": "Hand Crossbow", "dice": "1d6", "type": "Piercing", "traits": ["Range 60 ft", "Reload 1"]},
         {"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]},
         {"name": "Dart", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Thrown 20 ft"]},
         {"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]},
@@ -219,12 +298,15 @@ def select_class_weapons(cls_key: str, str_mod: int, dex_mod: int, ancestry_name
     sec = random.choice([w for w in caster_ranged if w["name"] != prim["name"]])
     return [prim, sec]
 
+
 def resolve_equipment(
     class_name: str,
     str_mod: int,
     dex_mod: int,
     level: int = 1,
-    ancestry_name: str = ""
+    ancestry_name: str = "",
+    subclass_name: str = "",
+    archetype_name: str = ""
 ) -> Tuple[EquipmentLoadout, int, int]:
     cls_key = class_name.lower()
     lvl = max(1, min(7, level))
@@ -233,7 +315,7 @@ def resolve_equipment(
     budget_gp = wealth_cfg["lump_gp"]
 
     # 1. Base Weapon Selection & Rune Progression
-    raw_weps = select_class_weapons(cls_key, str_mod, dex_mod, ancestry_name=ancestry_name)
+    raw_weps = select_class_weapons(cls_key, str_mod, dex_mod, ancestry_name=ancestry_name, subclass_name=subclass_name, archetype_name=archetype_name)
     weapons: List[Item] = []
     strikes: List[Strike] = []
 

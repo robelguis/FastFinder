@@ -1,3 +1,4 @@
+from app.engine.subclasses import CLASS_SUBCLASSES
 from app.engine.archetypes import ARCHETYPES_CATALOG, get_all_archetype_names
 from pathlib import Path
 from typing import Dict, Any, Optional, List
@@ -7,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from app.engine.generator import PF2eGenerator
+from app.engine.subclasses import CLASS_SUBCLASSES
 from app.engine.archetypes import ARCHETYPES_CATALOG, get_all_archetype_names
 from app.engine.foundry import export_to_foundry_actor
 
@@ -34,19 +36,24 @@ async def root():
 
 @app.get("/api/options")
 def get_options():
+    subclasses_by_class = {}
+    for cls_k, sub_info in CLASS_SUBCLASSES.items():
+        subclasses_by_class[cls_k.lower()] = [o["name"] for o in sub_info.get("options", [])]
+
     return {
         "ancestries": sorted([a["name"] for a in generator.ancestries.values()]),
         "classes": sorted([c["name"] for c in generator.classes.values()]),
         "backgrounds": sorted([b["name"] for b in generator.backgrounds.values()]),
-"archetypes": get_all_archetype_names(),
+        "archetypes": get_all_archetype_names(),
+        "subclasses": subclasses_by_class,
     }
-
 
 @app.get("/api/generate")
 async def generate_character(
     name: Optional[str] = None,
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
+    subclass: Optional[str] = None,
     background: Optional[str] = None,
     archetype: Optional[str] = None,
     level: int = Query(1, ge=1, le=7),
@@ -57,6 +64,7 @@ async def generate_character(
         sheet = generator.generate(
             ancestry_name=ancestry,
             class_name=class_name,
+            subclass_name=subclass,
             background_name=background,
             archetype_name=clean_arch,
             char_name=name,

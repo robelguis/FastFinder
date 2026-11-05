@@ -177,6 +177,7 @@ class CharacterSheet(BaseModel):
     spellcasting: Optional[SpellcastingData] = None
     focus_spells: Optional[FocusSpellData] = None
     companion: Optional[PartnerCreatureData] = None
+    additional_partners: List[PartnerCreatureData] = []
     feats: List[FeatSummary] = []
     languages: List[str] = ["Common"]
     traits: List[str] = []

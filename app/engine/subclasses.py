@@ -145,7 +145,9 @@ CLASS_SUBCLASSES: Dict[str, Dict[str, Any]] = {
         "options": [
             {"name": "Way of the Pistolero", "description": "Specialized in single one-handed firearms and rapid duels."},
             {"name": "Way of the Sniper", "description": "Specialized in high-powered long range two-handed crossbows and firearms."},
-            {"name": "Way of the Vanguard", "description": "Specialized in close-quarters scatter weapons and heavy shotguns."}
+            {"name": "Way of the Vanguard", "description": "Specialized in close-quarters scatter weapons and heavy shotguns."},
+        {"name": "Way of the Drifter", "description": "Masters fighting with a one-handed firearm in one hand and a melee weapon in the other."},
+        {"name": "Way of the Triggerbrand", "description": "Specialized in agile combat using versatile combination weapons."}
         ]
     },
     "kineticist": {
