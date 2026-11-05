@@ -97,26 +97,45 @@
       justify-content: center;
       gap: 0.2rem;
     }
-    .btn-levelup {
-      background: #d97706;
-      color: #ffffff;
-      border: 1px solid #b45309;
-      border-radius: 4px;
-      font-size: 0.68rem;
-      font-weight: 800;
-      padding: 0.2rem 0.4rem;
-      cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      transition: background 0.15s ease;
-      width: 100%;
-      text-align: center;
+    .level-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.25rem;
     }
-    .btn-levelup:hover { background: #b45309; }
-    .btn-levelup:disabled {
-      background: #94a3b8;
-      border-color: #64748b;
+    .btn-level-step {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-level-step:hover:not(:disabled) {
+      background: #d97706;
+      color: #fff;
+      border-color: #d97706;
+    }
+    .btn-level-step:disabled {
+      opacity: 0.35;
       cursor: not-allowed;
+    }
+    .select-level-picker {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #d97706;
+      border-radius: 4px;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
     }
 
     .arch-badge {
@@ -515,13 +534,24 @@
           <span class="banner-val" id="sheetClass">Fighter</span>
           <span id="sheetArchetypeBadge" class="arch-badge" style="display: none;"></span>
         </div>
-        <div class="banner-block level-block">
+                        <div class="banner-block level-block">
           <span class="banner-label">Level</span>
           <span class="banner-val level-val" id="sheetLevel">1</span>
-          <button id="btnLevelUp" class="btn-levelup" onclick="handleLevelUp()" title="Advance character to the next level">
-            Level Up
-          </button>
+          <div class="level-controls">
+            <button id="btnLevelDown" class="btn-level-step" onclick="handleLevelStep(-1)" title="Step down 1 level">-</button>
+            <select id="levelSelect" class="select-level-picker" onchange="handleLevelSelect(this.value)">
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+              <option value="6">6</option>
+              <option value="7">7</option>
+            </select>
+            <button id="btnLevelUp" class="btn-level-step" onclick="handleLevelStep(1)" title="Step up 1 level">+</button>
+          </div>
         </div>
+      </div>
       </div>
 
       <div class="sheet-body">
