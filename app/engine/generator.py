@@ -423,6 +423,7 @@ class PF2eGenerator:
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * level)
+        bonus_speed = 0
         total_hp = max(1, base_hp)
 
         # 5. Feat Progression
@@ -606,7 +607,7 @@ class PF2eGenerator:
             if gf["id"] == "toughness":
                 total_hp += level
             elif gf["id"] == "fleet":
-                speed += 5
+                bonus_speed += 5
             elif gf["id"] == "ancestral-paragon":
                 anc_trait = anc["name"].lower()
                 owned_f_names = {f.name.lower() for f in chosen_feats}
@@ -629,7 +630,7 @@ class PF2eGenerator:
                     gf_name = f"Ancestral Paragon: {sub_f['name']}"
                     gf_desc = f"Selected 1st-level Ancestry Feat: {sub_f['name']}. You gain a 1st-level ancestry feat.\n\n[{sub_f['name']}]: {clean_pf2e_text(sub_f.get('description', ''))}"
                     if "speed" in sub_f["name"].lower() or "nimble" in sub_f["name"].lower():
-                        speed += 5
+                        bonus_speed += 5
 
             chosen_feats.append(FeatSummary(
                 id=gf["id"],
@@ -986,7 +987,7 @@ class PF2eGenerator:
             archetype=clean_arch_input or (archetype_data["name"] if archetype_data and level >= 2 else None),
             archetype_description=clean_pf2e_text(archetype_data.get("level_2_dedication", {}).get("description", "")) if archetype_data else None,
             size=anc.get("size", "med"),
-            speed=anc.get("speed", 25),
+            speed=anc.get("speed", 25) + bonus_speed + bonus_speed,
             attributes=AttributeModifiers(**mods),
             defenses=Defenses(
                 ac=calculated_ac,
@@ -1118,6 +1119,7 @@ class PF2eGenerator:
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * target_level)
+        bonus_speed = 0
         total_hp = max(1, base_hp)
 
         # 5. Resolve Archetype (respect existing choice or select new dedication on level up)
