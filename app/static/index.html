@@ -454,6 +454,59 @@
       }
     }
 
+
+    /* Level Controls Overrides */
+    .level-block {
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+      min-width: 100px !important;
+    }
+    .level-controls {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 4px !important;
+      margin-top: 4px !important;
+    }
+    .btn-level-step {
+      background: #1e293b !important;
+      color: #f8fafc !important;
+      border: 1px solid #475569 !important;
+      width: 24px !important;
+      height: 24px !important;
+      line-height: 22px !important;
+      padding: 0 !important;
+      border-radius: 4px !important;
+      font-size: 1rem !important;
+      font-weight: 700 !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    .btn-level-step:hover:not(:disabled) {
+      background: #d97706 !important;
+      border-color: #d97706 !important;
+      color: #fff !important;
+    }
+    .btn-level-step:disabled {
+      opacity: 0.3 !important;
+      cursor: not-allowed !important;
+    }
+    .select-level-picker {
+      background: #0f172a !important;
+      color: #f8fafc !important;
+      border: 1px solid #d97706 !important;
+      border-radius: 4px !important;
+      height: 24px !important;
+      padding: 0 4px !important;
+      font-size: 0.85rem !important;
+      font-weight: 700 !important;
+      cursor: pointer !important;
+    }
+    
 </style>
 </head>
 <body>
@@ -535,11 +588,11 @@
           <span id="sheetArchetypeBadge" class="arch-badge" style="display: none;"></span>
         </div>
                         <div class="banner-block level-block">
-          <span class="banner-label">Level</span>
+          <span class="banner-label">LEVEL</span>
           <span class="banner-val level-val" id="sheetLevel">1</span>
           <div class="level-controls">
-            <button id="btnLevelDown" class="btn-level-step" onclick="handleLevelStep(-1)" title="Step down 1 level">-</button>
-            <select id="levelSelect" class="select-level-picker" onchange="handleLevelSelect(this.value)">
+            <button type="button" id="btnLevelDown" class="btn-level-step" onclick="handleLevelStep(-1)" title="Level Down">-</button>
+            <select id="sheetLevelSelect" class="select-level-picker" onchange="handleLevelSelect(this.value)">
               <option value="1">1</option>
               <option value="2">2</option>
               <option value="3">3</option>
@@ -548,10 +601,9 @@
               <option value="6">6</option>
               <option value="7">7</option>
             </select>
-            <button id="btnLevelUp" class="btn-level-step" onclick="handleLevelStep(1)" title="Step up 1 level">+</button>
+            <button type="button" id="btnLevelUp" class="btn-level-step" onclick="handleLevelStep(1)" title="Level Up">+</button>
           </div>
         </div>
-      </div>
       </div>
 
       <div class="sheet-body">
@@ -977,6 +1029,7 @@
     }
 
     function renderSheet(data) {
+      window.currentCharacterData = data;
       currentCharacterData = data;
       const currentLevel = data.level || 1;
 
@@ -1352,7 +1405,10 @@
 
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
-          throw new Error(errData.detail || `Server error ${res.status}`);
+          const detailMsg = Array.isArray(errData.detail)
+            ? errData.detail.map(d => `${d.loc ? d.loc.join('.') + ': ' : ''}${d.msg}`).join(', ')
+            : (typeof errData.detail === 'object' ? JSON.stringify(errData.detail) : errData.detail);
+          throw new Error(detailMsg || `Server error ${res.status}`);
         }
 
         const updatedSheet = await res.json();
@@ -1381,6 +1437,100 @@
       await loadOptions();
       generate();
     };
-  </script>
+  
+    /* Bidirectional Level Switcher Logic */
+    function updateLevelUpControls(level) {
+      const lvl = parseInt(level, 10) || 1;
+      const btnDown = document.getElementById("btnLevelDown");
+      const btnUp = document.getElementById("btnLevelUp");
+      const sel = document.getElementById("sheetLevelSelect");
+
+      if (btnDown) {
+        btnDown.disabled = (lvl <= 1);
+        btnDown.textContent = "-";
+      }
+      if (btnUp) {
+        btnUp.disabled = (lvl >= 7);
+        btnUp.textContent = "+";
+      }
+      if (sel) {
+        sel.value = String(lvl);
+      }
+    }
+
+    async function handleLevelStep(delta) {
+      const char = window.currentCharacterData;
+      if (!char) {
+        alert("Please generate a character first.");
+        return;
+      }
+      const currentLvl = parseInt(char.level, 10) || 1;
+      const targetLvl = currentLvl + delta;
+      if (targetLvl < 1 || targetLvl > 7) return;
+      await applyTargetLevel(targetLvl);
+    }
+
+    async function handleLevelSelect(val) {
+      const target = parseInt(val, 10) || 1;
+      await applyTargetLevel(target);
+    }
+
+    async function applyTargetLevel(targetLvl) {
+      const char = window.currentCharacterData;
+      if (!char) {
+        alert("Please generate a character first.");
+        return;
+      }
+
+      const currentLvl = parseInt(char.level, 10) || 1;
+      if (targetLvl === currentLvl) return;
+
+      const btnDown = document.getElementById("btnLevelDown");
+      const btnUp = document.getElementById("btnLevelUp");
+      const sel = document.getElementById("sheetLevelSelect");
+
+      try {
+        if (btnDown) btnDown.disabled = true;
+        if (btnUp) btnUp.disabled = true;
+        if (sel) sel.disabled = true;
+
+        const archEl = document.getElementById("archetypeSelect");
+        const archVal = archEl ? archEl.value : "";
+        const useDed = document.getElementById("dedicationToggle")?.checked;
+
+        const reqBody = {
+          character: char,
+          target_level: targetLvl,
+          use_dedication: !!useDed,
+          archetype: (archVal && !["any", "any archetype", "none"].includes(archVal.toLowerCase())) ? archVal : null
+        };
+
+        const res = await fetch('/api/levelup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(reqBody)
+        });
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          const detailMsg = Array.isArray(errData.detail)
+            ? errData.detail.map(d => `${d.loc ? d.loc.join('.') + ': ' : ''}${d.msg}`).join(', ')
+            : (typeof errData.detail === 'object' ? JSON.stringify(errData.detail) : errData.detail);
+          throw new Error(detailMsg || `Server error ${res.status}`);
+        }
+
+        const updatedSheet = await res.json();
+        renderSheet(updatedSheet);
+      } catch (err) {
+        console.error("Level change error:", err);
+        alert(`Level transition failed: ${err.message}`);
+        updateLevelUpControls(currentLvl);
+      } finally {
+        if (sel) sel.disabled = false;
+        updateLevelUpControls(window.currentCharacterData?.level || targetLvl);
+      }
+    }
+    
+</script>
 </body>
 </html>

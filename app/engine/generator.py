@@ -243,6 +243,39 @@ BACKGROUND_CUSTOM_ACTIONS = {
     }
 }
 
+
+def extract_bg_feat(bg_desc: str, feats_list: list) -> str:
+    if not bg_desc:
+        return ""
+    feat_lookup = {f["name"].lower(): f["name"] for f in feats_list}
+    m_uuid = re.search(r"@UUID\[[^\]]*feats-srd\.Item\.([^|\]]+)", bg_desc) or re.search(r"@UUID\[[^\]]*Item\.([^|\]]+)", bg_desc)
+    if m_uuid:
+        c_name = m_uuid.group(1).strip()
+        if c_name.lower() in feat_lookup:
+            return feat_lookup[c_name.lower()]
+        return c_name
+    m_choice = re.search(r"either\s+([A-Za-z\s'’\-]+?)\s+or\s+([A-Za-z\s'’\-]+?)\s+(?:skill|general)?\s*feat", bg_desc, re.IGNORECASE)
+    if m_choice:
+        opt1, opt2 = m_choice.group(1).strip(), m_choice.group(2).strip()
+        valid = [feat_lookup[opt.lower()] for opt in [opt1, opt2] if opt.lower() in feat_lookup]
+        if valid:
+            import random
+            return random.choice(valid)
+    m_gain = re.search(r"gain the\s+([A-Za-z\s'’\-]+?)\s+(?:skill|general)?\s*feat", bg_desc, re.IGNORECASE)
+    if m_gain:
+        cand = m_gain.group(1).strip()
+        if cand.lower() in feat_lookup:
+            return feat_lookup[cand.lower()]
+        return cand
+    desc_l = bg_desc.lower()
+    for f_low, f_real in feat_lookup.items():
+        if len(f_low) > 4 and f" {f_low} " in f" {desc_l} ":
+            idx = desc_l.find(f_low)
+            if "feat" in desc_l[idx:idx + 50]:
+                return f_real
+    return ""
+
+
 class PF2eGenerator:
     def __init__(self):
         self.ancestries = {a["name"].lower(): a for a in load_data("ancestries.json")}
@@ -270,7 +303,9 @@ class PF2eGenerator:
         archetype_name: Optional[str] = None,
         char_name: Optional[str] = None,
         level: int = 1,
-        use_dedication: bool = False
+        use_dedication: bool = False,
+        heritage_name: Optional[str] = None,
+        subclass_name: Optional[str] = None
     ) -> CharacterSheet:
         level = max(1, min(7, int(level)))
 
@@ -290,8 +325,15 @@ class PF2eGenerator:
             bg = matched_bg if matched_bg else random.choice(list(self.backgrounds.values()))
         else:
             bg = random.choice(list(self.backgrounds.values()))
-        heritage_data = resolve_heritage(anc["name"])
-        subclass_data = resolve_subclass(cls["name"])
+        if heritage_name and str(heritage_name).strip() and str(heritage_name).strip().lower() not in ["none", ""]:
+            heritage_data = {"name": str(heritage_name).strip(), "description": ""}
+        else:
+            heritage_data = resolve_heritage(anc["name"])
+
+        if subclass_name and str(subclass_name).strip() and str(subclass_name).strip().lower() not in ["none", ""]:
+            subclass_data = {"name": str(subclass_name).strip(), "title": "Subclass", "description": ""}
+        else:
+            subclass_data = resolve_subclass(cls["name"])
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
         raw_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else ""
         if raw_arch.lower() in ["", "any", "any archetype", "none", "random"]:
@@ -431,8 +473,8 @@ class PF2eGenerator:
         chosen_feats: List[FeatSummary] = []
                         # Extract background skill feat if present
         bg_desc = bg.get("description", "")
-        bg_feat_match = re.search(r"@UUID\[[^\]]*feats-srd\.Item\.([^\]]+)\]", bg_desc) or re.search(r"Item\.([^\]]+)\]\s+skill feat", bg_desc)
-        bg_feat_name = bg_feat_match.group(1).strip() if bg_feat_match else None
+        bg_feat_name = extract_bg_feat(bg_desc, self.feats)
+
         if bg_feat_name:
             chosen_feats.append(FeatSummary(
                 id=f"feat-bg-{bg_feat_name.lower().replace(' ', '-')}",

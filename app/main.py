@@ -22,7 +22,7 @@ generator = PF2eGenerator()
 
 class LevelUpPayload(BaseModel):
     character: Dict[str, Any]
-    target_level: int = Field(..., ge=2, le=7)
+    target_level: int = Field(..., ge=1, le=7)
     use_dedication: bool = False
     archetype: Optional[str] = None
 
@@ -70,22 +70,67 @@ async def generate_character(
 
 @app.post("/api/levelup")
 async def level_up_endpoint(payload: LevelUpPayload):
-    current_level = int(payload.character.get("level", 1))
-    if payload.target_level <= current_level:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Target level {payload.target_level} must be greater than current level {current_level}.",
-        )
+    char_data = payload.character
+    current_level = int(char_data.get("level", 1))
+    target = max(1, min(7, int(payload.target_level)))
+
+    if target == current_level:
+        return char_data
+
+    # Lock archetype
+    existing_arch = char_data.get("archetype") or char_data.get("archetype_name")
+    if isinstance(existing_arch, dict):
+        existing_arch = existing_arch.get("name")
+
+    if existing_arch and str(existing_arch).lower() not in ["", "none", "any", "any archetype"]:
+        locked_arch = str(existing_arch).strip()
+    else:
+        req_arch = payload.archetype
+        locked_arch = None if not req_arch or req_arch.lower() in ["any", "any archetype", "none"] else req_arch.strip()
+
+    # In PF2e, dedication archetypes are level 2+ only
+    use_ded = (payload.use_dedication or bool(locked_arch)) if target >= 2 else False
+
     try:
-        clean_arch = None if not payload.archetype or payload.archetype.lower() in ["any", "any archetype", "none"] else payload.archetype
-        updated_sheet = generator.level_up(
-            payload.character,
-            payload.target_level,
-            use_dedication=payload.use_dedication or bool(clean_arch),
-            archetype_name=clean_arch
-        )
-        return updated_sheet
+        if target > current_level:
+            updated_sheet = generator.level_up(
+                char_data,
+                target,
+                use_dedication=use_ded,
+                archetype_name=locked_arch
+            )
+            return updated_sheet
+        else:
+            # Scale down: lock ancestry, heritage, class, subclass, background, name, and archetype
+            anc_val = char_data.get("ancestry")
+            anc_name = anc_val.get("name") if isinstance(anc_val, dict) else str(anc_val) if anc_val else None
+
+            heritage_val = char_data.get("heritage")
+            heritage_name = heritage_val.get("name") if isinstance(heritage_val, dict) else str(heritage_val) if heritage_val else None
+
+            cls_name = char_data.get("character_class")
+
+            subclass_val = char_data.get("subclass")
+            subclass_name = subclass_val.get("name") if isinstance(subclass_val, dict) else str(subclass_val) if subclass_val else None
+
+            bg_name = char_data.get("background")
+            c_name = char_data.get("name")
+
+            scaled_sheet = generator.generate(
+                ancestry_name=anc_name,
+                class_name=cls_name,
+                background_name=bg_name,
+                archetype_name=locked_arch if target >= 2 else None,
+                char_name=c_name,
+                level=target,
+                use_dedication=use_ded,
+                heritage_name=heritage_name,
+                subclass_name=subclass_name
+            )
+            return scaled_sheet
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
