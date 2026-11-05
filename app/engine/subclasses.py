@@ -89,7 +89,8 @@ CLASS_SUBCLASSES: Dict[str, Dict[str, Any]] = {
             {"name": "Dragon Instinct", "description": "Your rage draws power from a draconic patron, adding elemental damage."},
             {"name": "Giant Instinct", "description": "You wield oversized weapons for massive additional rage damage."},
             {"name": "Spirit Instinct", "description": "Your rage channels ancestor spirits to fight undead and incorporeal targets."},
-            {"name": "Animal Instinct", "description": "Your rage gives you powerful bestial unarmed strikes."}
+            {"name": "Animal Instinct", "description": "Your rage gives you powerful bestial unarmed strikes."},
+            {"name": "Superstition Instinct", "description": "A deep distrust of magic fuels your rage, granting bonuses against spells and temporary HP against magic."}
         ]
     },
     "cleric": {
@@ -104,12 +105,16 @@ CLASS_SUBCLASSES: Dict[str, Dict[str, Any]] = {
         "options": [
             {"name": "Paladin (Holy)", "description": "Your reaction is Retributive Strike to protect allies and strike back."},
             {"name": "Liberator (Holy)", "description": "Your reaction is Liberating Step to free allies from grab and immobilize effects."},
-            {"name": "Redeemer (Holy)", "description": "Your reaction is Glimpse of Redemption to pacify enemies or sap their strikes."}
+            {"name": "Redeemer (Holy)", "description": "Your reaction is Glimpse of Redemption to pacify enemies or sap their strikes."},
+            {"name": "Tyrant (Unholy)", "description": "Your reaction is Iron Command to compel obedience and inflict mental torment or knock foes prone."},
+            {"name": "Desecrator (Unholy)", "description": "Your reaction is Selfish Shield to absorb incoming damage with void power and boost your own resistance."},
+            {"name": "Antipaladin (Unholy)", "description": "Your reaction is Destructive Vengeance to trade pain for amplified violence against your attacker."}
         ]
     },
     "bard": {
         "title": "Muse",
         "options": [
+            {"name": "Enigma", "description": "Driven to uncover esoteric secrets, gaining Bardic Lore to Recall Knowledge on any subject."},
             {"name": "Maestro", "description": "Masters of performance, gaining the Lingering Composition focus spell."},
             {"name": "Polymath", "description": "Jack-of-all-trades; gain trained in Performance and Versatile Performance."},
             {"name": "Warrior", "description": "Martial skald; gain trained in martial weapons and medium armor."}
@@ -126,18 +131,25 @@ CLASS_SUBCLASSES: Dict[str, Dict[str, Any]] = {
     "sorcerer": {
         "title": "Bloodline",
         "options": [
-            {"name": "Draconic (Arcane)", "description": "Draconic heritage providing Dragon Claws focus spell and arcane spells."},
+            {"name": "Aberrant (Occult)", "description": "Alien alienage granting Tentacular Limbs and eldritch occult distortions."},
             {"name": "Angelic (Divine)", "description": "Celestial patron providing Angelic Halo and divine healing spells."},
+            {"name": "Demonic (Divine)", "description": "Abyssal heritage granting Glutton's Jaws and divine destruction."},
+            {"name": "Diabolic (Divine)", "description": "Infernal pact granting Diabolic Edict, Hellfire, and deceptive divine spells."},
+            {"name": "Draconic (Arcane)", "description": "Draconic heritage providing Dragon Claws focus spell and arcane spells."},
+            {"name": "Elemental (Primal)", "description": "Kinship with primordial elements granting Elemental Toss and primal blast spells."},
             {"name": "Fey (Primal)", "description": "Faerie heritage providing Faerie Dust and primal illusion/enchantment magic."},
-            {"name": "Demonic (Divine)", "description": "Abyssal heritage granting Glutton's Jaws and divine destruction."}
+            {"name": "Imperial (Arcane)", "description": "Ancient arcane lineage granting Ancestral Memories and flexible metamagic."},
+            {"name": "Undead (Divine)", "description": "Tainted with mortality-defying death energy, granting Undeath's Blessing and void harm."}
         ]
     },
     "swashbuckler": {
         "title": "Style",
         "options": [
+            {"name": "Battledancer", "description": "You gain panache by weaving through combat and performing Perform checks with Fascinating Performance."},
             {"name": "Braggart", "description": "You gain panache by demoralizing foes with Demoralize checks."},
             {"name": "Fencer", "description": "You gain panache by faking out your foes using Create a Diversion or Feint."},
-            {"name": "Gymnast", "description": "You gain panache by overpowering foes with Grapple, Shove, or Trip."}
+            {"name": "Gymnast", "description": "You gain panache by overpowering foes with Grapple, Shove, or Trip."},
+            {"name": "Wit", "description": "You gain panache by using Bon Mot to rattle enemies with scathing retorts and sharp quips."}
         ]
     },
     "gunslinger": {
@@ -156,7 +168,22 @@ CLASS_SUBCLASSES: Dict[str, Dict[str, Any]] = {
             {"name": "Single Gate: Fire", "description": "Pure fire kineticist gaining Thermal Nimbus and Flying Flame impulses."},
             {"name": "Single Gate: Water", "description": "Pure water kineticist gaining Ocean's Balm and Deflecting Wave impulses."},
             {"name": "Single Gate: Earth", "description": "Pure earth kineticist gaining Armor in Earth and Tremor impulses."},
-            {"name": "Dual Gate: Fire & Earth", "description": "Composite kineticist channeling volcanic molten rock and lava impulses."}
+            {"name": "Single Gate: Air", "description": "Pure air kineticist gaining Aerial Agility, Whispering Wind, and Four Winds impulses."},
+            {"name": "Single Gate: Wood", "description": "Pure wood kineticist gaining Fresh Produce and Timber Sentinel barriers."},
+            {"name": "Single Gate: Metal", "description": "Pure metal kineticist gaining Flashforge and Magnetic Shield defensive impulses."},
+            {"name": "Dual Gate: Fire & Earth", "description": "Composite kineticist channeling volcanic molten rock and Magma Leap."},
+            {"name": "Dual Gate: Water & Wood", "description": "Composite kineticist nurturing life, spring water, and restorative surges."},
+            {"name": "Dual Gate: Air & Metal", "description": "Composite kineticist manipulating magnetic cyclones and flying alloy shards."}
+        ]
+    }
+,
+    "commander": {
+        "title": "Tactics Specialty",
+        "options": [
+            {"name": "Infantry Tactics", "description": "Specialized in ground formations, frontline shield walls, and coordinated melee pushes."},
+            {"name": "Cavalry Tactics", "description": "Specialized in high mobility, shock charges, and hit-and-run mounted vanguard maneuvers."},
+            {"name": "Naval Tactics", "description": "Specialized in boarding actions, boarding hooks, tight-quarter skirmishes, and aquatic battlefield control."},
+            {"name": "Guerrilla Tactics", "description": "Specialized in ambush formations, rapid retreats, camouflage, and asymmetric skirmishing."}
         ]
     }
 }

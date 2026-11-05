@@ -1,3 +1,4 @@
+import re
 import random
 from typing import Dict, Any, List, Tuple, Optional
 from app.engine.models import EquipmentLoadout, Item, Strike, Wealth, ConsumableItem
@@ -299,6 +300,32 @@ def select_class_weapons(
     return [prim, sec]
 
 
+def get_all_registered_weapons() -> List[Dict[str, Any]]:
+    pool = []
+    pool_lists = [
+        MARTIAL_TWO_HANDED, MARTIAL_ONE_HANDED, MARTIAL_FINESSE, MARTIAL_RANGED,
+        SIMPLE_MELEE, SIMPLE_RANGED, ONE_HANDED_FIREARMS, TWO_HANDED_SNIPER_FIREARMS,
+        VANGUARD_FIREARMS, SECONDARY_BACKUPS
+    ]
+    for lst in pool_lists:
+        pool.extend(lst)
+    for anc_list in ANCESTRAL_WEAPONS.values():
+        pool.extend(anc_list)
+    return pool
+
+def find_base_weapon(name: str) -> Optional[Dict[str, Any]]:
+    clean = re.sub(r"^\+\d+\s+", "", name).strip()
+    clean = re.sub(r"\bstriking\b", "", clean, flags=re.IGNORECASE).strip()
+    clean = re.sub(r"\s+", " ", clean).strip().lower()
+    all_w = get_all_registered_weapons()
+    for w in all_w:
+        if w["name"].lower() == clean:
+            return dict(w)
+    for w in all_w:
+        if w["name"].lower() in clean or clean in w["name"].lower():
+            return dict(w)
+    return None
+
 def resolve_equipment(
     class_name: str,
     str_mod: int,
@@ -306,7 +333,8 @@ def resolve_equipment(
     level: int = 1,
     ancestry_name: str = "",
     subclass_name: str = "",
-    archetype_name: str = ""
+    archetype_name: str = "",
+    existing_weapons: Optional[List[Any]] = None
 ) -> Tuple[EquipmentLoadout, int, int]:
     cls_key = class_name.lower()
     lvl = max(1, min(7, level))
@@ -315,7 +343,15 @@ def resolve_equipment(
     budget_gp = wealth_cfg["lump_gp"]
 
     # 1. Base Weapon Selection & Rune Progression
-    raw_weps = select_class_weapons(cls_key, str_mod, dex_mod, ancestry_name=ancestry_name, subclass_name=subclass_name, archetype_name=archetype_name)
+    raw_weps = []
+    if existing_weapons:
+        for ew in existing_weapons:
+            w_name = ew.get("name") if isinstance(ew, dict) else getattr(ew, "name", "")
+            base_w = find_base_weapon(w_name)
+            if base_w and base_w not in raw_weps:
+                raw_weps.append(base_w)
+    if not raw_weps:
+        raw_weps = select_class_weapons(cls_key, str_mod, dex_mod, ancestry_name=ancestry_name, subclass_name=subclass_name, archetype_name=archetype_name)
     weapons: List[Item] = []
     strikes: List[Strike] = []
 
