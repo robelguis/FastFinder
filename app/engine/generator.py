@@ -3,6 +3,7 @@ import re
 import random
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Set
+from app.engine.models import Strike
 from app.engine.models import (
     CharacterSheet,
     AttributeModifiers,
@@ -466,6 +467,52 @@ class PF2eGenerator:
         class_hp_per_lvl = cls.get("hp_per_level", 8)
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * level)
         bonus_speed = 0
+        # Kineticist Elemental Blasts
+        if cls["name"].lower() == "kineticist":
+            blast_lvl = locals().get("target_level", locals().get("level", 1))
+            con_mod = mods.get("con", 0)
+            str_mod = mods.get("str", 0)
+            dex_mod = mods.get("dex", 0)
+            prof = 2 + blast_lvl  # Trained
+            if blast_lvl >= 5:
+                prof += 2          # Expert at lvl 5
+            
+            melee_bonus = prof + con_mod
+            ranged_bonus = prof + dex_mod
+            
+            dice_count = 2 if blast_lvl >= 5 else 1
+            melee_str_bonus = str_mod if str_mod > 0 else 0
+            spec_bonus = 2 if blast_lvl >= 7 else 0
+            
+            melee_dmg_bonus = con_mod + melee_str_bonus + spec_bonus
+            ranged_dmg_bonus = con_mod + spec_bonus
+            
+            melee_dmg_str = f"{dice_count}d8+{melee_dmg_bonus}" if melee_dmg_bonus > 0 else f"{dice_count}d8"
+            ranged_dmg_str = f"{dice_count}d6+{ranged_dmg_bonus}" if ranged_dmg_bonus > 0 else f"{dice_count}d6"
+            
+            melee_blast = Strike(
+                name="Elemental Blast (Melee)",
+                attack_bonus=melee_bonus,
+                map_second=melee_bonus - 5,
+                map_third=melee_bonus - 10,
+                damage_dice=melee_dmg_str,
+                damage_type="Bludgeoning / Piercing / Slashing",
+                traits=["Impulse", "Kinetic", "Magical", "Primal"]
+            )
+            ranged_blast = Strike(
+                name="Elemental Blast (Ranged)",
+                attack_bonus=ranged_bonus,
+                map_second=ranged_bonus - 5,
+                map_third=ranged_bonus - 10,
+                damage_dice=ranged_dmg_str,
+                damage_type="Bludgeoning / Piercing / Slashing (60 ft)",
+                traits=["Impulse", "Infusion", "Kinetic", "Magical", "Primal"]
+            )
+            # Remove any existing elemental blasts first to avoid duplicates on level transition
+            equipment_loadout.strikes = [s for s in equipment_loadout.strikes if not s.name.startswith("Elemental Blast")]
+            equipment_loadout.strikes.insert(0, ranged_blast)
+            equipment_loadout.strikes.insert(0, melee_blast)
+
         total_hp = max(1, base_hp)
 
         # 5. Feat Progression
@@ -1162,6 +1209,52 @@ class PF2eGenerator:
         class_hp_per_lvl = cls.get("hp_per_level", 8)
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * target_level)
         bonus_speed = 0
+        # Kineticist Elemental Blasts
+        if cls["name"].lower() == "kineticist":
+            blast_lvl = locals().get("target_level", locals().get("level", 1))
+            con_mod = mods.get("con", 0)
+            str_mod = mods.get("str", 0)
+            dex_mod = mods.get("dex", 0)
+            prof = 2 + blast_lvl  # Trained
+            if blast_lvl >= 5:
+                prof += 2          # Expert at lvl 5
+            
+            melee_bonus = prof + con_mod
+            ranged_bonus = prof + dex_mod
+            
+            dice_count = 2 if blast_lvl >= 5 else 1
+            melee_str_bonus = str_mod if str_mod > 0 else 0
+            spec_bonus = 2 if blast_lvl >= 7 else 0
+            
+            melee_dmg_bonus = con_mod + melee_str_bonus + spec_bonus
+            ranged_dmg_bonus = con_mod + spec_bonus
+            
+            melee_dmg_str = f"{dice_count}d8+{melee_dmg_bonus}" if melee_dmg_bonus > 0 else f"{dice_count}d8"
+            ranged_dmg_str = f"{dice_count}d6+{ranged_dmg_bonus}" if ranged_dmg_bonus > 0 else f"{dice_count}d6"
+            
+            melee_blast = Strike(
+                name="Elemental Blast (Melee)",
+                attack_bonus=melee_bonus,
+                map_second=melee_bonus - 5,
+                map_third=melee_bonus - 10,
+                damage_dice=melee_dmg_str,
+                damage_type="Bludgeoning / Piercing / Slashing",
+                traits=["Impulse", "Kinetic", "Magical", "Primal"]
+            )
+            ranged_blast = Strike(
+                name="Elemental Blast (Ranged)",
+                attack_bonus=ranged_bonus,
+                map_second=ranged_bonus - 5,
+                map_third=ranged_bonus - 10,
+                damage_dice=ranged_dmg_str,
+                damage_type="Bludgeoning / Piercing / Slashing (60 ft)",
+                traits=["Impulse", "Infusion", "Kinetic", "Magical", "Primal"]
+            )
+            # Remove any existing elemental blasts first to avoid duplicates on level transition
+            equipment_loadout.strikes = [s for s in equipment_loadout.strikes if not s.name.startswith("Elemental Blast")]
+            equipment_loadout.strikes.insert(0, ranged_blast)
+            equipment_loadout.strikes.insert(0, melee_blast)
+
         total_hp = max(1, base_hp)
 
         # 5. Resolve Archetype (respect existing choice or select new dedication on level up)
