@@ -224,7 +224,32 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
         stalker_opts = ["Rubble", "Snow", "Underbrush"]
         return f"{feat_name} ({random.choice(stalker_opts)})"
 
+    if "additional lore" in fn_lower and "(" not in feat_name:
+        lore_pool = [
+            "Academia Lore", "Architecture Lore", "Art Lore", "Barrow Lore",
+            "Circus Lore", "Engineering Lore", "Forest Lore", "Fortune-Telling Lore",
+            "Guild Lore", "Heraldry Lore", "Hunting Lore", "Labor Lore",
+            "Legal Lore", "Midwifery Lore", "Mining Lore", "Ocean Lore",
+            "Politics Lore", "Sailing Lore", "Scouting Lore", "Settlement Lore",
+            "Theatre Lore", "Underworld Lore", "Warfare Lore"
+        ]
+        chosen = random.choice(lore_pool)
+        return f"{feat_name} ({chosen})"
+
     return feat_name
+
+
+def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
+    cleaned = clean_pf2e_text(raw_desc or "")
+    if "(" in feat_name and ")" in feat_name:
+        subchoice = feat_name.split("(", 1)[1].rstrip(")")
+        if "additional lore" in feat_name.lower():
+            prefix = f"Chosen Lore: {subchoice}. (Scales automatically: Trained at 1st, Expert at 3rd, Master at 7th, Legendary at 15th).\n\n"
+            return prefix + cleaned
+        elif "spotter" in feat_name.lower() or "stalker" in feat_name.lower():
+            prefix = f"Selected Environment: {subchoice}.\n\n"
+            return prefix + cleaned
+    return cleaned
 
 
 def pick_weighted_feat(candidates, class_name, owned_names, skill_ranks, mods, char_level):
@@ -663,7 +688,7 @@ class PF2eGenerator:
                     category="Skill (Level 2)",
                     action_cost=sf.get("action_cost"),
                     traits=sf.get("traits", []),
-                    description=clean_pf2e_text(sf.get("description", ""))
+                    description=enrich_feat_description(resolved_feat_name2, sf.get("description", ""))
                 ))
                 owned_names.add(resolved_feat_name2)
 
@@ -755,7 +780,7 @@ class PF2eGenerator:
                     category="Skill (Level 4)",
                     action_cost=sf4.get("action_cost"),
                     traits=sf4.get("traits", []),
-                    description=clean_pf2e_text(sf4.get("description", ""))
+                    description=enrich_feat_description(resolved_name4, sf4.get("description", ""))
                 ))
 
         if level >= 5:
@@ -834,7 +859,7 @@ class PF2eGenerator:
                     category="Skill (Level 6)",
                     action_cost=sf6.get("action_cost"),
                     traits=sf6.get("traits", []),
-                    description=clean_pf2e_text(sf6.get("description", ""))
+                    description=enrich_feat_description(resolved_name6, sf6.get("description", ""))
                 ))
                 owned_names.add(resolved_name6)
 
@@ -1354,7 +1379,7 @@ class PF2eGenerator:
                         category="Skill (Level 2)",
                         action_cost=sf.get("action_cost"),
                         traits=sf.get("traits", []),
-                        description=clean_pf2e_text(sf.get("description", ""))
+                        description=enrich_feat_description(resolved_feat_name2, sf.get("description", ""))
                     ))
                     existing_feat_names.add(sf["name"])
 
@@ -1434,7 +1459,7 @@ class PF2eGenerator:
                         category="Skill (Level 4)",
                         action_cost=sf4.get("action_cost"),
                         traits=sf4.get("traits", []),
-                        description=clean_pf2e_text(sf4.get("description", ""))
+                        description=enrich_feat_description(resolved_name4, sf4.get("description", ""))
                     ))
                     existing_feat_names.add(sf4["name"])
 
@@ -1546,7 +1571,7 @@ class PF2eGenerator:
                         category="Skill (Level 6)",
                         action_cost=sf6.get("action_cost"),
                         traits=sf6.get("traits", []),
-                        description=clean_pf2e_text(sf6.get("description", ""))
+                        description=enrich_feat_description(resolved_name6, sf6.get("description", ""))
                     ))
                     existing_feat_names.add(resolved_name6)
 

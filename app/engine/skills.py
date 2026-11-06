@@ -104,7 +104,7 @@ def resolve_character_skills(
     trained_skills: Set[str] = set()
     if existing_map:
         for name, rank_val in existing_map.items():
-            if name != chosen_lore and rank_val >= 2:
+            if name in ALL_PF2E_SKILLS and rank_val >= 2:
                 trained_skills.add(name)
     else:
         bg_skills = bg.get("skills", [])
@@ -127,33 +127,36 @@ def resolve_character_skills(
     skill_ranks: Dict[str, int] = {s: (2 if s in trained_skills else 0) for s in ALL_PF2E_SKILLS}
 
     if existing_map:
+        # Determine prioritised skills that already had increases
+        boosted_names = [name for name in trained_skills if existing_map.get(name, 2) > 2]
+        
         increases_applied = 0
-        for name in trained_skills:
+        # Re-apply boosts to the exact same skills up to the new num_increases limit
+        for name in boosted_names:
+            if increases_applied >= num_increases:
+                break
             prev_val = existing_map.get(name, 2)
-            if prev_val > 2:
-                needed = 1 if prev_val == 4 else (2 if prev_val == 6 else 3)
-                if increases_applied + needed <= num_increases:
-                    if prev_val == 4 and target_lvl >= 2:
-                        skill_ranks[name] = 4
-                        increases_applied += 1
-                    elif prev_val == 6 and target_lvl >= 7:
-                        skill_ranks[name] = 6
-                        increases_applied += 2
-                    elif prev_val == 8 and target_lvl >= 15:
-                        skill_ranks[name] = 8
-                        increases_applied += 3
+            
+            # Can we restore Master? (Requires level 7+ and 2 increases)
+            if prev_val >= 6 and target_lvl >= 7 and (num_increases - increases_applied) >= 2:
+                skill_ranks[name] = 6
+                increases_applied += 2
+            # Otherwise, can we restore Expert? (Requires level 2+ and 1 increase)
+            elif prev_val >= 4 and target_lvl >= 2 and (num_increases - increases_applied) >= 1:
+                skill_ranks[name] = 4
+                increases_applied += 1
 
         remaining = num_increases - increases_applied
         while remaining > 0:
             eligible_expert = [s for s in trained_skills if skill_ranks[s] == 2 and target_lvl >= 2]
             if eligible_expert:
-                pick = random.choice(eligible_expert)
+                pick = eligible_expert[0]
                 skill_ranks[pick] = 4
                 remaining -= 1
                 continue
             eligible_master = [s for s in trained_skills if skill_ranks[s] == 4 and target_lvl >= 7]
             if eligible_master:
-                pick = random.choice(eligible_master)
+                pick = eligible_master[0]
                 skill_ranks[pick] = 6
                 remaining -= 1
                 continue
@@ -195,7 +198,7 @@ def resolve_character_skills(
             )
         )
 
-    # 6. Add Lore SkillEntry
+    # 6. Add Background Lore SkillEntry
     lore_rank = existing_map.get(chosen_lore, 2)
     if lore_rank > 0:
         lore_prof = lore_rank + target_lvl
@@ -214,5 +217,40 @@ def resolve_character_skills(
             attribute="INT"
         )
     )
+
+    # 7. Add Feat-Granted Lore (e.g. Additional Lore)
+    for f in all_feats:
+        f_name = f.name if hasattr(f, "name") else (f.get("name") if isinstance(f, dict) else "")
+        if "additional lore" in f_name.lower() and "(" in f_name and ")" in f_name:
+            feat_lore_name = f_name.split("(", 1)[1].rstrip(")").strip()
+            if not feat_lore_name.lower().endswith("lore"):
+                feat_lore_name = f"{feat_lore_name} Lore"
+
+            # Prevent duplicate if already added
+            if any(s.name.lower() == feat_lore_name.lower() for s in result_skills):
+                continue
+
+            # Additional Lore auto-scaling: Trained (1-2), Expert (3-6), Master (7-14), Legendary (15+)
+            if target_lvl >= 15:
+                al_rank = 8
+            elif target_lvl >= 7:
+                al_rank = 6
+            elif target_lvl >= 3:
+                al_rank = 4
+            else:
+                al_rank = 2
+
+            al_prof = al_rank + target_lvl
+            al_total = al_prof + norm_mods.get("int", 0)
+
+            result_skills.append(
+                SkillEntry(
+                    name=feat_lore_name,
+                    rank=al_rank,
+                    rank_letter=RANK_LETTER_MAP.get(al_rank, "T"),
+                    modifier=al_total,
+                    attribute="INT"
+                )
+            )
 
     return result_skills
