@@ -1,3 +1,83 @@
+
+ALCHEMICAL_BOMBS = {
+    "lesser": [
+        {
+            "name": "Alchemist's Fire (Lesser)",
+            "dice": "1d8",
+            "type": "Fire",
+            "persistent": "1 persistent fire",
+            "splash": "1 splash fire",
+            "item_bonus": 0,
+            "traits": ["Alchemical", "Bomb", "Consumable", "Fire", "Splash", "Thrown 20 ft"]
+        },
+        {
+            "name": "Bottled Lightning (Lesser)",
+            "dice": "1d6",
+            "type": "Electricity",
+            "persistent": "Off-Guard until start of next turn",
+            "splash": "1 splash electricity",
+            "item_bonus": 0,
+            "traits": ["Alchemical", "Bomb", "Consumable", "Electricity", "Splash", "Thrown 20 ft"]
+        },
+        {
+            "name": "Acid Flask (Lesser)",
+            "dice": "1",
+            "type": "Acid",
+            "persistent": "1d6 persistent acid",
+            "splash": "1 splash acid",
+            "item_bonus": 0,
+            "traits": ["Alchemical", "Acid", "Bomb", "Consumable", "Splash", "Thrown 20 ft"]
+        },
+        {
+            "name": "Frost Vial (Lesser)",
+            "dice": "1d6",
+            "type": "Cold",
+            "persistent": "-5 ft circumstance penalty to Speeds",
+            "splash": "1 splash cold",
+            "item_bonus": 0,
+            "traits": ["Alchemical", "Bomb", "Cold", "Consumable", "Splash", "Thrown 20 ft"]
+        }
+    ],
+    "moderate": [
+        {
+            "name": "Alchemist's Fire (Moderate)",
+            "dice": "2d8",
+            "type": "Fire",
+            "persistent": "2 persistent fire",
+            "splash": "2 splash fire",
+            "item_bonus": 1,
+            "traits": ["Alchemical", "Bomb", "Consumable", "Fire", "Splash", "Thrown 20 ft"]
+        },
+        {
+            "name": "Bottled Lightning (Moderate)",
+            "dice": "2d6",
+            "type": "Electricity",
+            "persistent": "Off-Guard until start of next turn",
+            "splash": "2 splash electricity",
+            "item_bonus": 1,
+            "traits": ["Alchemical", "Bomb", "Consumable", "Electricity", "Splash", "Thrown 20 ft"]
+        },
+        {
+            "name": "Acid Flask (Moderate)",
+            "dice": "2",
+            "type": "Acid",
+            "persistent": "2d6 persistent acid",
+            "splash": "2 splash acid",
+            "item_bonus": 1,
+            "traits": ["Alchemical", "Acid", "Bomb", "Consumable", "Splash", "Thrown 20 ft"]
+        },
+        {
+            "name": "Frost Vial (Moderate)",
+            "dice": "2d6",
+            "type": "Cold",
+            "persistent": "-10 ft circumstance penalty to Speeds",
+            "splash": "2 splash cold",
+            "item_bonus": 1,
+            "traits": ["Alchemical", "Bomb", "Cold", "Consumable", "Splash", "Thrown 20 ft"]
+        }
+    ]
+}
+
 import re
 import random
 from typing import Dict, Any, List, Tuple, Optional
@@ -401,6 +481,24 @@ def resolve_equipment(
             traits=w.get("traits", [])
         ))
 
+    # Add Signature Alchemist Bomb Strike
+    if cls_key == "alchemist":
+        bomb_tier = "moderate" if lvl >= 3 else "lesser"
+        # Default to Alchemist's Fire
+        chosen_bomb = ALCHEMICAL_BOMBS[bomb_tier][0]
+        bomb_prof = 2  # Trained in simple weapons / alchemical bombs
+        bomb_atk = bomb_prof + lvl + dex_mod + chosen_bomb["item_bonus"]
+        dmg_desc = f"{chosen_bomb['dice']} + {chosen_bomb['persistent']} + {chosen_bomb['splash']}"
+        strikes.insert(0, Strike(
+            name=chosen_bomb["name"],
+            attack_bonus=bomb_atk,
+            map_second=bomb_atk - 5,
+            map_third=bomb_atk - 10,
+            damage_dice=dmg_desc,
+            damage_type=chosen_bomb["type"],
+            traits=chosen_bomb["traits"]
+        ))
+
     # 2. Armor and Shield Selection
     shield_bonus = 0
     if cls_key in ["champion", "fighter", "cleric"]:
@@ -438,6 +536,33 @@ def resolve_equipment(
 
     # 4. Consumables Scaling by Level
     consumables: List[ConsumableItem] = []
+
+    if cls_key == "alchemist":
+        bomb_tier = "moderate" if lvl >= 3 else "lesser"
+        tier_bombs = ALCHEMICAL_BOMBS[bomb_tier]
+        # Alchemist daily prepared bombs (Alchemist's Fire, Bottled Lightning, Acid Flask)
+        consumables.append(ConsumableItem(
+            name=tier_bombs[0]["name"],
+            quantity=3 if lvl >= 4 else 2,
+            bulk="L",
+            description=f"Deals {tier_bombs[0]['dice']} fire, {tier_bombs[0]['persistent']}, and {tier_bombs[0]['splash']}."
+        ))
+        consumables.append(ConsumableItem(
+            name=tier_bombs[1]["name"],
+            quantity=2,
+            bulk="L",
+            description=f"Deals {tier_bombs[1]['dice']} electricity, {tier_bombs[1]['splash']}, flat-footed on hit."
+        ))
+        consumables.append(ConsumableItem(
+            name=tier_bombs[2]["name"],
+            quantity=2,
+            bulk="L",
+            description=f"Deals {tier_bombs[2]['dice']} acid, {tier_bombs[2]['persistent']}, and {tier_bombs[2]['splash']}."
+        ))
+        # Add signature elixir
+        elixir_name = "Elixir of Life (Moderate)" if lvl >= 5 else ("Elixir of Life (Lesser)" if lvl >= 3 else "Minor Healing Potion")
+        elixir_desc = "Restores 3d6+6 HP and +1 bonus vs disease/poison." if "Lesser" in elixir_name else "Restores 1d8 HP."
+        consumables.append(ConsumableItem(name=elixir_name, quantity=2, bulk="L", description=elixir_desc))
     if lvl == 1:
         consumables.append(ConsumableItem(name="Minor Healing Potion", quantity=2, bulk="L", description="Restores 1d8 HP (1 Action)."))
     elif lvl in [2, 3]:
