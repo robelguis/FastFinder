@@ -1102,6 +1102,14 @@ class PF2eGenerator:
                 if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
                     mods[attr] += 1
                     lvl5_boosts_applied.add(attr)
+        elif old_level >= 5 and target_level < 5:
+            # De-escalate level 5 boosts
+            lvl5_boosts_applied: Set[str] = set()
+            lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl5_priority:
+                if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
+                    mods[attr] = max(0, mods[attr] - 1)
+                    lvl5_boosts_applied.add(attr)
 
         # 3. Defenses & Proficiencies
         fort_rank = cls.get("saving_throws", {}).get("fortitude", 1)
@@ -1171,12 +1179,35 @@ class PF2eGenerator:
                 item_bonus = 1 if target_level >= 2 else 0
                 new_atk = base_prof_rank + target_level + ab_mod + item_bonus
 
-                dmg_dice = s_dict.get("damage_dice", "1d8")
-                if target_level >= 7 and "+ 2" not in dmg_dice and "+2" not in dmg_dice:
-                    dmg_dice = f"{dmg_dice} + 2"
+                # Strip existing rune prefixes to recover clean base weapon name
+                clean_name = re.sub(r"^(\+?\d+\s+)?(striking\s+)?", "", name, flags=re.I).strip()
+                if target_level >= 4:
+                    display_name = f"+1 Striking {clean_name}"
+                elif target_level >= 2:
+                    display_name = f"+1 {clean_name}"
+                else:
+                    display_name = clean_name
+
+                # Extract base die type (e.g. d6, d8, d10) and any modifier suffix
+                raw_dice = s_dict.get("damage_dice", "1d8")
+                # Remove previous weapon spec or extra spaces
+                raw_dice = re.sub(r"\s*\+\s*2", "", raw_dice).strip()
+                m_die = re.search(r"(\d*)d(\d+)(.*)", raw_dice)
+                if m_die:
+                    die_faces = m_die.group(2)
+                    tail = m_die.group(3).strip()
+                    dice_count = 2 if target_level >= 4 else 1
+                    base_str = f"{dice_count}d{die_faces}{(" " + tail) if tail else ""}"
+                else:
+                    base_str = raw_dice
+
+                if target_level >= 7:
+                    dmg_dice = f"{base_str} + 2"
+                else:
+                    dmg_dice = base_str
 
                 preserved_strikes.append(Strike(
-                    name=name,
+                    name=display_name,
                     attack_bonus=new_atk,
                     map_second=new_atk - (4 if "Agile" in s_dict.get("traits", []) else 5),
                     map_third=new_atk - (8 if "Agile" in s_dict.get("traits", []) else 10),
@@ -1253,9 +1284,25 @@ class PF2eGenerator:
         else:
             resolved_arch_name = None
 
-        # 6. Preserve and advance feats
+        # 6. Preserve and advance/trim feats
         existing_feats_raw = current_char.get("feats", [])
         chosen_feats: List[FeatSummary] = [FeatSummary(**f) if isinstance(f, dict) else f for f in existing_feats_raw]
+
+        if target_level < old_level:
+            # Leveling down: filter out feats from levels above target_level
+            filtered_feats = []
+            for f in chosen_feats:
+                cat = (f.category or "").lower()
+                m = re.search(r"level\s*(\d+)", cat)
+                if m:
+                    f_lvl = int(m.group(1))
+                    if f_lvl > target_level:
+                        continue
+                if target_level < 7 and f.name == "Weapon Specialization":
+                    continue
+                filtered_feats.append(f)
+            chosen_feats = filtered_feats
+
         existing_feat_names = {f.name for f in chosen_feats}
         cls_name_lower = cls["name"].lower()
 
