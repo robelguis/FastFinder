@@ -1,237 +1,191 @@
-
-ARCHETYPE_LEVEL1_REQUIRED_SKILLS: Dict[str, List[str]] = {
-    "acrobat": ["Acrobatics"],
-    "medic": ["Medicine"],
-    "wrestler": ["Athletics"],
-    "marshal": ["Diplomacy"],  # Default primary choice for Marshal
-    "scout": ["Stealth"],
-    "champion-multiclass": ["Religion"],
-    "rogue-multiclass": ["Stealth"],
-    "beastmaster": ["Nature"],
-    "undead-master": ["Religion"],
-}
-
-from app.engine.feat_prereqs import CLASS_PRIORITY_SKILLS
-import re
+from typing import List, Dict, Any, Optional
 import random
-from typing import Dict, Any, List
-from app.engine.models import SkillEntry
 
-CORE_SKILLS: Dict[str, str] = {
-    "Acrobatics": "dex",
-    "Arcana": "int",
-    "Athletics": "str",
-    "Crafting": "int",
-    "Deception": "cha",
-    "Diplomacy": "cha",
-    "Intimidation": "cha",
-    "Medicine": "wis",
-    "Nature": "wis",
-    "Occultism": "int",
-    "Performance": "cha",
-    "Religion": "wis",
-    "Society": "int",
-    "Stealth": "dex",
-    "Survival": "wis",
-    "Thievery": "dex",
-}
-
-CLASS_TRAINED_SKILLS: Dict[str, List[str]] = {
-    "fighter": ["Acrobatics", "Athletics"],
-    "rogue": ["Stealth", "Thievery", "Deception", "Acrobatics"],
-    "wizard": ["Arcana"],
-    "cleric": ["Religion"],
-    "barbarian": ["Athletics"],
-    "bard": ["Performance", "Occultism"],
-    "druid": ["Nature", "Survival"],
-    "ranger": ["Nature", "Survival", "Athletics"],
-    "champion": ["Religion", "Athletics"],
-    "monk": ["Athletics", "Acrobatics"],
-    "swashbuckler": ["Acrobatics"],
-    "investigator": ["Society"],
-    "thaumaturge": ["Arcana", "Occultism", "Religion", "Nature"],
-    "psychic": ["Occultism"],
-    "oracle": ["Religion"],
-    "witch": ["Arcana", "Occultism"],
-    "kineticist": ["Nature"],
-    "alchemist": ["Crafting"],
-    "gunslinger": ["Acrobatics"],
-}
-
-ADDITIONAL_LORE_POOL = [
-    "Underworld Lore", "Warfare Lore", "Engineering Lore", "Architecture Lore",
-    "Academia Lore", "Hunting Lore", "Mercantile Lore", "Sailing Lore",
-    "Scouting Lore", "Court Lore", "Herbalism Lore", "Labor Lore"
+# Standard PF2e Skill List (excluding Lore)
+ALL_PF2E_SKILLS = [
+    "Acrobatics", "Arcana", "Athletics", "Crafting", "Deception",
+    "Diplomacy", "Intimidation", "Medicine", "Nature", "Occultism",
+    "Performance", "Religion", "Society", "Stealth", "Survival", "Thievery"
 ]
 
-# Feats granting untyped/untrained level scaling to all untrained skills
-UNTRAINED_SCALING_FEATS = {
-    "untrained improvisation",
-    "clever improviser"
+PROFICIENCY_RANK_MAP = {
+    "Untrained": 0,
+    "Trained": 2,
+    "Expert": 4,
+    "Master": 6,
+    "Legendary": 8
 }
 
-# Feats granting auto-scaling Lore (Expert at 3, Master at 7, Legendary at 15)
-AUTO_SCALING_LORE_FEATS = {
-    "additional lore",
-    "gnome obsession",
-    "experienced professional"
+RANK_NAME_MAP = {v: k for k, v in PROFICIENCY_RANK_MAP.items()}
+
+SKILL_KEY_ABILITY = {
+    "Acrobatics": "DEX", "Arcana": "INT", "Athletics": "STR", "Crafting": "INT",
+    "Deception": "CHA", "Diplomacy": "CHA", "Intimidation": "CHA", "Medicine": "WIS",
+    "Nature": "WIS", "Occultism": "INT", "Performance": "CHA", "Religion": "WIS",
+    "Society": "INT", "Stealth": "DEX", "Survival": "WIS", "Thievery": "DEX"
 }
 
-# Archetype/Class feats that auto-scale a core skill to Expert (lv 3) / Master (lv 7) / Legendary (lv 15)
-AUTO_SCALING_SKILL_FEATS: Dict[str, str] = {
-    "acrobat dedication": "Acrobatics",
-    "medic dedication": "Medicine",
-    "wrestler dedication": "Athletics",
-}
+
+def get_skill_increases_count(character_class: str, target_level: int) -> int:
+    """
+    Returns the total number of Skill Increases earned up to target_level.
+    Rogues and Investigators gain skill increases at every level starting at level 2.
+    Standard classes gain skill increases at odd levels 3, 5, 7, 9, 11, 13, 15, 17, 19.
+    """
+    if target_level < 2:
+        return 0
+
+    cls_lower = (character_class or "").lower()
+    if cls_lower in ["rogue", "investigator"]:
+        return max(0, target_level - 1)
+    else:
+        return sum(1 for lvl in range(3, target_level + 1, 2) if lvl <= 19)
+
 
 def resolve_character_skills(
-    class_name: str,
-    background_data: Dict[str, Any],
-    attribute_mods: Dict[str, int],
-    level: int = 1,
-    feats: List[Any] = None,
-    planned_archetype: str = None
-) -> List[SkillEntry]:
-    cls_key = class_name.lower()
-
-    # 1. Base trained skills from class
-    base_trained = list(CLASS_TRAINED_SKILLS.get(cls_key, ["Athletics"]))
-
-    # 2. Background skill & Lore
-    raw_bg_skills = background_data.get("trained_skills", []) or background_data.get("skills", [])
-    for sk in raw_bg_skills:
-        sk_title = sk.strip().title()
-        if sk_title in CORE_SKILLS and sk_title not in base_trained:
-            base_trained.append(sk_title)
-
-    # Resolve Lore name
-    raw_lore = background_data.get("trained_lore") or background_data.get("lore") or ""
-    desc = background_data.get("description", "")
-    if not raw_lore:
-        lore_matches = re.findall(r"([A-Z][a-zA-Z]+ Lore)", desc)
-        if lore_matches:
-            raw_lore = random.choice(lore_matches)
+    character_class: str,
+    background: Dict[str, Any],
+    ability_mods: Dict[str, int],
+    target_level: int,
+    int_mod: int,
+    existing_skills: Optional[List[Dict[str, Any]]] = None,
+    existing_lore: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Resolves skill proficiencies and Lore.
+    Preserves existing trained skills, ranks, and chosen lore during level adjustments.
+    """
+    # 1. Determine Lore
+    if existing_lore:
+        chosen_lore = existing_lore
+    else:
+        lore_options = background.get("lore_options", [])
+        if lore_options:
+            chosen_lore = random.choice(lore_options)
         else:
-            bg_name = background_data.get("name", "").strip()
-            raw_lore = f"{bg_name} Lore" if bg_name else "Settlement Lore"
+            chosen_lore = f"{background.get('name', 'Settler')} Lore"
 
-    lore_name = raw_lore if raw_lore.endswith("Lore") else f"{raw_lore} Lore"
+    # Map existing skills if present: { "Athletics": {"rank": "Trained", ...} }
+    existing_map = {}
+    if existing_skills:
+        for sk in existing_skills:
+            if isinstance(sk, dict) and "name" in sk:
+                existing_map[sk["name"]] = sk
 
-    # Reverse-engineering: ensure planned archetype skill requirement is met at Level 1
-    if planned_archetype:
-        clean_arch = planned_archetype.strip().lower().replace(" ", "-")
-        needed_skills = ARCHETYPE_LEVEL1_REQUIRED_SKILLS.get(clean_arch, [])
-        for req_skill in needed_skills:
-            if req_skill in CORE_SKILLS and req_skill not in base_trained:
-                base_trained.append(req_skill)
+    # 2. Extract or pick baseline trained skills (Level 1 baseline)
+    trained_skills = set()
+    if existing_map:
+        for name, sk_data in existing_map.items():
+            if name != chosen_lore and sk_data.get("rank") in ["Trained", "Expert", "Master", "Legendary"]:
+                trained_skills.add(name)
+    else:
+        class_trained = set(background.get("mandatory_skills", []))
+        base_count = background.get("class_skill_count", 3)
+        total_picks = max(1, base_count + int_mod)
 
-    # 3. Extra skill picks (2 + INT mod, min 1; Rogue/Investigator get 7)
-    int_mod = attribute_mods.get("int", 0)
-    extra_count = 7 + int_mod if cls_key in ["rogue", "investigator"] else 2 + int_mod
-    extra_count = max(1, extra_count)
+        available_pool = [s for s in ALL_PF2E_SKILLS if s not in class_trained]
+        random.shuffle(available_pool)
+        
+        needed = max(0, total_picks - len(class_trained))
+        selected_free = set(available_pool[:needed])
+        trained_skills = class_trained.union(selected_free)
 
-    remaining_pool = [s for s in CORE_SKILLS.keys() if s not in base_trained]
-    priority = CLASS_PRIORITY_SKILLS.get(cls_key, [])
+    # 3. Handle Skill Increases for target_level (Expert, Master, Legendary)
+    num_increases = get_skill_increases_count(character_class, target_level)
+    
+    skill_ranks: Dict[str, int] = {}
+    for sk in ALL_PF2E_SKILLS:
+        skill_ranks[sk] = 2 if sk in trained_skills else 0
 
-    # Sort remaining pool prioritizing thematic class skills
-    remaining_pool.sort(key=lambda s: (0 if s in priority else 1, random.random()))
-    trained_skills_set = set(base_trained + remaining_pool[:extra_count])
+    lore_rank = 2
 
-    # 4. Standard Level 3+ Skill Increase: promote 1 trained skill to Expert (rank 4)
-    # Thematically favors class priority skills
-    expert_skills_set = set()
-    if level >= 3 and trained_skills_set:
-        eligible_for_expert = list(trained_skills_set)
-        weights = [4.0 if s in priority else 1.0 for s in eligible_for_expert]
-        promoted = random.choices(eligible_for_expert, weights=weights, k=1)[0]
-        expert_skills_set.add(promoted)
+    if existing_map:
+        previously_boosted = []
+        for name in trained_skills:
+            prev_rank_str = existing_map.get(name, {}).get("rank", "Trained")
+            prev_val = PROFICIENCY_RANK_MAP.get(prev_rank_str, 2)
+            if prev_val > 2:
+                previously_boosted.append((name, prev_val))
 
-    # 5. Build base skill entries
-    skills_dict: Dict[str, SkillEntry] = {}
-    for skill_name, attr in sorted(CORE_SKILLS.items()):
-        attr_val = attribute_mods.get(attr, 0)
-        if skill_name in expert_skills_set:
-            rank = 4
-            rank_letter = "E"
-            modifier = rank + level + attr_val
-        elif skill_name in trained_skills_set:
-            rank = 2
-            rank_letter = "T"
-            modifier = rank + level + attr_val
-        else:
-            rank = 0
-            rank_letter = "U"
-            modifier = attr_val
+        increases_applied = 0
+        for name, prev_val in previously_boosted:
+            needed_increases = 1 if prev_val == 4 else (2 if prev_val == 6 else 3)
+            if increases_applied + needed_increases <= num_increases:
+                if prev_val == 4 and target_level >= 2:
+                    skill_ranks[name] = 4
+                    increases_applied += 1
+                elif prev_val == 6 and target_level >= 7:
+                    skill_ranks[name] = 6
+                    increases_applied += 2
+                elif prev_val == 8 and target_level >= 15:
+                    skill_ranks[name] = 8
+                    increases_applied += 3
+        
+        remaining_increases = num_increases - increases_applied
+        while remaining_increases > 0:
+            eligible_for_expert = [
+                s for s in trained_skills 
+                if skill_ranks[s] == 2 and target_level >= 2
+            ]
+            if eligible_for_expert:
+                boost_target = random.choice(eligible_for_expert)
+                skill_ranks[boost_target] = 4
+                remaining_increases -= 1
+                continue
 
-        skills_dict[skill_name] = SkillEntry(
-            name=skill_name,
-            attribute=attr.upper(),
-            rank=rank,
-            rank_letter=rank_letter,
-            modifier=modifier
-        )
+            eligible_for_master = [
+                s for s in trained_skills 
+                if skill_ranks[s] == 4 and target_level >= 7
+            ]
+            if eligible_for_master:
+                boost_target = random.choice(eligible_for_master)
+                skill_ranks[boost_target] = 6
+                remaining_increases -= 1
+                continue
 
-    # Normalize feat names
-    feat_names = set()
-    for f in (feats or []):
-        fn = f.name.lower() if hasattr(f, "name") else str(f).lower()
-        feat_names.add(fn)
+            break
+    else:
+        remaining = num_increases
+        while remaining > 0:
+            eligible = [s for s in trained_skills if skill_ranks[s] == 2 and target_level >= 2]
+            if not eligible:
+                break
+            chosen = random.choice(eligible)
+            skill_ranks[chosen] = 4
+            remaining -= 1
 
-    # 6. Apply Auto-Scaling Dedicated Feats (e.g., Acrobat Dedication -> Acrobatics)
-    for feat_key, skill_target in AUTO_SCALING_SKILL_FEATS.items():
-        if any(feat_key in fn for fn in feat_names):
-            if skill_target in skills_dict:
-                sk = skills_dict[skill_target]
-                # Auto-scales: Lv 7+ -> Master (6), Lv 3+ -> Expert (4), else Trained (2)
-                target_rank = 6 if level >= 7 else (4 if level >= 3 else 2)
-                if sk.rank < target_rank:
-                    sk.rank = target_rank
-                    sk.rank_letter = {2: "T", 4: "E", 6: "M", 8: "L"}.get(target_rank, "T")
-                    sk.modifier = sk.rank + level + attribute_mods.get(sk.attribute.lower(), 0)
+    # 4. Construct final skill payload with calculated modifiers
+    final_skills = []
+    for sk_name in ALL_PF2E_SKILLS:
+        rank_val = skill_ranks.get(sk_name, 0)
+        rank_name = RANK_NAME_MAP.get(rank_val, "Untrained")
+        key_ab = SKILL_KEY_ABILITY[sk_name]
+        ab_mod = ability_mods.get(key_ab, 0)
+        
+        prof_bonus = (rank_val + target_level) if rank_val > 0 else 0
+        total_mod = prof_bonus + ab_mod
 
-    # 7. Apply Untrained Improvisation / Clever Improviser
-    if any(any(uf in fn for uf in UNTRAINED_SCALING_FEATS) for fn in feat_names):
-        improv_bonus = level if level >= 7 else (level // 2)
-        for sk in skills_dict.values():
-            if sk.rank == 0:
-                sk.modifier += improv_bonus
+        final_skills.append({
+            "name": sk_name,
+            "rank": rank_name,
+            "ability": key_ab,
+            "item_bonus": 0,
+            "total": total_mod
+        })
 
-    skills_list = list(skills_dict.values())
+    # Add Lore
+    lore_ab_mod = ability_mods.get("INT", 0)
+    lore_prof_bonus = lore_rank + target_level
+    final_skills.append({
+        "name": chosen_lore,
+        "rank": RANK_NAME_MAP.get(lore_rank, "Trained"),
+        "ability": "INT",
+        "item_bonus": 0,
+        "total": lore_prof_bonus + lore_ab_mod,
+        "is_lore": True
+    })
 
-    # 8. Append Background Lore (trained, scales with INT)
-    lore_attr_val = attribute_mods.get("int", 0)
-    skills_list.append(SkillEntry(
-        name=lore_name,
-        attribute="INT",
-        rank=2,
-        rank_letter="T",
-        modifier=2 + level + lore_attr_val
-    ))
-
-    # 9. Append Auto-Scaling Lore Feats (Additional Lore, Gnome Obsession, etc.)
-    used_lores = {lore_name.lower()}
-    for af in AUTO_SCALING_LORE_FEATS:
-        if any(af in fn for fn in feat_names):
-            available = [l for l in ADDITIONAL_LORE_POOL if l.lower() not in used_lores]
-            chosen_lore = random.choice(available) if available else "Academia Lore"
-            used_lores.add(chosen_lore.lower())
-
-            # Auto-scales: 15+ -> L (8), 7+ -> M (6), 3+ -> E (4), else T (2)
-            if level >= 15:
-                al_rank, al_letter = 8, "L"
-            elif level >= 7:
-                al_rank, al_letter = 6, "M"
-            elif level >= 3:
-                al_rank, al_letter = 4, "E"
-            else:
-                al_rank, al_letter = 2, "T"
-
-            skills_list.append(SkillEntry(
-                name=chosen_lore,
-                attribute="INT",
-                rank=al_rank,
-                rank_letter=al_letter,
-                modifier=al_rank + level + lore_attr_val
-            ))
-
-    return skills_list
+    return {
+        "skills": final_skills,
+        "lore": chosen_lore
+    }
