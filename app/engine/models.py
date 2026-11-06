@@ -138,6 +138,11 @@ class PartnerCreatureData(BaseModel):
     secondary_ability: Optional[str] = None
     languages: List[str] = ["Common"]
     traits: List[str] = []
+    senses: str = "Low-Light Vision, Scent (Imprecise) 30 ft"
+    attributes: Optional[Dict[str, int]] = None
+    skills: Optional[Dict[str, int]] = None
+    support_benefit: Optional[str] = None
+    advanced_maneuver: Optional[str] = None
 
 AnimalCompanionData = PartnerCreatureData
 

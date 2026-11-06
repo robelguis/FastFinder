@@ -213,12 +213,32 @@ def resolve_companion(
 
     c_name = random.choice(COMPANION_NAMES)
 
+    # Attribute Scores & Trained Skills
+    companion_attrs = {
+        "STR": str_mod,
+        "DEX": dex_mod,
+        "CON": con_mod,
+        "INT": -4,
+        "WIS": wis_mod,
+        "CHA": -4
+    }
+    companion_skills = {
+        "Athletics": prof_bonus + str_mod,
+        "Acrobatics": prof_bonus + dex_mod,
+        "Stealth": prof_bonus + dex_mod,
+        "Survival": prof_bonus + wis_mod
+    }
+
+    comp_traits = ["Animal", "Minion"]
+    if is_mature:
+        comp_traits.append("Mature")
+
     return AnimalCompanionData(
         name=f"{c_name} the {cfg['species']}",
         creature_type="Animal Companion",
         sub_type=cfg.get("species", "Beast"),
-        primary_ability=cfg.get("support", "Support Benefit: Adds tactical advantage."),
-        species=cfg["species"],
+        primary_ability=cfg.get("support_benefit", ""),
+        secondary_ability=cfg.get("advanced_maneuver") if is_mature else None,
         stage=stage,
         size=size,
         speed=cfg["speed"],
@@ -229,6 +249,10 @@ def resolve_companion(
         will=will_save,
         perception=perception,
         strikes=companion_strikes,
+        traits=comp_traits,
+        senses="Low-Light Vision, Scent (Imprecise) 30 ft",
+        attributes=companion_attrs,
+        skills=companion_skills,
         support_benefit=cfg["support_benefit"],
         advanced_maneuver=cfg.get("advanced_maneuver") if is_mature else None
     )

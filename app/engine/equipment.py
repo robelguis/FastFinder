@@ -1,4 +1,4 @@
-
+from app.engine.compendium import can_equip_item, COMPENDIUM_MAGIC_ITEMS
 ALCHEMICAL_BOMBS = {
     "lesser": [
         {
@@ -224,6 +224,12 @@ COMBINATION_FIREARMS = [
     {"name": "Dagger Pistol", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Combination", "Concussive", "Fatal d8", "Finesse", "Range 30 ft", "Reload 1"]},
 ]
 
+# ============================================================================
+# WEAPON PROFICIENCY & CLASS SELECTION GATING
+# ============================================================================
+ROGUE_MARTIAL_WEAPONS = {"rapier", "sap", "shortbow", "shortsword", "hand crossbow"}
+BARD_MARTIAL_WEAPONS = {"rapier", "sap", "shortbow", "shortsword", "whip"}
+
 def select_class_weapons(
     cls_key: str,
     str_mod: int,
@@ -232,154 +238,100 @@ def select_class_weapons(
     subclass_name: str = "",
     archetype_name: str = ""
 ) -> List[Dict[str, Any]]:
-    """Dynamically selects rule-compliant weapons calibrated to class, subclass, and archetype restrictions."""
-    is_dex_build = dex_mod > str_mod
-    anc_key = (ancestry_name or "").lower().strip()
-    sub_key = (subclass_name or "").lower().strip()
-    arch_key = (archetype_name or "").lower().strip()
-    anc_options = ANCESTRAL_WEAPONS.get(anc_key, [])
+    """Select appropriate primary and backup weapons based on class proficiencies, ancestry, and attributes."""
+    
+    # 1. Determine Allowed Categories & Base Pools
+    is_full_martial = cls_key in {
+        "barbarian", "champion", "fighter", "ranger", "inventor", 
+        "guardian", "commander", "magus"
+    }
+    
+    simple_pool = list(SIMPLE_MELEE + SIMPLE_RANGED)
+    martial_pool = list(MARTIAL_ONE_HANDED + MARTIAL_TWO_HANDED + MARTIAL_FINESSE + MARTIAL_RANGED)
 
-    # Archetype Overrides
-    if "archer" in arch_key:
-        bows = [w for w in MARTIAL_RANGED if "Bow" in w["name"]]
-        prim = random.choice(bows if bows else MARTIAL_RANGED)
-        sec = random.choice(MARTIAL_FINESSE + SECONDARY_BACKUPS)
-        return [prim, sec]
+    # 2. Integrate Ancestral Weapons
+    anc_key = (ancestry_name or "").strip().title()
+    anc_weapons = list(ANCESTRAL_WEAPONS.get(anc_key, []))
 
-    if "mauler" in arch_key:
-        prim = random.choice(MARTIAL_TWO_HANDED)
-        sec = random.choice([w for w in MARTIAL_TWO_HANDED if w["name"] != prim["name"]] + SECONDARY_BACKUPS)
-        return [prim, sec]
+    eligible_primary: List[Dict[str, Any]] = []
+    eligible_secondary: List[Dict[str, Any]] = []
 
-    if "dual-weapon" in arch_key or "dual weapon" in arch_key:
-        prim = random.choice(MARTIAL_ONE_HANDED + MARTIAL_FINESSE)
-        sec = random.choice([w for w in (MARTIAL_FINESSE + SECONDARY_BACKUPS) if "Agile" in w.get("traits", []) and w["name"] != prim["name"]])
-        return [prim, sec]
-
-    # 1. Gunslinger Subclasses (Ways)
-    if cls_key == "gunslinger":
-        if "pistolero" in sub_key or "pistol" in arch_key:
-            prim = random.choice(ONE_HANDED_FIREARMS)
-            sec = random.choice(MARTIAL_FINESSE)
-            return [prim, sec]
-        elif "sniper" in sub_key:
-            prim = random.choice(TWO_HANDED_SNIPER_FIREARMS)
-            sec = random.choice(SECONDARY_BACKUPS)
-            return [prim, sec]
-        elif "vanguard" in sub_key:
-            prim = random.choice(VANGUARD_FIREARMS)
-            sec = random.choice([w for w in (SECONDARY_BACKUPS + MARTIAL_FINESSE) if w["name"] != prim["name"]])
-            return [prim, sec]
-        elif "drifter" in sub_key:
-            prim = random.choice(ONE_HANDED_FIREARMS)
-            sec = random.choice(MARTIAL_FINESSE)
-            return [prim, sec]
-        elif "triggerbrand" in sub_key:
-            prim = random.choice(COMBINATION_FIREARMS)
-            sec = random.choice(SECONDARY_BACKUPS)
-            return [prim, sec]
-        else:
-            guns = ONE_HANDED_FIREARMS + TWO_HANDED_SNIPER_FIREARMS
-            prim = random.choice(guns)
-            sec = random.choice(MARTIAL_FINESSE + SECONDARY_BACKUPS)
-            return [prim, sec]
-
-    # 2. Rogue & Swashbuckler (Ruffian vs Finesse/Agile)
-    if cls_key == "rogue":
-        if "ruffian" in sub_key:
-            ruffian_pool = [w for w in (SIMPLE_MELEE + MARTIAL_ONE_HANDED) if w.get("dice") in ["1d6", "1d8", "1d4"]]
-            prim = random.choice(ruffian_pool if ruffian_pool else SIMPLE_MELEE)
-            sec = random.choice(SIMPLE_RANGED + SECONDARY_BACKUPS)
-            return [prim, sec]
-        else:
-            finesse_pool = list(MARTIAL_FINESSE)
-            if anc_options:
-                finesse_pool += [w for w in anc_options if "Finesse" in w.get("traits", []) or "Agile" in w.get("traits", [])]
-            prim = random.choice(finesse_pool)
-            sec = random.choice([w for w in (SECONDARY_BACKUPS + SIMPLE_RANGED) if w["name"] != prim["name"]])
-            return [prim, sec]
-
-    if cls_key in ["swashbuckler", "investigator"]:
-        finesse_pool = list(MARTIAL_FINESSE)
-        if anc_options:
-            finesse_pool += [w for w in anc_options if "Finesse" in w.get("traits", []) or "Agile" in w.get("traits", [])]
-        prim = random.choice(finesse_pool)
-        sec = random.choice([w for w in (SECONDARY_BACKUPS + SIMPLE_RANGED) if w["name"] != prim["name"]])
-        return [prim, sec]
-
-    # 3. Fighter, Champion, Barbarian
-    if cls_key in ["fighter", "barbarian", "champion"]:
-        if anc_options and random.random() < 0.35:
-            prim = random.choice(anc_options)
-        elif is_dex_build:
-            dex_pool = MARTIAL_FINESSE + [w for w in MARTIAL_RANGED if "Bow" in w["name"]]
-            if anc_options:
-                dex_pool += [w for w in anc_options if "Finesse" in w.get("traits", []) or "Ranged" in " ".join(w.get("traits", []))]
-            prim = random.choice(dex_pool)
-        else:
-            style_roll = random.random()
-            if style_roll < 0.40 and cls_key != "barbarian":
-                prim = random.choice(MARTIAL_ONE_HANDED)
-            elif style_roll < 0.75:
-                prim = random.choice(MARTIAL_TWO_HANDED)
-            else:
-                prim = random.choice(MARTIAL_ONE_HANDED + MARTIAL_TWO_HANDED)
-
-        sec_pool = [w for w in (SECONDARY_BACKUPS + MARTIAL_RANGED + SIMPLE_RANGED) if w["name"] != prim["name"]]
-        sec = random.choice(sec_pool)
-        return [prim, sec]
-
-    # 4. Ranger
-    if cls_key == "ranger":
-        prim = random.choice(MARTIAL_RANGED if is_dex_build else (MARTIAL_ONE_HANDED + MARTIAL_TWO_HANDED))
-        sec_pool = [w for w in (MARTIAL_FINESSE + SECONDARY_BACKUPS) if w["name"] != prim["name"]]
-        return [prim, random.choice(sec_pool)]
-
-    # 5. Monk
-    if cls_key == "monk":
-        monk_options = [
-            {"name": "Bo Staff", "dice": "1d8", "type": "Bludgeoning", "traits": ["Monk", "Parry", "Reach", "Trip"]},
-            {"name": "Temple Sword", "dice": "1d8", "type": "Slashing", "traits": ["Monk", "Trip"]},
-            {"name": "Tiger Fork", "dice": "1d8", "type": "Piercing", "traits": ["Monk", "Two-Hand d10"]},
-            {"name": "Kama", "dice": "1d6", "type": "Slashing", "traits": ["Agile", "Monk", "Trip"]},
-            {"name": "Nunchaku", "dice": "1d6", "type": "Bludgeoning", "traits": ["Backswing", "Disarm", "Finesse", "Monk"]},
-            {"name": "Shuriken", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Monk", "Reload 0", "Thrown 20 ft"]},
+    # 3. Filter by Class Weapon Proficiency
+    if is_full_martial:
+        eligible_primary = martial_pool + simple_pool + anc_weapons
+        eligible_secondary = martial_pool + simple_pool + anc_weapons
+    elif cls_key == "gunslinger":
+        firearms = ONE_HANDED_FIREARMS + TWO_HANDED_SNIPER_FIREARMS + VANGUARD_FIREARMS
+        eligible_primary = list(firearms) if firearms else martial_pool
+        eligible_secondary = list(SECONDARY_BACKUPS + simple_pool)
+    elif cls_key == "thaumaturge":
+        # 1-handed weapons only to keep a hand free for implements
+        thaum_pool = [w for w in (MARTIAL_ONE_HANDED + MARTIAL_FINESSE + SIMPLE_MELEE + anc_weapons) if w.get("hands", 1) == 1]
+        eligible_primary = thaum_pool if thaum_pool else simple_pool
+        eligible_secondary = [w for w in (SIMPLE_RANGED + SECONDARY_BACKUPS) if w.get("hands", 1) == 1]
+    elif cls_key == "swashbuckler":
+        eligible_primary = [
+            w for w in (MARTIAL_FINESSE + anc_weapons) 
+            if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
         ]
-        prim = random.choice(monk_options)
-        sec = random.choice([w for w in monk_options if w["name"] != prim["name"]])
-        return [prim, sec]
+        eligible_secondary = [
+            w for w in (simple_pool + SECONDARY_BACKUPS) 
+            if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile", "thrown"]) or w.get("hands", 1) == 1
+        ]
+    elif cls_key == "rogue":
+        eligible_primary = [
+            w for w in (martial_pool + simple_pool + anc_weapons)
+            if w["name"].lower() in ROGUE_MARTIAL_WEAPONS or w in simple_pool or any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
+        ]
+        eligible_secondary = [
+            w for w in simple_pool 
+            if w.get("name", "").lower() in ["shortbow", "hand crossbow", "dagger", "dart", "sling"]
+        ]
+    elif cls_key == "monk":
+        monk_traits = {"monk", "agile", "finesse"}
+        monk_pool = [w for w in (simple_pool + martial_pool + anc_weapons) if any(t.lower() in monk_traits for t in w.get("traits", []))]
+        eligible_primary = monk_pool if monk_pool else simple_pool
+        eligible_secondary = simple_pool
+    elif cls_key == "bard":
+        eligible_primary = [
+            w for w in (simple_pool + martial_pool)
+            if w["name"].lower() in BARD_MARTIAL_WEAPONS or w in simple_pool
+        ]
+        eligible_secondary = [w for w in simple_pool if w["name"].lower() in ["shortbow", "sling", "hand crossbow", "whip"]]
+    elif cls_key == "cleric":
+        eligible_primary = simple_pool
+        eligible_secondary = [w for w in simple_pool if "ranged" in w.get("type", "").lower() or w.get("hands", 1) == 1]
+    else:
+        # Full Casters (Wizard, Witch, Sorcerer, Druid, Oracle, Psychic, Summoner, Animist)
+        caster_melee = [w for w in SIMPLE_MELEE if w["name"].lower() in ["staff", "dagger", "club", "sickle"]]
+        caster_ranged = [w for w in SIMPLE_RANGED if w["name"].lower() in ["light crossbow", "sling", "dart"]]
+        eligible_primary = caster_melee if caster_melee else simple_pool
+        eligible_secondary = caster_ranged if caster_ranged else simple_pool
 
-    # 6. Cleric, Druid, Kineticist, Thaumaturge
-    if cls_key in ["cleric", "druid", "kineticist", "thaumaturge"]:
-        prim = random.choice(SIMPLE_MELEE + (MARTIAL_ONE_HANDED if cls_key in ["thaumaturge", "cleric"] else []))
-        sec = random.choice(SIMPLE_RANGED + SECONDARY_BACKUPS)
-        return [prim, sec]
+    # 4. Ability Score Priority Filtering
+    if dex_mod > str_mod and dex_mod >= 2:
+        finesse_primary = [
+            w for w in eligible_primary 
+            if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile", "ranged"])
+        ]
+        if finesse_primary:
+            eligible_primary = finesse_primary
 
-    # 7. Bard, Alchemist
-    if cls_key in ["bard", "alchemist"]:
-        prim = random.choice(MARTIAL_FINESSE + SIMPLE_MELEE)
-        sec = random.choice(SIMPLE_RANGED + SECONDARY_BACKUPS)
-        return [prim, sec]
+    if str_mod < 1:
+        no_heavy = [w for w in eligible_primary if str(w.get("bulk", "1")) not in ["2", "3"]]
+        if no_heavy:
+            eligible_primary = no_heavy
 
-    # 8. Casters (Wizard, Witch, Sorcerer, Oracle, Psychic)
-    caster_primary = [
-        {"name": "Staff", "dice": "1d4", "type": "Bludgeoning", "traits": ["Two-Hand d8"]},
-        {"name": "Spear", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 20 ft"]},
-        {"name": "Morningstar", "dice": "1d6", "type": "Bludgeoning", "traits": ["Versatile P"]},
-        {"name": "Sickle", "dice": "1d4", "type": "Slashing", "traits": ["Agile", "Finesse", "Trip"]},
-        {"name": "Club", "dice": "1d6", "type": "Bludgeoning", "traits": ["Thrown 10 ft"]},
-    ]
-    caster_ranged = [
-        {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]},
-        {"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]},
-        {"name": "Dart", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Thrown 20 ft"]},
-        {"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]},
-    ]
-    prim = random.choice(caster_primary)
-    sec = random.choice([w for w in caster_ranged if w["name"] != prim["name"]])
-    return [prim, sec]
+    if not eligible_primary:
+        eligible_primary = list(SIMPLE_MELEE)
+    if not eligible_secondary:
+        eligible_secondary = list(SIMPLE_RANGED)
 
+    primary_wep = random.choice(eligible_primary)
+    backup_candidates = [w for w in eligible_secondary if w.get("name") != primary_wep.get("name")]
+    secondary_wep = random.choice(backup_candidates) if backup_candidates else random.choice(eligible_secondary)
 
+    return [primary_wep, secondary_wep]
 def get_all_registered_weapons() -> List[Dict[str, Any]]:
     pool = []
     pool_lists = [
@@ -528,7 +480,13 @@ def resolve_equipment(
     gear: List[str] = ["Adventurer's Pack (Backpack, Bedroll, Rations, Torches, Waterskin, Rope)"]
     num_perm = wealth_cfg.get("permanent_count", 0)
     if num_perm > 0:
-        eligible_items = [i for i in PERMANENT_MAGIC_ITEMS if i["level"] <= lvl]
+        eligible_items = []
+        for l in range(1, lvl + 1):
+            for item in COMPENDIUM_MAGIC_ITEMS.get(l, []):
+                if can_equip_item(item, cls_key, str_mod, dex_mod, lvl):
+                    eligible_items.append(item)
+        if not eligible_items:
+            eligible_items = [i for i in PERMANENT_MAGIC_ITEMS if i['level'] <= lvl and can_equip_item(i, cls_key, str_mod, dex_mod, lvl)]
         chosen_items = random.sample(eligible_items, min(num_perm, len(eligible_items)))
         for item in chosen_items:
             gear.append(f"{item['name']} ({item['description']})")
