@@ -455,6 +455,9 @@ class PF2eGenerator:
         # 4. Equipment & HP
         sub_n = subclass_data["name"] if subclass_data else ""
         arch_n = clean_arch_input or (archetype_data["name"] if archetype_data else "")
+        # --- Preserve existing weapons and loadout ---
+        existing_strikes_data = current_char.get("strikes") or (current_char.get("equipment_loadout") or {}).get("strikes") or current_char.get("weapons")
+
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -464,6 +467,48 @@ class PF2eGenerator:
             subclass_name=sub_n,
             archetype_name=arch_n,
         )
+
+        if existing_strikes_data:
+            # Rebuild and lock previous weapons/strikes, updating attack bonuses to target_level
+            preserved_strikes = []
+            for s in existing_strikes_data:
+                s_dict = s if isinstance(s, dict) else (s.__dict__ if hasattr(s, "__dict__") else {})
+                name = s_dict.get("name", "")
+                if not name or name.startswith("Elemental Blast"):
+                    continue
+
+                # Recalculate strike bonus for target_level (preserves weapon type/traits)
+                is_ranged = "ranged" in name.lower() or "bow" in name.lower() or "crossbow" in name.lower()
+                ab_mod = mods.get("dex" if is_ranged else "str", 0)
+                
+                # Base class proficiency: Fighter starts Expert (4), others Trained (2)
+                base_prof_rank = 4 if cls["name"].lower() == "fighter" else 2
+                if target_level >= 5 and cls["name"].lower() == "fighter":
+                    base_prof_rank = 6  # Master at 5
+                elif target_level >= 5 and cls["name"].lower() in ["gunslinger"]:
+                    base_prof_rank = 6
+                
+                # Potency runes (+1 weapon at level 2+)
+                item_bonus = 1 if target_level >= 2 else 0
+                new_atk = base_prof_rank + target_level + ab_mod + item_bonus
+
+                # Damage dice and weapon specialization (+2 at level 7)
+                dmg_dice = s_dict.get("damage_dice", "1d8")
+                if target_level >= 7 and "+ 2" not in dmg_dice and "+2" not in dmg_dice:
+                    dmg_dice = f"{dmg_dice} + 2"
+
+                preserved_strikes.append(Strike(
+                    name=name,
+                    attack_bonus=new_atk,
+                    map_second=new_atk - (4 if "Agile" in s_dict.get("traits", []) else 5),
+                    map_third=new_atk - (8 if "Agile" in s_dict.get("traits", []) else 10),
+                    damage_dice=dmg_dice,
+                    damage_type=s_dict.get("damage_type", "Physical"),
+                    traits=s_dict.get("traits", [])
+                ))
+
+            if preserved_strikes:
+                equipment_loadout.strikes = preserved_strikes
 
         if level >= 5:
             for strike in equipment_loadout.strikes:
