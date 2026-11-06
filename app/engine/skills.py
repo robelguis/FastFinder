@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 import random
 from app.engine.models import SkillEntry
 
@@ -57,18 +57,24 @@ def resolve_character_skills(
     Resolves skill proficiencies and Lore, returning a list of SkillEntry objects.
     Maintains full compatibility with all parameter name aliases.
     Locks previously chosen trained skills and Lore when leveling up or down.
+    Applies Untrained Improvisation scaling to Untrained checks if present in feats.
     """
-    # 1. Resolve argument aliases
     cls_name = class_name or kwargs.get("character_class", "Fighter")
     bg = background_data or kwargs.get("background", {})
     mods = attribute_mods or kwargs.get("ability_mods", {})
     target_lvl = level or kwargs.get("target_level", 1)
 
-    # Normalize mods keys to lowercase
     norm_mods = {str(k).lower(): v for k, v in mods.items()}
     int_mod = norm_mods.get("int", kwargs.get("int_mod", 0))
 
-    # 2. Extract and preserve Lore
+    # Detect Untrained Improvisation feat
+    all_feats = feats or kwargs.get("chosen_feats", [])
+    has_untrained_improvisation = any(
+        (f.name if hasattr(f, "name") else (f.get("name") if isinstance(f, dict) else "")).lower() == "untrained improvisation"
+        for f in all_feats
+    )
+
+    # 1. Extract and preserve Lore
     chosen_lore = existing_lore
     if not chosen_lore:
         lore_opts = bg.get("lore_options", [])
@@ -77,7 +83,7 @@ def resolve_character_skills(
         else:
             chosen_lore = f"{bg.get('name', 'Settler')} Lore"
 
-    # 3. Map existing skills
+    # 2. Map existing skills
     existing_map: Dict[str, int] = {}
     if existing_skills:
         for sk in existing_skills:
@@ -94,14 +100,13 @@ def resolve_character_skills(
                 rank_val = getattr(sk, "rank", 0)
                 existing_map[sk.name] = rank_val
 
-    # 4. Determine baseline trained skills
+    # 3. Determine baseline trained skills
     trained_skills: Set[str] = set()
     if existing_map:
         for name, rank_val in existing_map.items():
             if name != chosen_lore and rank_val >= 2:
                 trained_skills.add(name)
     else:
-        # Initial Level 1 selection
         bg_skills = bg.get("skills", [])
         mandatory = set()
         for bs in bg_skills:
@@ -117,7 +122,7 @@ def resolve_character_skills(
         needed = max(0, total_picks - len(mandatory))
         trained_skills = mandatory.union(set(available_pool[:needed]))
 
-    # 5. Calculate skill ranks and apply increases
+    # 4. Calculate skill ranks and apply increases
     num_increases = get_skill_increases_count(cls_name, target_lvl)
     skill_ranks: Dict[str, int] = {s: (2 if s in trained_skills else 0) for s in ALL_PF2E_SKILLS}
 
@@ -163,13 +168,21 @@ def resolve_character_skills(
             skill_ranks[pick] = 4
             remaining -= 1
 
-    # 6. Build SkillEntry objects
+    # 5. Build SkillEntry objects
     result_skills: List[SkillEntry] = []
     for sk_name in ALL_PF2E_SKILLS:
         rank_val = skill_ranks.get(sk_name, 0)
         attr_key = SKILL_KEY_ABILITY.get(sk_name, "dex")
         mod_val = norm_mods.get(attr_key, 0)
-        prof_bonus = (rank_val + target_lvl) if rank_val > 0 else 0
+
+        if rank_val > 0:
+            prof_bonus = rank_val + target_lvl
+        elif has_untrained_improvisation:
+            # Remaster: add level at 7+, half level (rounded down) below 7
+            prof_bonus = target_lvl if target_lvl >= 7 else (target_lvl // 2)
+        else:
+            prof_bonus = 0
+
         total_mod = prof_bonus + mod_val
 
         result_skills.append(
@@ -182,16 +195,21 @@ def resolve_character_skills(
             )
         )
 
-    # Add Lore SkillEntry
+    # 6. Add Lore SkillEntry
     lore_rank = existing_map.get(chosen_lore, 2)
-    lore_prof = (lore_rank + target_lvl) if lore_rank > 0 else 0
+    if lore_rank > 0:
+        lore_prof = lore_rank + target_lvl
+    elif has_untrained_improvisation:
+        lore_prof = target_lvl if target_lvl >= 7 else (target_lvl // 2)
+    else:
+        lore_prof = 0
     lore_total = lore_prof + norm_mods.get("int", 0)
 
     result_skills.append(
         SkillEntry(
             name=chosen_lore,
             rank=lore_rank,
-            rank_letter=RANK_LETTER_MAP.get(lore_rank, "T"),
+            rank_letter=RANK_LETTER_MAP.get(lore_rank, "T" if lore_rank > 0 else "U"),
             modifier=lore_total,
             attribute="INT"
         )
