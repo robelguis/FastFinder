@@ -100,42 +100,13 @@ async def level_up_endpoint(payload: LevelUpPayload):
     use_ded = (payload.use_dedication or bool(locked_arch)) if target >= 2 else False
 
     try:
-        if target > current_level:
-            updated_sheet = generator.level_up(
-                char_data,
-                target,
-                use_dedication=use_ded,
-                archetype_name=locked_arch
-            )
-            return updated_sheet
-        else:
-            # Scale down: lock ancestry, heritage, class, subclass, background, name, and archetype
-            anc_val = char_data.get("ancestry")
-            anc_name = anc_val.get("name") if isinstance(anc_val, dict) else str(anc_val) if anc_val else None
-
-            heritage_val = char_data.get("heritage")
-            heritage_name = heritage_val.get("name") if isinstance(heritage_val, dict) else str(heritage_val) if heritage_val else None
-
-            cls_name = char_data.get("character_class")
-
-            subclass_val = char_data.get("subclass")
-            subclass_name = subclass_val.get("name") if isinstance(subclass_val, dict) else str(subclass_val) if subclass_val else None
-
-            bg_name = char_data.get("background")
-            c_name = char_data.get("name")
-
-            scaled_sheet = generator.generate(
-                ancestry_name=anc_name,
-                class_name=cls_name,
-                background_name=bg_name,
-                archetype_name=locked_arch if target >= 2 else None,
-                char_name=c_name,
-                level=target,
-                use_dedication=use_ded,
-                heritage_name=heritage_name,
-                subclass_name=subclass_name
-            )
-            return scaled_sheet
+        updated_sheet = generator.level_up(
+            char_data,
+            target,
+            use_dedication=use_ded,
+            archetype_name=locked_arch
+        )
+        return updated_sheet
     except Exception as e:
         import traceback
         traceback.print_exc()
