@@ -1,40 +1,40 @@
 from typing import List, Dict, Any, Optional
 import random
+from app.engine.models import SkillEntry
 
-# Standard PF2e Skill List (excluding Lore)
 ALL_PF2E_SKILLS = [
     "Acrobatics", "Arcana", "Athletics", "Crafting", "Deception",
     "Diplomacy", "Intimidation", "Medicine", "Nature", "Occultism",
     "Performance", "Religion", "Society", "Stealth", "Survival", "Thievery"
 ]
 
-PROFICIENCY_RANK_MAP = {
-    "Untrained": 0,
-    "Trained": 2,
-    "Expert": 4,
-    "Master": 6,
-    "Legendary": 8
+SKILL_KEY_ABILITY = {
+    "Acrobatics": "dex", "Arcana": "int", "Athletics": "str", "Crafting": "int",
+    "Deception": "cha", "Diplomacy": "cha", "Intimidation": "cha", "Medicine": "wis",
+    "Nature": "wis", "Occultism": "int", "Performance": "cha", "Religion": "wis",
+    "Society": "int", "Stealth": "dex", "Survival": "wis", "Thievery": "dex"
 }
 
-RANK_NAME_MAP = {v: k for k, v in PROFICIENCY_RANK_MAP.items()}
+RANK_LETTER_MAP = {
+    0: "U",
+    2: "T",
+    4: "E",
+    6: "M",
+    8: "L"
+}
 
-SKILL_KEY_ABILITY = {
-    "Acrobatics": "DEX", "Arcana": "INT", "Athletics": "STR", "Crafting": "INT",
-    "Deception": "CHA", "Diplomacy": "CHA", "Intimidation": "CHA", "Medicine": "WIS",
-    "Nature": "WIS", "Occultism": "INT", "Performance": "CHA", "Religion": "WIS",
-    "Society": "INT", "Stealth": "DEX", "Survival": "WIS", "Thievery": "DEX"
+RANK_INT_MAP = {
+    "untrained": 0, "u": 0,
+    "trained": 2, "t": 2,
+    "expert": 4, "e": 4,
+    "master": 6, "m": 6,
+    "legendary": 8, "l": 8
 }
 
 
 def get_skill_increases_count(character_class: str, target_level: int) -> int:
-    """
-    Returns the total number of Skill Increases earned up to target_level.
-    Rogues and Investigators gain skill increases at every level starting at level 2.
-    Standard classes gain skill increases at odd levels 3, 5, 7, 9, 11, 13, 15, 17, 19.
-    """
     if target_level < 2:
         return 0
-
     cls_lower = (character_class or "").lower()
     if cls_lower in ["rogue", "investigator"]:
         return max(0, target_level - 1)
@@ -43,149 +43,158 @@ def get_skill_increases_count(character_class: str, target_level: int) -> int:
 
 
 def resolve_character_skills(
-    character_class: str,
-    background: Dict[str, Any],
-    ability_mods: Dict[str, int],
-    target_level: int,
-    int_mod: int,
-    existing_skills: Optional[List[Dict[str, Any]]] = None,
-    existing_lore: Optional[str] = None
-) -> Dict[str, Any]:
+    class_name: Optional[str] = None,
+    background_data: Optional[Dict[str, Any]] = None,
+    attribute_mods: Optional[Dict[str, int]] = None,
+    level: Optional[int] = None,
+    feats: Optional[List[Any]] = None,
+    planned_archetype: Optional[str] = None,
+    existing_skills: Optional[List[Any]] = None,
+    existing_lore: Optional[str] = None,
+    **kwargs
+) -> List[SkillEntry]:
     """
-    Resolves skill proficiencies and Lore.
-    Preserves existing trained skills, ranks, and chosen lore during level adjustments.
+    Resolves skill proficiencies and Lore, returning a list of SkillEntry objects.
+    Maintains full compatibility with all parameter name aliases.
+    Locks previously chosen trained skills and Lore when leveling up or down.
     """
-    # 1. Determine Lore
-    if existing_lore:
-        chosen_lore = existing_lore
-    else:
-        lore_options = background.get("lore_options", [])
-        if lore_options:
-            chosen_lore = random.choice(lore_options)
-        else:
-            chosen_lore = f"{background.get('name', 'Settler')} Lore"
+    # 1. Resolve argument aliases
+    cls_name = class_name or kwargs.get("character_class", "Fighter")
+    bg = background_data or kwargs.get("background", {})
+    mods = attribute_mods or kwargs.get("ability_mods", {})
+    target_lvl = level or kwargs.get("target_level", 1)
 
-    # Map existing skills if present: { "Athletics": {"rank": "Trained", ...} }
-    existing_map = {}
+    # Normalize mods keys to lowercase
+    norm_mods = {str(k).lower(): v for k, v in mods.items()}
+    int_mod = norm_mods.get("int", kwargs.get("int_mod", 0))
+
+    # 2. Extract and preserve Lore
+    chosen_lore = existing_lore
+    if not chosen_lore:
+        lore_opts = bg.get("lore_options", [])
+        if lore_opts:
+            chosen_lore = random.choice(lore_opts)
+        else:
+            chosen_lore = f"{bg.get('name', 'Settler')} Lore"
+
+    # 3. Map existing skills
+    existing_map: Dict[str, int] = {}
     if existing_skills:
         for sk in existing_skills:
-            if isinstance(sk, dict) and "name" in sk:
-                existing_map[sk["name"]] = sk
+            if isinstance(sk, dict):
+                name = sk.get("name")
+                raw_rank = sk.get("rank")
+                if isinstance(raw_rank, int):
+                    rank_val = raw_rank
+                else:
+                    rank_val = RANK_INT_MAP.get(str(raw_rank).lower(), 0)
+                if name:
+                    existing_map[name] = rank_val
+            elif hasattr(sk, "name"):
+                rank_val = getattr(sk, "rank", 0)
+                existing_map[sk.name] = rank_val
 
-    # 2. Extract or pick baseline trained skills (Level 1 baseline)
-    trained_skills = set()
+    # 4. Determine baseline trained skills
+    trained_skills: Set[str] = set()
     if existing_map:
-        for name, sk_data in existing_map.items():
-            if name != chosen_lore and sk_data.get("rank") in ["Trained", "Expert", "Master", "Legendary"]:
+        for name, rank_val in existing_map.items():
+            if name != chosen_lore and rank_val >= 2:
                 trained_skills.add(name)
     else:
-        class_trained = set(background.get("mandatory_skills", []))
-        base_count = background.get("class_skill_count", 3)
+        # Initial Level 1 selection
+        bg_skills = bg.get("skills", [])
+        mandatory = set()
+        for bs in bg_skills:
+            for s in ALL_PF2E_SKILLS:
+                if s.lower() == bs.lower():
+                    mandatory.add(s)
+
+        base_count = bg.get("class_skill_count", 3)
         total_picks = max(1, base_count + int_mod)
 
-        available_pool = [s for s in ALL_PF2E_SKILLS if s not in class_trained]
+        available_pool = [s for s in ALL_PF2E_SKILLS if s not in mandatory]
         random.shuffle(available_pool)
-        
-        needed = max(0, total_picks - len(class_trained))
-        selected_free = set(available_pool[:needed])
-        trained_skills = class_trained.union(selected_free)
+        needed = max(0, total_picks - len(mandatory))
+        trained_skills = mandatory.union(set(available_pool[:needed]))
 
-    # 3. Handle Skill Increases for target_level (Expert, Master, Legendary)
-    num_increases = get_skill_increases_count(character_class, target_level)
-    
-    skill_ranks: Dict[str, int] = {}
-    for sk in ALL_PF2E_SKILLS:
-        skill_ranks[sk] = 2 if sk in trained_skills else 0
-
-    lore_rank = 2
+    # 5. Calculate skill ranks and apply increases
+    num_increases = get_skill_increases_count(cls_name, target_lvl)
+    skill_ranks: Dict[str, int] = {s: (2 if s in trained_skills else 0) for s in ALL_PF2E_SKILLS}
 
     if existing_map:
-        previously_boosted = []
-        for name in trained_skills:
-            prev_rank_str = existing_map.get(name, {}).get("rank", "Trained")
-            prev_val = PROFICIENCY_RANK_MAP.get(prev_rank_str, 2)
-            if prev_val > 2:
-                previously_boosted.append((name, prev_val))
-
         increases_applied = 0
-        for name, prev_val in previously_boosted:
-            needed_increases = 1 if prev_val == 4 else (2 if prev_val == 6 else 3)
-            if increases_applied + needed_increases <= num_increases:
-                if prev_val == 4 and target_level >= 2:
-                    skill_ranks[name] = 4
-                    increases_applied += 1
-                elif prev_val == 6 and target_level >= 7:
-                    skill_ranks[name] = 6
-                    increases_applied += 2
-                elif prev_val == 8 and target_level >= 15:
-                    skill_ranks[name] = 8
-                    increases_applied += 3
-        
-        remaining_increases = num_increases - increases_applied
-        while remaining_increases > 0:
-            eligible_for_expert = [
-                s for s in trained_skills 
-                if skill_ranks[s] == 2 and target_level >= 2
-            ]
-            if eligible_for_expert:
-                boost_target = random.choice(eligible_for_expert)
-                skill_ranks[boost_target] = 4
-                remaining_increases -= 1
-                continue
+        for name in trained_skills:
+            prev_val = existing_map.get(name, 2)
+            if prev_val > 2:
+                needed = 1 if prev_val == 4 else (2 if prev_val == 6 else 3)
+                if increases_applied + needed <= num_increases:
+                    if prev_val == 4 and target_lvl >= 2:
+                        skill_ranks[name] = 4
+                        increases_applied += 1
+                    elif prev_val == 6 and target_lvl >= 7:
+                        skill_ranks[name] = 6
+                        increases_applied += 2
+                    elif prev_val == 8 and target_lvl >= 15:
+                        skill_ranks[name] = 8
+                        increases_applied += 3
 
-            eligible_for_master = [
-                s for s in trained_skills 
-                if skill_ranks[s] == 4 and target_level >= 7
-            ]
-            if eligible_for_master:
-                boost_target = random.choice(eligible_for_master)
-                skill_ranks[boost_target] = 6
-                remaining_increases -= 1
+        remaining = num_increases - increases_applied
+        while remaining > 0:
+            eligible_expert = [s for s in trained_skills if skill_ranks[s] == 2 and target_lvl >= 2]
+            if eligible_expert:
+                pick = random.choice(eligible_expert)
+                skill_ranks[pick] = 4
+                remaining -= 1
                 continue
-
+            eligible_master = [s for s in trained_skills if skill_ranks[s] == 4 and target_lvl >= 7]
+            if eligible_master:
+                pick = random.choice(eligible_master)
+                skill_ranks[pick] = 6
+                remaining -= 1
+                continue
             break
     else:
         remaining = num_increases
         while remaining > 0:
-            eligible = [s for s in trained_skills if skill_ranks[s] == 2 and target_level >= 2]
+            eligible = [s for s in trained_skills if skill_ranks[s] == 2 and target_lvl >= 2]
             if not eligible:
                 break
-            chosen = random.choice(eligible)
-            skill_ranks[chosen] = 4
+            pick = random.choice(eligible)
+            skill_ranks[pick] = 4
             remaining -= 1
 
-    # 4. Construct final skill payload with calculated modifiers
-    final_skills = []
+    # 6. Build SkillEntry objects
+    result_skills: List[SkillEntry] = []
     for sk_name in ALL_PF2E_SKILLS:
         rank_val = skill_ranks.get(sk_name, 0)
-        rank_name = RANK_NAME_MAP.get(rank_val, "Untrained")
-        key_ab = SKILL_KEY_ABILITY[sk_name]
-        ab_mod = ability_mods.get(key_ab, 0)
-        
-        prof_bonus = (rank_val + target_level) if rank_val > 0 else 0
-        total_mod = prof_bonus + ab_mod
+        attr_key = SKILL_KEY_ABILITY.get(sk_name, "dex")
+        mod_val = norm_mods.get(attr_key, 0)
+        prof_bonus = (rank_val + target_lvl) if rank_val > 0 else 0
+        total_mod = prof_bonus + mod_val
 
-        final_skills.append({
-            "name": sk_name,
-            "rank": rank_name,
-            "ability": key_ab,
-            "item_bonus": 0,
-            "total": total_mod
-        })
+        result_skills.append(
+            SkillEntry(
+                name=sk_name,
+                rank=rank_val,
+                rank_letter=RANK_LETTER_MAP.get(rank_val, "U"),
+                modifier=total_mod,
+                attribute=attr_key.upper()
+            )
+        )
 
-    # Add Lore
-    lore_ab_mod = ability_mods.get("INT", 0)
-    lore_prof_bonus = lore_rank + target_level
-    final_skills.append({
-        "name": chosen_lore,
-        "rank": RANK_NAME_MAP.get(lore_rank, "Trained"),
-        "ability": "INT",
-        "item_bonus": 0,
-        "total": lore_prof_bonus + lore_ab_mod,
-        "is_lore": True
-    })
+    # Add Lore SkillEntry
+    lore_rank = existing_map.get(chosen_lore, 2)
+    lore_prof = (lore_rank + target_lvl) if lore_rank > 0 else 0
+    lore_total = lore_prof + norm_mods.get("int", 0)
 
-    return {
-        "skills": final_skills,
-        "lore": chosen_lore
-    }
+    result_skills.append(
+        SkillEntry(
+            name=chosen_lore,
+            rank=lore_rank,
+            rank_letter=RANK_LETTER_MAP.get(lore_rank, "T"),
+            modifier=lore_total,
+            attribute="INT"
+        )
+    )
+
+    return result_skills
