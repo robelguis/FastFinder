@@ -20,7 +20,7 @@ from app.engine.skills import resolve_character_skills
 from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_weight
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
-from app.engine.subclasses import resolve_heritage, resolve_subclass
+from app.engine.subclasses import resolve_heritage, resolve_subclass, BARBARIAN_ANIMAL_CHOICES
 from app.engine.archetypes import pick_archetype, ARCHETYPES_CATALOG, resolve_dynamic_archetype
 from app.engine.companions import resolve_companion
 from app.engine.eidolons import resolve_eidolon
@@ -512,6 +512,51 @@ class PF2eGenerator:
             subclass_name=sub_n,
             archetype_name=arch_n,
         )
+
+        # Inject Barbarian Animal Instinct Bestial Strike
+        if cls["name"].lower() == "barbarian" and subclass_data:
+            sub_name = subclass_data.get("name", "")
+            if "Animal Instinct" in sub_name:
+                matched_animal = None
+                for a in BARBARIAN_ANIMAL_CHOICES:
+                    if f"({a['name']})" in sub_name or a['name'].lower() in sub_name.lower():
+                        matched_animal = a
+                        break
+
+                if matched_animal:
+                    unarmed_prof = 2
+                    s_mod = mods.get("str", 4) if "mods" in locals() and isinstance(mods, dict) else 4
+                    unarmed_attack_bonus = level + unarmed_prof + s_mod
+
+                    dice_count = 2 if level >= 4 else 1
+                    die_size = matched_animal["die"].replace("1", "", 1)
+                    damage_dice_str = f"{dice_count}{die_size}"
+
+                    rage_dmg = 2 if level < 7 else 6
+                    damage_str = f"{damage_dice_str} + {s_mod} (+{rage_dmg} Rage)"
+
+                    strike_name = f"{matched_animal['strike']} ({matched_animal['name']} Rage Strike)"
+                    traits_list = list(matched_animal["traits"]) + ["rage"]
+
+                    # Agile MAP is -4/-8; standard is -5/-10
+                    is_agile = "agile" in traits_list
+                    map2_val = unarmed_attack_bonus - (4 if is_agile else 5)
+                    map3_val = unarmed_attack_bonus - (8 if is_agile else 10)
+
+                    map_second = f"+{map2_val}" if map2_val >= 0 else str(map2_val)
+                    map_third = f"+{map3_val}" if map3_val >= 0 else str(map3_val)
+
+                    animal_strike = Strike(
+                        name=strike_name,
+                        attack_bonus=f"+{unarmed_attack_bonus}",
+                        map_second=map_second,
+                        map_third=map_third,
+                        damage_dice=damage_dice_str,
+                        damage=damage_str,
+                        damage_type=matched_animal["type"],
+                        traits=traits_list
+                    )
+                    equipment_loadout.strikes.insert(0, animal_strike)
 
         if level >= 5:
             for strike in equipment_loadout.strikes:

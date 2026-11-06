@@ -305,12 +305,72 @@ def resolve_heritage(ancestry_name: str) -> Dict[str, str]:
     pool = ANCESTRY_HERITAGES.get(anc_key, GENERIC_HERITAGES)
     return random.choice(pool)
 
+# ============================================================================
+# BARBARIAN INSTINCT SUB-CHOICES
+# ============================================================================
+BARBARIAN_ANIMAL_CHOICES = [
+    {"name": "Ape", "strike": "Fist", "die": "1d10", "type": "Bludgeoning", "traits": ["agile", "nonlethal", "unarmed"]},
+    {"name": "Bear", "strike": "Jaws", "die": "1d10", "type": "Piercing", "traits": ["unarmed"]},
+    {"name": "Bull", "strike": "Horns", "die": "1d10", "type": "Piercing", "traits": ["shove", "unarmed"]},
+    {"name": "Cat", "strike": "Jaws", "die": "1d10", "type": "Piercing", "traits": ["unarmed"]},
+    {"name": "Deer", "strike": "Antler", "die": "1d10", "type": "Piercing", "traits": ["grapple", "unarmed"]},
+    {"name": "Frog", "strike": "Tongue", "die": "1d4", "type": "Bludgeoning", "traits": ["agile", "reach 10 ft", "unarmed"]},
+    {"name": "Shark", "strike": "Jaws", "die": "1d10", "type": "Piercing", "traits": ["grapple", "unarmed"]},
+    {"name": "Snake", "strike": "Fangs", "die": "1d10", "type": "Piercing", "traits": ["finesse", "unarmed"]},
+    {"name": "Wolf", "strike": "Jaws", "die": "1d10", "type": "Piercing", "traits": ["trip", "unarmed"]}
+]
+
+BARBARIAN_DRAGON_CHOICES = [
+    {"name": "Red (Fire)", "damage_type": "Fire", "breath": "30-foot cone"},
+    {"name": "Gold (Fire)", "damage_type": "Fire", "breath": "30-foot cone"},
+    {"name": "Blue (Electricity)", "damage_type": "Electricity", "breath": "60-foot line"},
+    {"name": "Bronze (Electricity)", "damage_type": "Electricity", "breath": "60-foot line"},
+    {"name": "Black (Acid)", "damage_type": "Acid", "breath": "60-foot line"},
+    {"name": "Green (Poison)", "damage_type": "Poison", "breath": "30-foot cone"},
+    {"name": "White (Cold)", "damage_type": "Cold", "breath": "30-foot cone"},
+    {"name": "Silver (Cold)", "damage_type": "Cold", "breath": "30-foot cone"}
+]
+
+BARBARIAN_SPIRIT_CHOICES = [
+    {"name": "Vitality", "damage_type": "Vitality", "description": "Ancestral spirits empower your strikes against undead and negative beings."},
+    {"name": "Void", "damage_type": "Void", "description": "Wrathful underworld spirits shroud your strikes in entropic void energy."}
+]
+
+BARBARIAN_ELEMENTAL_CHOICES = [
+    {"name": "Fire", "damage_type": "Fire"},
+    {"name": "Earth", "damage_type": "Bludgeoning"},
+    {"name": "Water", "damage_type": "Cold"},
+    {"name": "Air", "damage_type": "Electricity"},
+    {"name": "Metal", "damage_type": "Slashing"},
+    {"name": "Wood", "damage_type": "Vitality"}
+]
+
 def resolve_subclass(class_name: str) -> Optional[Dict[str, str]]:
     cls_key = class_name.lower()
     data = CLASS_SUBCLASSES.get(cls_key)
     if not data:
         return None
-    choice = random.choice(data["options"])
+    choice = dict(random.choice(data["options"]))
+
+    # Apply Barbarian Instinct Sub-Choices
+    if cls_key == "barbarian":
+        opt_name = choice.get("name", "")
+        if "Animal" in opt_name:
+            sub = random.choice(BARBARIAN_ANIMAL_CHOICES)
+            choice["name"] = f"Animal Instinct ({sub['name']})"
+            choice["description"] = f"Bestial rage grants a {sub['strike']} unarmed strike ({sub['die']} {sub['type']}, traits: {', '.join(sub['traits'])})."
+        elif "Dragon" in opt_name:
+            sub = random.choice(BARBARIAN_DRAGON_CHOICES)
+            choice["name"] = f"Dragon Instinct ({sub['name']})"
+            choice["description"] = f"Draconic rage adds additional {sub['damage_type'].lower()} damage and a {sub['breath']} breath weapon."
+        elif "Spirit" in opt_name:
+            sub = random.choice(BARBARIAN_SPIRIT_CHOICES)
+            choice["name"] = f"Spirit Instinct ({sub['name']})"
+            choice["description"] = sub["description"]
+        elif "Elemental" in opt_name:
+            sub = random.choice(BARBARIAN_ELEMENTAL_CHOICES)
+            choice["name"] = f"Elemental Instinct ({sub['name']})"
+            choice["description"] = f"Infuses rage strikes with {sub['damage_type'].lower()} elemental kinetic energy."
     return {
         "title": data["title"],
         "name": choice["name"],
