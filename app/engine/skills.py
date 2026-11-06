@@ -1,3 +1,4 @@
+import re
 from typing import List, Dict, Any, Optional, Set
 import random
 from app.engine.models import SkillEntry
@@ -78,6 +79,21 @@ def resolve_character_skills(
     chosen_lore = existing_lore
     if not chosen_lore:
         lore_opts = bg.get("lore_options", [])
+        if not lore_opts and bg.get("trained_lore"):
+            t_lore = bg.get("trained_lore")
+            if isinstance(t_lore, list):
+                lore_opts = t_lore
+            elif isinstance(t_lore, str) and t_lore.strip():
+                lore_opts = [t_lore.strip()]
+
+        if not lore_opts and bg.get("description"):
+            # Extract lore skills mentioned in the description (e.g. "Netherworld Lore or Nidal Lore")
+            matches = re.findall(r"([A-Z][a-zA-Z'\-]+(?:\s+[A-Z][a-zA-Z'\-]+)*\s+Lore)", bg.get("description", ""))
+            # Exclude self-named lore (e.g. "Shadowcaller Outcast Lore")
+            filtered = [m.strip() for m in matches if m.strip().lower() != f"{bg.get('name', '').lower()} lore"]
+            if filtered:
+                lore_opts = filtered
+
         if lore_opts:
             chosen_lore = random.choice(lore_opts)
         else:
@@ -107,7 +123,18 @@ def resolve_character_skills(
             if name in ALL_PF2E_SKILLS and rank_val >= 2:
                 trained_skills.add(name)
     else:
-        bg_skills = bg.get("skills", [])
+        bg_skills = list(bg.get("skills") or [])
+        if not bg_skills and bg.get("trained_skills"):
+            bg_skills.extend(bg.get("trained_skills"))
+
+        # Fallback: scan description for standard PF2e skill grants (e.g. "trained in the Arcana skill")
+        desc = bg.get("description", "")
+        if desc:
+            for s in ALL_PF2E_SKILLS:
+                pattern = rf"\b{s}\s+skill\b"
+                if re.search(pattern, desc, re.IGNORECASE):
+                    bg_skills.append(s)
+
         mandatory = set()
         for bs in bg_skills:
             for s in ALL_PF2E_SKILLS:

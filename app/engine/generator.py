@@ -28,6 +28,12 @@ from app.engine.familiars import resolve_familiar
 from app.engine.constructs_undead import resolve_construct_companion, resolve_undead_companion
 from app.engine.plants_familiars_summons import resolve_plant_companion, resolve_specific_familiar
 
+
+def get_sneak_attack_dice(level: int, is_archetype: bool = False) -> str:
+    if is_archetype:
+        return "2d6" if level >= 6 else "1d6"
+    return "3d6" if level >= 11 else ("2d6" if level >= 5 else "1d6")
+
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 ATTRIBUTES = ["str", "dex", "con", "int", "wis", "cha"]
@@ -90,6 +96,33 @@ CLASS_FEATURES_LVL5 = {
     "sorcerer": {"name": "Alertness", "description": "Your proficiency rank for Perception increases to Expert (+4)."},
     "witch": {"name": "Reflex Expertise", "description": "Your proficiency rank for Reflex saves increases to Expert (+4)."},
     "bard": {"name": "Lightning Reflexes", "description": "Your proficiency rank for Reflex saves increases to Expert (+4)."}
+}
+
+ARCHETYPE_GRANTED_FEATURES = {
+    "Rogue Dedication": FeatSummary(
+        id="feat-archetype-surprise-attack",
+        name="Surprise Attack",
+        category="Archetype Feature",
+        action_cost=None,
+        traits=["archetype", "rogue"],
+        description="You act or spring into combat before your foes are ready. On the first round of combat, if you roll Deception or Stealth for initiative, any creatures that haven't acted yet are off-guard to you."
+    ),
+    "Ranger Dedication": FeatSummary(
+        id="feat-archetype-hunt-prey",
+        name="Hunt Prey",
+        category="Archetype Feature",
+        action_cost=1,
+        traits=["archetype", "concentrate", "ranger"],
+        description="Designate a creature you can see or track as your prey. You gain a +2 circumstance bonus to Perception checks to Seek or Sense Motive against it, and a +2 circumstance bonus to Survival checks to Track it. You also ignore the second range increment penalty on ranged attacks against your prey."
+    ),
+    "Investigator Dedication": FeatSummary(
+        id="feat-archetype-devise-a-stratagem",
+        name="Devise a Stratagem",
+        category="Archetype Feature",
+        action_cost=1,
+        traits=["archetype", "concentrate", "fortune", "investigator"],
+        description="Roll a d20. You must use that result for the attack roll of your next Strike this round against the designated creature, substituting your Intelligence modifier for your Strength or Dexterity modifier on the attack roll."
+    )
 }
 
 CURATED_ANCESTRY_FEATS_LVL5 = {
@@ -618,7 +651,7 @@ class PF2eGenerator:
 
         if cls_name_lower in CLASS_FEATURES_LVL1:
             base_cf1 = CLASS_FEATURES_LVL1[cls_name_lower]
-            s_dice = "2d6" if level >= 5 else "1d6"
+            s_dice = get_sneak_attack_dice(level, is_archetype=False)
             f_dice = "3d6" if level >= 5 else "2d6"
             p_flat = "3" if level >= 5 else "2"
             desc = base_cf1["description"].format(sneak_dice=s_dice, finisher_dice=f_dice, panache_flat=p_flat)
@@ -659,6 +692,8 @@ class PF2eGenerator:
                     traits=ded.get("traits", []),
                     description=clean_pf2e_text(ded["description"])
                 ))
+                if ded["name"] in ARCHETYPE_GRANTED_FEATURES:
+                    chosen_feats.append(ARCHETYPE_GRANTED_FEATURES[ded["name"]])
             else:
                 lvl2_feats = [
                     f for f in self.feats
@@ -1035,6 +1070,16 @@ class PF2eGenerator:
 
         character_languages = assigned_langs
 
+
+        # Annotate strikes with Sneak Attack precision damage if feature is present
+        has_sneak = any("sneak attack" in f.name.lower() or "sneak attacker" in f.name.lower() for f in chosen_feats)
+        if has_sneak:
+            is_arch_sneak = any("sneak attacker" in f.name.lower() for f in chosen_feats) and cls_name_lower != "rogue"
+            s_dice_val = get_sneak_attack_dice(level if "level" in locals() else target_level, is_archetype=is_arch_sneak)
+            for st in equipment_loadout.strikes:
+                if "precision" not in st.damage_dice.lower() and "sneak" not in st.damage_dice.lower():
+                    st.damage_dice = f"{st.damage_dice} (+{s_dice_val} precision vs off-guard)"
+
         return CharacterSheet(
             name=resolved_name,
             level=level,
@@ -1344,6 +1389,11 @@ class PF2eGenerator:
                         description=clean_pf2e_text(ded["description"])
                     ))
                     existing_feat_names.add(ded["name"])
+                    if ded["name"] in ARCHETYPE_GRANTED_FEATURES:
+                        extra_feat = ARCHETYPE_GRANTED_FEATURES[ded["name"]]
+                        if extra_feat.name not in existing_feat_names:
+                            chosen_feats.append(extra_feat)
+                            existing_feat_names.add(extra_feat.name)
                 else:
                     lvl2_feats = [
                         f for f in self.feats
@@ -1704,6 +1754,24 @@ class PF2eGenerator:
                         existing_companion = new_partner
                     else:
                         existing_extra_partners.append(new_partner)
+
+
+        # Refresh Sneak Attack feat descriptions on level up / down
+        for f in chosen_feats:
+            if f.name.lower() == "sneak attack":
+                cur_dice = get_sneak_attack_dice(target_level, is_archetype=False)
+                f.description = f"When your Strike hits an off-guard target and deals damage, you deal an extra {cur_dice} precision damage."
+            elif f.name.lower() == "sneak attacker":
+                cur_dice = get_sneak_attack_dice(target_level, is_archetype=True)
+                f.description = f"You gain the Sneak Attack class feature, dealing an extra {cur_dice} precision damage to off-guard targets."
+
+        has_sneak_lvl = any("sneak attack" in f.name.lower() or "sneak attacker" in f.name.lower() for f in chosen_feats)
+        if has_sneak_lvl:
+            is_arch_sneak_lvl = any("sneak attacker" in f.name.lower() for f in chosen_feats) and cls_name_lower != "rogue"
+            s_dice_lvl = get_sneak_attack_dice(target_level, is_archetype=is_arch_sneak_lvl)
+            for st in equipment_loadout.strikes:
+                if "precision" not in st.damage_dice.lower() and "sneak" not in st.damage_dice.lower():
+                    st.damage_dice = f"{st.damage_dice} (+{s_dice_lvl} precision vs off-guard)"
 
         return CharacterSheet(
             name=current_char["name"],

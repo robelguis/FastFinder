@@ -242,7 +242,7 @@ ARCHETYPES_CATALOG: Dict[str, Dict[str, Any]] = {
                 "name": "Sneak Attacker",
                 "traits": ["archetype"],
                 "action_cost": None,
-                "description": "You gain the Sneak Attack class feature, dealing an extra 1d4 precision damage to off-guard targets."
+                "description": "You gain the Sneak Attack class feature, dealing an extra 1d6 precision damage to off-guard targets."
             }
         ]
     }
@@ -387,7 +387,7 @@ def get_all_archetype_names() -> List[str]:
         for ft in feats:
             traits = [t.lower() for t in ft.get("traits", [])]
             name = ft.get("name", "")
-            if ("dedication" in traits or "Dedication" in name) and "multiclass" not in traits:
+            if ("dedication" in traits or "Dedication" in name):
                 clean_name = name.replace(" Dedication", "").strip()
                 if clean_name:
                     names.add(clean_name)
@@ -406,13 +406,13 @@ def resolve_dynamic_archetype(archetype_name: str, feats_list: List[Dict[str, An
 
     # Find the Dedication feat
     dedication_feat = None
-    target_trait = target.replace("-", " ")
+    target_trait = target.replace("-", " ").replace(" multiclass", "").strip()
     for ft in feats_list:
         ft_name = ft.get("name", "")
         traits = [t.lower() for t in ft.get("traits", [])]
         if ("dedication" in traits or "Dedication" in ft_name):
             clean_name = ft_name.replace(" Dedication", "").strip().lower()
-            if clean_name == target:
+            if clean_name == target or clean_name == target_trait or f"{clean_name} multiclass" == target:
                 dedication_feat = ft
                 break
 
