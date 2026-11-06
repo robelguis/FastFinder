@@ -1,19 +1,9 @@
-def strip_foundry_tags(val: str) -> str:
-    if not isinstance(val, str):
-        return val
-    # Strip @UUID[...]{Display} or @UUID[...]
-    cleaned = re.sub(r'@UUID\[[^\]]+\]\{([^}]+)\}', r'', val)
-    cleaned = re.sub(r'@UUID\[[^\]]+\]', '', cleaned)
-    cleaned = re.sub(r'@Compendium\[[^\]]+\]\{([^}]+)\}', r'', cleaned)
-    cleaned = re.sub(r'@Compendium\[[^\]]+\]', '', cleaned)
-    return cleaned.strip()
-
 import json
 import re
 import random
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Set
-from app.engine.models import Strike
+
 from app.engine.models import (
     CharacterSheet,
     AttributeModifiers,
@@ -22,6 +12,7 @@ from app.engine.models import (
     FeatSummary,
     SubclassSummary,
     PartnerCreatureData,
+    Strike,
 )
 from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
@@ -121,19 +112,30 @@ ALL_SKILL_NAMES = [
     "Society", "Stealth", "Survival", "Thievery"
 ]
 
+
+def strip_foundry_tags(val: str) -> str:
+    if not isinstance(val, str):
+        return val
+    cleaned = re.sub(r'@UUID\[[^\]]+\]\{([^}]+)\}', r'\1', val)
+    cleaned = re.sub(r'@UUID\[[^\]]+\]', '', cleaned)
+    cleaned = re.sub(r'@Compendium\[[^\]]+\]\{([^}]+)\}', r'\1', cleaned)
+    cleaned = re.sub(r'@Compendium\[[^\]]+\]', '', cleaned)
+    return cleaned.strip()
+
+
 def safe_action_cost(val):
     if val is None:
         return None
     if isinstance(val, int):
         return val
     if isinstance(val, str):
-        import re
         m = re.search(r"\d+", val)
         if m:
             return int(m.group())
         if any(w in val.lower() for w in ["reaction", "free"]):
             return 0
     return None
+
 
 def clean_pf2e_text(text: str) -> str:
     if not text:
@@ -152,17 +154,16 @@ def clean_pf2e_text(text: str) -> str:
     text = re.sub(r"\n\s*\n+", "\n\n", text)
     return text.strip()
 
+
 def load_data(filename: str) -> Any:
     path = DATA_DIR / filename
     if not path.exists():
         raise FileNotFoundError(f"Missing {filename}.")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
+
+
 def scale_existing_companion(companion_data: dict, old_level: int, target_level: int, master_hp: int) -> dict:
-    """
-    Scales an existing companion's numerical stats from old_level to target_level
-    while preserving its name, species, sub-type, traits, and abilities.
-    """
     comp = dict(companion_data)
     level_delta = target_level - old_level
     if level_delta <= 0:
@@ -170,17 +171,12 @@ def scale_existing_companion(companion_data: dict, old_level: int, target_level:
 
     creature_type = (comp.get("creature_type") or "").lower()
 
-    # 1. Hit Points
     if "eidolon" in creature_type:
         comp["hp"] = master_hp
     else:
-        # Standard animal / construct companion HP gain: ~8 HP per level
         comp["hp"] = comp.get("hp", 20) + (level_delta * 8)
 
-    # 2. Level 4 Maturity Milestone Boost (Trained -> Expert bump of +2)
     stage_bump = 2 if (old_level < 4 and target_level >= 4 and "eidolon" not in creature_type) else 0
-
-    # 3. Defenses (AC & Saves scale by level_delta + maturity bump)
     total_stat_boost = level_delta + stage_bump
     comp["ac"] = comp.get("ac", 16) + total_stat_boost
     comp["fortitude"] = comp.get("fortitude", 5) + total_stat_boost
@@ -188,7 +184,6 @@ def scale_existing_companion(companion_data: dict, old_level: int, target_level:
     comp["will"] = comp.get("will", 5) + total_stat_boost
     comp["perception"] = comp.get("perception", 4) + total_stat_boost
 
-    # 4. Strikes
     updated_strikes = []
     for strike in comp.get("strikes", []):
         s = dict(strike)
@@ -200,16 +195,17 @@ def scale_existing_companion(companion_data: dict, old_level: int, target_level:
         updated_strikes.append(s)
     comp["strikes"] = updated_strikes
 
-    # 5. Advance Stage Name at Level 4 for Animal Companions
     if target_level >= 4 and "Young" in comp.get("stage", ""):
         comp["stage"] = comp["stage"].replace("Young", "Mature")
 
     return comp
 
+
 TERRAIN_TYPES = [
     "Aquatic", "Arctic", "Desert", "Forest",
     "Mountain", "Plains", "Sky", "Swamp", "Underground"
 ]
+
 
 def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
     fn_lower = feat_name.lower()
@@ -238,12 +234,12 @@ def pick_weighted_feat(candidates, class_name, owned_names, skill_ranks, mods, c
         and check_feat_prerequisites(f, skill_ranks, owned_names, mods, char_level)
     ]
     if not valid:
-        # Fallback to general pool without prereqs if list is starved
         valid = [f for f in candidates if f["name"] not in owned_names]
     if not valid:
         return None
     weights = [calculate_feat_weight(f, class_name, owned_names, skill_ranks) for f in valid]
     return random.choices(valid, weights=weights, k=1)[0]
+
 
 BACKGROUND_CUSTOM_ACTIONS = {
     "hunt the razer's pawn": {
@@ -270,7 +266,6 @@ def extract_bg_feat(bg_desc: str, feats_list: list) -> str:
         opt1, opt2 = m_choice.group(1).strip(), m_choice.group(2).strip()
         valid = [feat_lookup[opt.lower()] for opt in [opt1, opt2] if opt.lower() in feat_lookup]
         if valid:
-            import random
             return random.choice(valid)
     m_gain = re.search(r"gain the\s+([A-Za-z\s'’\-]+?)\s+(?:skill|general)?\s*feat", bg_desc, re.IGNORECASE)
     if m_gain:
@@ -293,7 +288,6 @@ class PF2eGenerator:
         self.classes = {c["name"].lower(): c for c in load_data("classes.json")}
         self.backgrounds = {b["name"].lower(): b for b in load_data("backgrounds.json")}
         raw_feats = load_data("feats.json")
-        # Sanitize feat compendium: filter out empty traits, joke/test entries, and malformed records
         self.feats = [
             f for f in raw_feats
             if f.get("name")
@@ -320,7 +314,6 @@ class PF2eGenerator:
     ) -> CharacterSheet:
         level = max(1, min(7, int(level)))
 
-        # 1. Select Ancestry, Class, Background
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
         else:
@@ -336,6 +329,7 @@ class PF2eGenerator:
             bg = matched_bg if matched_bg else random.choice(list(self.backgrounds.values()))
         else:
             bg = random.choice(list(self.backgrounds.values()))
+
         if heritage_name and str(heritage_name).strip() and str(heritage_name).strip().lower() not in ["none", ""]:
             heritage_data = {"name": str(heritage_name).strip(), "description": ""}
         else:
@@ -345,6 +339,7 @@ class PF2eGenerator:
             subclass_data = {"name": str(subclass_name).strip(), "title": "Subclass", "description": ""}
         else:
             subclass_data = resolve_subclass(cls["name"])
+
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
         raw_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else ""
         if raw_arch.lower() in ["", "any", "any archetype", "none", "random"]:
@@ -356,7 +351,6 @@ class PF2eGenerator:
         if clean_arch_input:
             archetype_data = resolve_dynamic_archetype(clean_arch_input, self.feats)
 
-        # 2. Track Attribute Boosts (Level 1)
         mods = {attr: 0 for attr in ATTRIBUTES}
 
         applied_anc_boosts: Set[str] = set()
@@ -410,11 +404,9 @@ class PF2eGenerator:
             if mods[attr] > 4:
                 mods[attr] = 4
 
-        # Resolve archetype if dedication toggle is enabled and no specific archetype was forced
         if not archetype_data and use_dedication and level >= 2:
             archetype_data = pick_archetype(cls["name"], {}, mods)
 
-        # 2b. Level 5 Attribute Boosts (4 distinct boosts to top attributes)
         if level >= 5:
             lvl5_boosts_applied: Set[str] = set()
             lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
@@ -423,13 +415,11 @@ class PF2eGenerator:
                     mods[attr] += 1
                     lvl5_boosts_applied.add(attr)
 
-        # 3. Defenses & Proficiencies
         fort_rank = cls.get("saving_throws", {}).get("fortitude", 1)
         ref_rank = cls.get("saving_throws", {}).get("reflex", 1)
         will_rank = cls.get("saving_throws", {}).get("will", 1)
         perception_rank = cls.get("perception", 1)
 
-        # Scale saves & perception at Level 3 and Level 5
         if level >= 3 and cls["name"].lower() in ["fighter", "ranger"] and will_rank < 2:
             will_rank = 2
         if level >= 5:
@@ -452,11 +442,8 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
-        # 4. Equipment & HP
         sub_n = subclass_data["name"] if subclass_data else ""
         arch_n = clean_arch_input or (archetype_data["name"] if archetype_data else "")
-        # --- Preserve existing weapons and loadout ---
-        existing_strikes_data = current_char.get("strikes") or (current_char.get("equipment_loadout") or {}).get("strikes") or current_char.get("weapons")
 
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
@@ -468,48 +455,6 @@ class PF2eGenerator:
             archetype_name=arch_n,
         )
 
-        if existing_strikes_data:
-            # Rebuild and lock previous weapons/strikes, updating attack bonuses to target_level
-            preserved_strikes = []
-            for s in existing_strikes_data:
-                s_dict = s if isinstance(s, dict) else (s.__dict__ if hasattr(s, "__dict__") else {})
-                name = s_dict.get("name", "")
-                if not name or name.startswith("Elemental Blast"):
-                    continue
-
-                # Recalculate strike bonus for target_level (preserves weapon type/traits)
-                is_ranged = "ranged" in name.lower() or "bow" in name.lower() or "crossbow" in name.lower()
-                ab_mod = mods.get("dex" if is_ranged else "str", 0)
-                
-                # Base class proficiency: Fighter starts Expert (4), others Trained (2)
-                base_prof_rank = 4 if cls["name"].lower() == "fighter" else 2
-                if target_level >= 5 and cls["name"].lower() == "fighter":
-                    base_prof_rank = 6  # Master at 5
-                elif target_level >= 5 and cls["name"].lower() in ["gunslinger"]:
-                    base_prof_rank = 6
-                
-                # Potency runes (+1 weapon at level 2+)
-                item_bonus = 1 if target_level >= 2 else 0
-                new_atk = base_prof_rank + target_level + ab_mod + item_bonus
-
-                # Damage dice and weapon specialization (+2 at level 7)
-                dmg_dice = s_dict.get("damage_dice", "1d8")
-                if target_level >= 7 and "+ 2" not in dmg_dice and "+2" not in dmg_dice:
-                    dmg_dice = f"{dmg_dice} + 2"
-
-                preserved_strikes.append(Strike(
-                    name=name,
-                    attack_bonus=new_atk,
-                    map_second=new_atk - (4 if "Agile" in s_dict.get("traits", []) else 5),
-                    map_third=new_atk - (8 if "Agile" in s_dict.get("traits", []) else 10),
-                    damage_dice=dmg_dice,
-                    damage_type=s_dict.get("damage_type", "Physical"),
-                    traits=s_dict.get("traits", [])
-                ))
-
-            if preserved_strikes:
-                equipment_loadout.strikes = preserved_strikes
-
         if level >= 5:
             for strike in equipment_loadout.strikes:
                 extra_prof = 2
@@ -518,7 +463,6 @@ class PF2eGenerator:
                 strike.map_third += extra_prof
         if level >= 7:
             for strike in equipment_loadout.strikes:
-                # Weapon Specialization (+2 damage)
                 if "+2" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
                     strike.damage_dice = f"{strike.damage_dice} + 2" 
 
@@ -526,29 +470,21 @@ class PF2eGenerator:
         class_hp_per_lvl = cls.get("hp_per_level", 8)
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * level)
         bonus_speed = 0
-        # Kineticist Elemental Blasts
+
         if cls["name"].lower() == "kineticist":
-            blast_lvl = locals().get("target_level", locals().get("level", 1))
-            con_mod = mods.get("con", 0)
-            str_mod = mods.get("str", 0)
-            dex_mod = mods.get("dex", 0)
-            prof = 2 + blast_lvl  # Trained
+            blast_lvl = level
+            prof = 2 + blast_lvl
             if blast_lvl >= 5:
-                prof += 2          # Expert at lvl 5
-            
-            melee_bonus = prof + con_mod
-            ranged_bonus = prof + dex_mod
-            
+                prof += 2
+            melee_bonus = prof + mods.get("con", 0)
+            ranged_bonus = prof + mods.get("dex", 0)
             dice_count = 2 if blast_lvl >= 5 else 1
-            melee_str_bonus = str_mod if str_mod > 0 else 0
+            melee_str_bonus = mods.get("str", 0) if mods.get("str", 0) > 0 else 0
             spec_bonus = 2 if blast_lvl >= 7 else 0
-            
-            melee_dmg_bonus = con_mod + melee_str_bonus + spec_bonus
-            ranged_dmg_bonus = con_mod + spec_bonus
-            
+            melee_dmg_bonus = mods.get("con", 0) + melee_str_bonus + spec_bonus
+            ranged_dmg_bonus = mods.get("con", 0) + spec_bonus
             melee_dmg_str = f"{dice_count}d8+{melee_dmg_bonus}" if melee_dmg_bonus > 0 else f"{dice_count}d8"
             ranged_dmg_str = f"{dice_count}d6+{ranged_dmg_bonus}" if ranged_dmg_bonus > 0 else f"{dice_count}d6"
-            
             melee_blast = Strike(
                 name="Elemental Blast (Melee)",
                 attack_bonus=melee_bonus,
@@ -567,17 +503,14 @@ class PF2eGenerator:
                 damage_type="Bludgeoning / Piercing / Slashing (60 ft)",
                 traits=["Impulse", "Infusion", "Kinetic", "Magical", "Primal"]
             )
-            # Remove any existing elemental blasts first to avoid duplicates on level transition
             equipment_loadout.strikes = [s for s in equipment_loadout.strikes if not s.name.startswith("Elemental Blast")]
             equipment_loadout.strikes.insert(0, ranged_blast)
             equipment_loadout.strikes.insert(0, melee_blast)
 
         total_hp = max(1, base_hp)
 
-        # 5. Feat Progression
         cls_name_lower = cls["name"].lower()
         chosen_feats: List[FeatSummary] = []
-                        # Extract background skill feat if present
         bg_desc = bg.get("description", "")
         bg_feat_name = extract_bg_feat(bg_desc, self.feats)
 
@@ -591,8 +524,6 @@ class PF2eGenerator:
                 description=f"Granted by the {bg['name']} background."
             ))
 
-        # Extract background custom actions (e.g. gain the @UUID[...actionspf2e.Item.Hunt the Razer's Pawn] action)
-        # Avoid standard inline actions like Seek or Sense Motive
         action_match = (
             re.search(r"gain the\s+@UUID\[[^\]]*actionspf2e\.Item\.([^\]]+)\]\s+action", bg_desc, re.IGNORECASE)
             or re.search(r"gain the\s+([A-Z][a-zA-Z0-9'\s\-]+?)\s+action", bg_desc, re.IGNORECASE)
@@ -622,7 +553,6 @@ class PF2eGenerator:
                         description=f"Special action granted by the {bg['name']} background."
                     ))
 
-        # Heritage Feature & Concrete Choice Resolution
         h_name = heritage_data["name"]
         h_desc = clean_pf2e_text(heritage_data["description"])
         extra_trained_skill: Optional[str] = None
@@ -651,7 +581,6 @@ class PF2eGenerator:
             description=h_desc
         ))
 
-        # Subclass Feature
         if subclass_data:
             chosen_feats.append(FeatSummary(
                 id=f"subclass-{cls['name'].lower()}",
@@ -662,7 +591,6 @@ class PF2eGenerator:
                 description=clean_pf2e_text(subclass_data["description"])
             ))
 
-        # Level 1 Core Identity Features (Sneak Attack, Panache, Stratagem)
         if cls_name_lower in CLASS_FEATURES_LVL1:
             base_cf1 = CLASS_FEATURES_LVL1[cls_name_lower]
             s_dice = "2d6" if level >= 5 else "1d6"
@@ -678,7 +606,6 @@ class PF2eGenerator:
                 description=desc
             ))
 
-        # Level 1 Class Feat
         lvl1_feats = [
             f for f in self.feats
             if f.get("category") == "class"
@@ -686,8 +613,7 @@ class PF2eGenerator:
             and cls_name_lower in [t.lower() for t in f.get("traits", [])]
         ]
         if lvl1_feats:
-            skill_ranks_tmp = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
-            f1 = pick_weighted_feat(lvl1_feats, cls["name"], {f.name for f in chosen_feats}, skill_ranks_tmp, mods, 1) or random.choice(lvl1_feats)
+            f1 = pick_weighted_feat(lvl1_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 1) or random.choice(lvl1_feats)
             chosen_feats.append(FeatSummary(
                 id=f1["id"],
                 name=f1["name"],
@@ -697,7 +623,6 @@ class PF2eGenerator:
                 description=clean_pf2e_text(f1.get("description", ""))
             ))
 
-        # Level 2 Progression
         if level >= 2:
             if archetype_data:
                 ded = archetype_data["level_2_dedication"]
@@ -717,8 +642,7 @@ class PF2eGenerator:
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
                 ]
                 if lvl2_feats:
-                    skill_ranks_tmp = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
-                    f2 = pick_weighted_feat(lvl2_feats, cls["name"], {f.name for f in chosen_feats}, skill_ranks_tmp, mods, 2) or random.choice(lvl2_feats)
+                    f2 = pick_weighted_feat(lvl2_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 2) or random.choice(lvl2_feats)
                     chosen_feats.append(FeatSummary(
                         id=f2["id"],
                         name=f2["name"],
@@ -728,12 +652,9 @@ class PF2eGenerator:
                         description=clean_pf2e_text(f2.get("description", ""))
                     ))
 
-            # Derive skill ranks for prerequisite validation
-            skill_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
             owned_names = {f.name for f in chosen_feats}
-
             skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2]]
-            sf = pick_weighted_feat(skill_feats_2, cls["name"], owned_names, skill_ranks, mods, 2)
+            sf = pick_weighted_feat(skill_feats_2, cls["name"], owned_names, {}, mods, 2)
             if sf:
                 resolved_feat_name2 = resolve_feat_subchoices(sf["name"], owned_names)
                 chosen_feats.append(FeatSummary(
@@ -746,12 +667,10 @@ class PF2eGenerator:
                 ))
                 owned_names.add(resolved_feat_name2)
 
-        # Level 3 Progression
         if level >= 3:
             gf = random.choice(GENERAL_FEATS_LVL3)
             gf_name = gf["name"]
             gf_desc = clean_pf2e_text(gf["description"])
-
             if gf["id"] == "toughness":
                 total_hp += level
             elif gf["id"] == "fleet":
@@ -766,19 +685,10 @@ class PF2eGenerator:
                     and anc_trait in [t.lower() for t in f.get("traits", [])]
                     and f["name"].lower() not in owned_f_names
                 ]
-                if not avail_anc_feats:
-                    avail_anc_feats = [
-                        f for f in self.feats
-                        if f.get("category") == "ancestry"
-                        and f.get("level") == 1
-                        and f["name"].lower() not in owned_f_names
-                    ]
                 if avail_anc_feats:
                     sub_f = random.choice(avail_anc_feats)
                     gf_name = f"Ancestral Paragon: {sub_f['name']}"
                     gf_desc = f"Selected 1st-level Ancestry Feat: {sub_f['name']}. You gain a 1st-level ancestry feat.\n\n[{sub_f['name']}]: {clean_pf2e_text(sub_f.get('description', ''))}"
-                    if "speed" in sub_f["name"].lower() or "nimble" in sub_f["name"].lower():
-                        bonus_speed += 5
 
             chosen_feats.append(FeatSummary(
                 id=gf["id"],
@@ -800,7 +710,6 @@ class PF2eGenerator:
                     description=clean_pf2e_text(cf["description"])
                 ))
 
-        # Level 4 Progression
         if level >= 4:
             if archetype_data:
                 arch_lvl4 = random.choice(archetype_data["level_4_feats"])
@@ -849,7 +758,6 @@ class PF2eGenerator:
                     description=clean_pf2e_text(sf4.get("description", ""))
                 ))
 
-        # Level 5 Progression
         if level >= 5:
             anc_name_lower = anc["name"].lower()
             lvl5_anc_feats = [
@@ -858,7 +766,6 @@ class PF2eGenerator:
                 and f.get("level") == 5
                 and anc_name_lower in [t.lower() for t in f.get("traits", [])]
             ]
-
             if lvl5_anc_feats:
                 af5 = random.choice(lvl5_anc_feats)
                 chosen_feats.append(FeatSummary(
@@ -894,7 +801,6 @@ class PF2eGenerator:
                     description=clean_pf2e_text(cf5["description"])
                 ))
 
-        # Level 6 Progression (Class Feat / Archetype Feat)
         if level >= 6:
             lvl6_class_feats = [
                 f for f in self.feats
@@ -903,8 +809,7 @@ class PF2eGenerator:
                 and cls_name_lower in [t.lower() for t in f.get("traits", [])]
             ]
             if lvl6_class_feats:
-                skill_ranks_tmp = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
-                cf6 = pick_weighted_feat(lvl6_class_feats, cls["name"], {f.name for f in chosen_feats}, skill_ranks_tmp, mods, 6) or random.choice(lvl6_class_feats)
+                cf6 = pick_weighted_feat(lvl6_class_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 6) or random.choice(lvl6_class_feats)
                 chosen_feats.append(FeatSummary(
                     id=cf6["id"],
                     name=cf6["name"],
@@ -914,14 +819,13 @@ class PF2eGenerator:
                     description=clean_pf2e_text(cf6.get("description", ""))
                 ))
 
-            skill_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
             owned_names = {f.name for f in chosen_feats}
             skill_feats_6 = [
                 f for f in self.feats
                 if f.get("category") == "skill"
                 and f.get("level") in [1, 2, 4, 6]
             ]
-            sf6 = pick_weighted_feat(skill_feats_6, cls["name"], owned_names, skill_ranks, mods, 6)
+            sf6 = pick_weighted_feat(skill_feats_6, cls["name"], owned_names, {}, mods, 6)
             if sf6:
                 resolved_name6 = resolve_feat_subchoices(sf6["name"], owned_names)
                 chosen_feats.append(FeatSummary(
@@ -934,8 +838,8 @@ class PF2eGenerator:
                 ))
                 owned_names.add(resolved_name6)
 
-        # Level 7 Progression (General Feat & Weapon Specialization Feature)
         if level >= 7:
+            owned_names = {f.name for f in chosen_feats}
             gf_pool_7 = [f for f in GENERAL_FEATS_LVL3 if f["name"] not in owned_names]
             if gf_pool_7:
                 gf7 = random.choice(gf_pool_7)
@@ -957,13 +861,8 @@ class PF2eGenerator:
                 traits=[cls_name_lower],
                 description="You have learned how to inflict greater injuries with your favored weapons. You deal 2 additional damage with weapons and unarmed attacks in which you are trained."
             ))
-            owned_names.add("Weapon Specialization")
 
-
-        # Determine planned archetype to seed prerequisites backwards
         planned_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else None
-
-        # Ensure planned multiclass archetype minimum attributes (+2 / 14) are satisfied
         if planned_arch:
             arch_lower = planned_arch.lower()
             if "champion" in arch_lower:
@@ -973,23 +872,14 @@ class PF2eGenerator:
                 mods["dex"] = max(mods.get("dex", 0), 2)
 
         # 6. Skills
-        all_skills = 
-        # --- Preserve existing skills & lore ---
-        existing_skills = current_char.get("skills", [])
-        existing_lore = current_char.get("lore")
-        if not existing_lore and existing_skills:
-            for sk in existing_skills:
-                if isinstance(sk, dict) and (sk.get("is_lore") or "Lore" in sk.get("name", "")):
-                    existing_lore = sk.get("name")
-                    break
-        resolve_character_skills(
+        all_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
             attribute_mods=mods,
             level=level,
             feats=chosen_feats,
             planned_archetype=planned_arch
-        , existing_skills=existing_skills, existing_lore=existing_lore)
+        )
 
         if extra_trained_skill:
             for sk in all_skills:
@@ -998,18 +888,15 @@ class PF2eGenerator:
                     sk.rank_letter = "T"
                     sk.modifier += (2 + level)
 
-        # 7. Partner Creatures (collect all concurrent partners, e.g., Eidolon + Beastmaster)
         collected_partners = []
         arch_name = archetype_data["name"].lower() if archetype_data else ""
         all_feat_str = " ".join([f.name.lower() for f in chosen_feats])
 
-        # 7a. Class-intrinsic partners
         if cls_name_lower == "summoner":
             eidolon_partner = resolve_eidolon(master_hp=total_hp, level=level)
             collected_partners.append(eidolon_partner)
             if not subclass_data and eidolon_partner:
                 subclass_data = {"name": eidolon_partner.name, "title": "Eidolon", "description": f"{eidolon_partner.creature_type} partner"}
-                subclass_obj = SubclassSummary(title="Eidolon", name=eidolon_partner.name, description=f"{eidolon_partner.creature_type} partner")
         elif cls_name_lower == "inventor":
             collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
         elif cls_name_lower == "witch":
@@ -1033,8 +920,6 @@ class PF2eGenerator:
                     level=level
                 ))
 
-        # 9b. Archetype / Feat companions (Undead Master, Plant, Animal Companion, Familiar)
-        # Archetype companions are only active at Level 2+ once the Dedication feat is taken
         has_undead_master = (level >= 2 and archetype_data and "undead master" in arch_name)
         has_beastmaster = (level >= 2 and archetype_data and "beastmaster" in arch_name)
 
@@ -1065,7 +950,6 @@ class PF2eGenerator:
         primary_companion = collected_partners[0] if collected_partners else None
         extra_partners = collected_partners[1:] if len(collected_partners) > 1 else []
 
-        # 8. Spellcasting
         sub_name = subclass_data["name"] if subclass_data else None
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
@@ -1074,7 +958,6 @@ class PF2eGenerator:
             subclass_name=sub_name
         )
 
-        # 9. Focus Spells & Pool
         focus_data = resolve_focus_spells(
             class_name=cls["name"],
             feats=chosen_feats,
@@ -1083,7 +966,6 @@ class PF2eGenerator:
             level=level
         )
 
-        # Resolve Languages (de-duplicated & distinct)
         COMMON_LANG_POOL = [
             "Common", "Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", 
             "Orcish", "Draconic", "Sylvan", "Undercommon", "Jotun", "Necril", 
@@ -1098,7 +980,6 @@ class PF2eGenerator:
             if not clean_name:
                 return
             if clean_name.lower() in assigned_lower:
-                # Collision: pick a distinct fallback not yet assigned
                 fallback_choices = [l for l in COMMON_LANG_POOL if l.lower() not in assigned_lower]
                 if fallback_choices:
                     chosen = random.choice(fallback_choices)
@@ -1108,7 +989,6 @@ class PF2eGenerator:
                 assigned_langs.append(clean_name)
                 assigned_lower.add(clean_name.lower())
 
-        # 1. Ancestry base languages
         raw_anc_langs = anc.get("languages", ["Common"])
         if isinstance(raw_anc_langs, list):
             for l in raw_anc_langs:
@@ -1119,7 +999,6 @@ class PF2eGenerator:
         if "common" not in assigned_lower:
             add_language("Common")
 
-        # 2. Bonus languages from positive Intelligence modifier
         int_mod = mods.get("int", 0)
         if int_mod > 0:
             for _ in range(int_mod):
@@ -1144,7 +1023,7 @@ class PF2eGenerator:
             archetype=clean_arch_input or (archetype_data["name"] if archetype_data and level >= 2 else None),
             archetype_description=clean_pf2e_text(archetype_data.get("level_2_dedication", {}).get("description", "")) if archetype_data else None,
             size=anc.get("size", "med"),
-            speed=anc.get("speed", 25) + bonus_speed + bonus_speed,
+            speed=anc.get("speed", 25) + bonus_speed,
             attributes=AttributeModifiers(**mods),
             defenses=Defenses(
                 ac=calculated_ac,
@@ -1194,7 +1073,7 @@ class PF2eGenerator:
             list(self.backgrounds.values())[0]
         )
 
-        # 2. Extract current attributes (supporting both short and full field names)
+        # 2. Extract current attributes
         raw_attrs = current_char.get("attributes", {})
         attr_alias = {
             "str": ["str", "strength"],
@@ -1252,8 +1131,8 @@ class PF2eGenerator:
         will_prof = self._calc_prof(will_rank, target_level, mods["wis"])
         perception_prof = self._calc_prof(perception_rank, target_level, mods["wis"])
 
-        # 4. Equipment & Recalculated HP
-        current_sub = (current_char.get("subclass") or {}).get("name", "")
+        # 4. Equipment & Weapons Locking
+        current_sub = (current_char.get("subclass") or {}).get("name", "") if isinstance(current_char.get("subclass"), dict) else ""
         current_arch = current_char.get("archetype") or ""
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
@@ -1265,45 +1144,74 @@ class PF2eGenerator:
             archetype_name=current_arch
         )
 
-        if target_level >= 5:
-            for strike in equipment_loadout.strikes:
-                extra_prof = 2
-                strike.attack_bonus += extra_prof
-                strike.map_second += extra_prof
-                strike.map_third += extra_prof
-        if target_level >= 7:
-            for strike in equipment_loadout.strikes:
-                # Weapon Specialization (+2 damage)
-                if "+2" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
-                    strike.damage_dice = f"{strike.damage_dice} + 2" 
+        # Preserve and scale equipped strikes instead of re-rolling random weapons
+        raw_eq = current_char.get("equipment")
+        if isinstance(raw_eq, dict):
+            raw_strikes = raw_eq.get("strikes")
+        elif hasattr(raw_eq, "strikes"):
+            raw_strikes = raw_eq.strikes
+        else:
+            raw_strikes = current_char.get("strikes") or current_char.get("weapons")
+
+        if raw_strikes:
+            preserved_strikes = []
+            for s in raw_strikes:
+                s_dict = s if isinstance(s, dict) else (s.__dict__ if hasattr(s, "__dict__") else {})
+                name = s_dict.get("name", "")
+                if not name or name.startswith("Elemental Blast"):
+                    continue
+
+                is_ranged = "ranged" in name.lower() or "bow" in name.lower() or "crossbow" in name.lower()
+                ab_mod = mods.get("dex" if is_ranged else "str", 0)
+
+                base_prof_rank = 4 if cls["name"].lower() == "fighter" else 2
+                if target_level >= 5 and cls["name"].lower() in ["fighter", "gunslinger"]:
+                    base_prof_rank = 6
+
+                item_bonus = 1 if target_level >= 2 else 0
+                new_atk = base_prof_rank + target_level + ab_mod + item_bonus
+
+                dmg_dice = s_dict.get("damage_dice", "1d8")
+                if target_level >= 7 and "+ 2" not in dmg_dice and "+2" not in dmg_dice:
+                    dmg_dice = f"{dmg_dice} + 2"
+
+                preserved_strikes.append(Strike(
+                    name=name,
+                    attack_bonus=new_atk,
+                    map_second=new_atk - (4 if "Agile" in s_dict.get("traits", []) else 5),
+                    map_third=new_atk - (8 if "Agile" in s_dict.get("traits", []) else 10),
+                    damage_dice=dmg_dice,
+                    damage_type=s_dict.get("damage_type", "Physical"),
+                    traits=s_dict.get("traits", [])
+                ))
+
+            if preserved_strikes:
+                equipment_loadout.strikes = preserved_strikes
 
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
         base_hp = anc.get("hp", 8) + ((class_hp_per_lvl + con_mod) * target_level)
-        bonus_speed = 0
+
         # Kineticist Elemental Blasts
         if cls["name"].lower() == "kineticist":
-            blast_lvl = locals().get("target_level", locals().get("level", 1))
-            con_mod = mods.get("con", 0)
-            str_mod = mods.get("str", 0)
-            dex_mod = mods.get("dex", 0)
-            prof = 2 + blast_lvl  # Trained
+            blast_lvl = target_level
+            prof = 2 + blast_lvl
             if blast_lvl >= 5:
-                prof += 2          # Expert at lvl 5
-            
-            melee_bonus = prof + con_mod
-            ranged_bonus = prof + dex_mod
-            
+                prof += 2
+
+            melee_bonus = prof + mods.get("con", 0)
+            ranged_bonus = prof + mods.get("dex", 0)
+
             dice_count = 2 if blast_lvl >= 5 else 1
-            melee_str_bonus = str_mod if str_mod > 0 else 0
+            melee_str_bonus = mods.get("str", 0) if mods.get("str", 0) > 0 else 0
             spec_bonus = 2 if blast_lvl >= 7 else 0
-            
-            melee_dmg_bonus = con_mod + melee_str_bonus + spec_bonus
-            ranged_dmg_bonus = con_mod + spec_bonus
-            
+
+            melee_dmg_bonus = mods.get("con", 0) + melee_str_bonus + spec_bonus
+            ranged_dmg_bonus = mods.get("con", 0) + spec_bonus
+
             melee_dmg_str = f"{dice_count}d8+{melee_dmg_bonus}" if melee_dmg_bonus > 0 else f"{dice_count}d8"
             ranged_dmg_str = f"{dice_count}d6+{ranged_dmg_bonus}" if ranged_dmg_bonus > 0 else f"{dice_count}d6"
-            
+
             melee_blast = Strike(
                 name="Elemental Blast (Melee)",
                 attack_bonus=melee_bonus,
@@ -1322,14 +1230,13 @@ class PF2eGenerator:
                 damage_type="Bludgeoning / Piercing / Slashing (60 ft)",
                 traits=["Impulse", "Infusion", "Kinetic", "Magical", "Primal"]
             )
-            # Remove any existing elemental blasts first to avoid duplicates on level transition
             equipment_loadout.strikes = [s for s in equipment_loadout.strikes if not s.name.startswith("Elemental Blast")]
             equipment_loadout.strikes.insert(0, ranged_blast)
             equipment_loadout.strikes.insert(0, melee_blast)
 
         total_hp = max(1, base_hp)
 
-        # 5. Resolve Archetype (respect existing choice or select new dedication on level up)
+        # 5. Resolve Archetype
         archetype_data = None
         existing_arch_name = current_char.get("archetype")
         clean_target_arch = archetype_name.strip() if archetype_name and archetype_name.strip().lower() not in ["", "any", "any archetype", "none"] else None
@@ -1348,7 +1255,7 @@ class PF2eGenerator:
 
         # 6. Preserve and advance feats
         existing_feats_raw = current_char.get("feats", [])
-        chosen_feats: List[FeatSummary] = [FeatSummary(**f) for f in existing_feats_raw]
+        chosen_feats: List[FeatSummary] = [FeatSummary(**f) if isinstance(f, dict) else f for f in existing_feats_raw]
         existing_feat_names = {f.name for f in chosen_feats}
         cls_name_lower = cls["name"].lower()
 
@@ -1578,13 +1485,12 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add("Weapon Specialization")
 
-                skill_ranks = {s.name: s.rank for s in (all_skills if "all_skills" in locals() else [])}
                 skill_feats_6 = [
                     f for f in self.feats
                     if f.get("category") == "skill"
                     and f.get("level") in [1, 2, 4, 6]
                 ]
-                sf6 = pick_weighted_feat(skill_feats_6, cls["name"], existing_feat_names, skill_ranks, mods, 6)
+                sf6 = pick_weighted_feat(skill_feats_6, cls["name"], existing_feat_names, {}, mods, 6)
                 if sf6:
                     resolved_name6 = resolve_feat_subchoices(sf6["name"], existing_feat_names)
                     chosen_feats.append(FeatSummary(
@@ -1600,16 +1506,26 @@ class PF2eGenerator:
         if any(f.name.lower() == "toughness" for f in chosen_feats):
             total_hp += target_level
 
-        # 7. Skills
+        # 7. Preserve and resolve skills & lore
+        existing_skills_data = current_char.get("skills") or current_char.get("all_skills")
+        existing_lore_name = current_char.get("lore")
+        if not existing_lore_name and existing_skills_data:
+            for sk in existing_skills_data:
+                sk_dict = sk if isinstance(sk, dict) else (sk.__dict__ if hasattr(sk, "__dict__") else {})
+                if sk_dict.get("is_lore") or "Lore" in sk_dict.get("name", ""):
+                    existing_lore_name = sk_dict.get("name")
+                    break
+
         all_skills = resolve_character_skills(
             class_name=cls["name"],
             background_data=bg,
             attribute_mods=mods,
             level=target_level,
-            feats=chosen_feats
+            feats=chosen_feats,
+            existing_skills=existing_skills_data,
+            existing_lore=existing_lore_name
         )
 
-        # Resolve Subclass / Eidolon info before spells & focus
         raw_sub = current_char.get("subclass")
         if raw_sub and raw_sub.get("name"):
             subclass_obj = SubclassSummary(**raw_sub)
@@ -1625,7 +1541,6 @@ class PF2eGenerator:
 
         sub_name = subclass_obj.name if subclass_obj else None
 
-        # 8. Spellcasting
         spellcasting_data = resolve_spellcasting(
             class_name=cls["name"],
             attribute_mods=mods,
@@ -1641,7 +1556,6 @@ class PF2eGenerator:
             level=target_level
         )
 
-        # 9. Companions (Preserve identity and scale stats in place)
         raw_companion = current_char.get("companion")
         if raw_companion and raw_companion.get("name"):
             scaled_dict = scale_existing_companion(
@@ -1659,58 +1573,8 @@ class PF2eGenerator:
                 level=target_level
             )
 
-        # 10. Assemble and Return
         anc_desc = clean_pf2e_text(anc.get("description", "")) or current_char.get("ancestry_description", "")
 
-        # Resolve Languages (de-duplicated & distinct)
-        COMMON_LANG_POOL = [
-            "Common", "Dwarven", "Elven", "Gnomish", "Goblin", "Halfling", 
-            "Orcish", "Draconic", "Sylvan", "Undercommon", "Jotun", "Necril", 
-            "Aklo", "Celestial", "Abyssal", "Infernal", "Shadowtongue", "Iruxi"
-        ]
-
-        assigned_langs = []
-        assigned_lower = set()
-
-        def add_language(lang_name: str):
-            clean_name = (lang_name or "").strip().title()
-            if not clean_name:
-                return
-            if clean_name.lower() in assigned_lower:
-                # Collision: pick a distinct fallback not yet assigned
-                fallback_choices = [l for l in COMMON_LANG_POOL if l.lower() not in assigned_lower]
-                if fallback_choices:
-                    chosen = random.choice(fallback_choices)
-                    assigned_langs.append(chosen)
-                    assigned_lower.add(chosen.lower())
-            else:
-                assigned_langs.append(clean_name)
-                assigned_lower.add(clean_name.lower())
-
-        # 1. Ancestry base languages
-        raw_anc_langs = anc.get("languages", ["Common"])
-        if isinstance(raw_anc_langs, list):
-            for l in raw_anc_langs:
-                add_language(l)
-        else:
-            add_language("Common")
-
-        if "common" not in assigned_lower:
-            add_language("Common")
-
-        # 2. Bonus languages from positive Intelligence modifier
-        int_mod = mods.get("int", 0)
-        if int_mod > 0:
-            for _ in range(int_mod):
-                avail_pool = [l for l in COMMON_LANG_POOL if l.lower() not in assigned_lower]
-                if avail_pool:
-                    chosen_bonus = random.choice(avail_pool)
-                    assigned_langs.append(chosen_bonus)
-                    assigned_lower.add(chosen_bonus.lower())
-
-        character_languages = assigned_langs
-
-        # 7. Preserve and scale Languages on level up
         existing_langs = list(current_char.get("languages") or ["Common"])
         lang_set_lower = {l.lower() for l in existing_langs}
         old_int = raw_attrs.get("int", raw_attrs.get("intelligence", 0))
@@ -1732,7 +1596,6 @@ class PF2eGenerator:
                     lang_set_lower.add(chosen.lower())
         char_languages = existing_langs
 
-        # Carry over companion and additional partners across level up
         existing_companion = companion_data
 
         raw_extra_partners = current_char.get("additional_partners") or []
@@ -1742,7 +1605,6 @@ class PF2eGenerator:
             for p in raw_extra_partners
         ]
 
-        # Check if a newly gained archetype unlocks an additional companion at level 2+
         all_partner_types = [
             (existing_companion.creature_type or "").lower() if existing_companion else ""
         ] + [
