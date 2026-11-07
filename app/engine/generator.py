@@ -17,7 +17,7 @@ from app.engine.models import (
 from app.engine.names import generate_ancestry_name
 from app.engine.equipment import resolve_equipment
 from app.engine.skills import resolve_character_skills
-from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_weight
+from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_weight, extract_gate_elements, is_kineticist_feat_allowed
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
 from app.engine.subclasses import resolve_heritage, resolve_subclass, BARBARIAN_ANIMAL_CHOICES
@@ -393,10 +393,15 @@ class PF2eGenerator:
         else:
             heritage_data = resolve_heritage(anc["name"])
 
+        cls_name_lower = cls["name"].lower()
         if subclass_name and str(subclass_name).strip() and str(subclass_name).strip().lower() not in ["none", ""]:
             subclass_data = {"name": str(subclass_name).strip(), "title": "Subclass", "description": ""}
         else:
             subclass_data = resolve_subclass(cls["name"])
+
+        sub_n_val = subclass_data.get("name", "") if isinstance(subclass_data, dict) else getattr(subclass_data, "name", "")
+        gate_elements = extract_gate_elements(sub_n_val) if cls_name_lower == "kineticist" else set()
+        
 
         resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
         raw_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else ""
@@ -463,7 +468,7 @@ class PF2eGenerator:
                 mods[attr] = 4
 
         if not archetype_data and use_dedication and level >= 2:
-            archetype_data = pick_archetype(cls["name"], {}, mods)
+            archetype_data = pick_archetype(cls["name"], {}, mods, getattr(self, "feats", None))
 
         if level >= 5:
             lvl5_boosts_applied: Set[str] = set()
@@ -613,6 +618,7 @@ class PF2eGenerator:
         total_hp = max(1, base_hp)
 
         cls_name_lower = cls["name"].lower()
+        gate_elements = set()
         chosen_feats: List[FeatSummary] = []
         bg_desc = bg.get("description", "")
         bg_feat_name = extract_bg_feat(bg_desc, self.feats)
@@ -714,6 +720,7 @@ class PF2eGenerator:
             if f.get("category") == "class"
             and f.get("level") == 1
             and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+            and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
         ]
         if lvl1_feats:
             f1 = pick_weighted_feat(lvl1_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 1) or random.choice(lvl1_feats)
@@ -745,6 +752,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") == 2
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
                 ]
                 if lvl2_feats:
                     f2 = pick_weighted_feat(lvl2_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 2) or random.choice(lvl2_feats)
@@ -832,6 +840,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") in [1, 2, 4]
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
                     and f["name"] not in [cf.name for cf in chosen_feats]
                 ]
                 if lvl4_feats:
@@ -912,6 +921,7 @@ class PF2eGenerator:
                 if f.get("category") == "class"
                 and f.get("level") in (4, 6)
                 and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
             ]
             if lvl6_class_feats:
                 cf6 = pick_weighted_feat(lvl6_class_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 6) or random.choice(lvl6_class_feats)
@@ -1256,6 +1266,7 @@ class PF2eGenerator:
 
         # 4. Equipment & Weapons Locking
         current_sub = (current_char.get("subclass") or {}).get("name", "") if isinstance(current_char.get("subclass"), dict) else ""
+        gate_elements = extract_gate_elements(current_sub) if cls_name_lower == "kineticist" else set()
         current_arch = current_char.get("archetype") or ""
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
@@ -1394,7 +1405,7 @@ class PF2eGenerator:
             archetype_data = resolve_dynamic_archetype(clean_target_arch, self.feats)
             resolved_arch_name = clean_target_arch
         elif use_dedication and target_level >= 2:
-            archetype_data = pick_archetype(cls["name"], {}, mods)
+            archetype_data = pick_archetype(cls["name"], {}, mods, getattr(self, "feats", None))
             resolved_arch_name = archetype_data["name"] if archetype_data else None
         else:
             resolved_arch_name = None
@@ -1445,6 +1456,7 @@ class PF2eGenerator:
                         if f.get("category") == "class"
                         and f.get("level") == 2
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
                         and f["name"] not in existing_feat_names
                     ]
                     if lvl2_feats:
@@ -1525,6 +1537,7 @@ class PF2eGenerator:
                         if f.get("category") == "class"
                         and f.get("level") in [1, 2, 4]
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
                         and f["name"] not in existing_feat_names
                     ]
                     if lvl4_feats:
@@ -1612,6 +1625,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") in (4, 6)
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
                     and f["name"] not in existing_feat_names
                 ]
                 if lvl6_class_feats:

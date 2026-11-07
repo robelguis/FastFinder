@@ -345,32 +345,48 @@ def is_archetype_eligible(
 def pick_archetype(
     excluded_class: str,
     skill_ranks: Dict[str, int] = None,
-    mods: Dict[str, int] = None
+    mods: Dict[str, int] = None,
+    all_feats: List[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     exc = excluded_class.lower()
     skill_ranks = skill_ranks or {}
     mods = mods or {}
 
+    # If feats compendium is provided, sample from all valid dedications
+    if all_feats:
+        candidate_names = []
+        for f in all_feats:
+            fname = f.get("name", "")
+            ftraits = [t.lower() for t in f.get("traits", [])]
+            if "dedication" in fname.lower() or "dedication" in ftraits:
+                arch_clean = fname.replace(" Dedication", "").strip()
+                if arch_clean.lower() == exc or arch_clean.lower().startswith(exc):
+                    continue
+                candidate_names.append(arch_clean)
+
+        random.shuffle(candidate_names)
+        for cand in candidate_names:
+            arch_obj = resolve_dynamic_archetype(cand, all_feats)
+            if arch_obj:
+                return arch_obj
+
+    # Fallback to curated catalog
     eligible = [
         k for k in ARCHETYPES_CATALOG.keys()
         if is_archetype_eligible(k, skill_ranks, mods, exc)
     ]
     if not eligible:
-        # Fallback to any non-class-matching archetype
         eligible = [k for k in ARCHETYPES_CATALOG.keys() if not k.startswith(exc)]
 
     chosen_key = random.choice(eligible)
     arch = dict(ARCHETYPES_CATALOG[chosen_key])
     arch["key"] = chosen_key
-    
     if chosen_key == "champion-multiclass":
         arch["level_4_feats"] = list(CHAMPION_FEATS_POOL) + arch["level_4_feats"]
     elif chosen_key == "rogue-multiclass":
         arch["level_4_feats"] = list(ROGUE_FEATS_POOL) + arch["level_4_feats"]
 
     return arch
-
-
 # --- DYNAMIC COMPENDIUM ARCHETYPES (250+ Feats) ---
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 

@@ -135,7 +135,7 @@ def load_compendium():
                     "cost_gp": int(price),
                     "bulk": item.get("bulk", "L"),
                     "traits": item.get("traits", []),
-                    "description": item.get("description", "")[:120]
+                    "description": item.get("description", "").strip()
                 })
 
 load_compendium()

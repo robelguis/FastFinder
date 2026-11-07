@@ -208,8 +208,8 @@ def resolve_character_skills(
         if rank_val > 0:
             prof_bonus = rank_val + target_lvl
         elif has_untrained_improvisation:
-            # Remaster: add level at 7+, half level (rounded down) below 7
-            prof_bonus = target_lvl if target_lvl >= 7 else (target_lvl // 2)
+            # PF2e Remaster: add full character level to untrained checks at all levels
+            prof_bonus = target_lvl
         else:
             prof_bonus = 0
 
@@ -230,7 +230,7 @@ def resolve_character_skills(
     if lore_rank > 0:
         lore_prof = lore_rank + target_lvl
     elif has_untrained_improvisation:
-        lore_prof = target_lvl if target_lvl >= 7 else (target_lvl // 2)
+        lore_prof = target_lvl
     else:
         lore_prof = 0
     lore_total = lore_prof + norm_mods.get("int", 0)

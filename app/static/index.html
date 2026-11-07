@@ -507,6 +507,21 @@
       cursor: pointer !important;
     }
     
+
+    /* Ensure no truncation on items, consumables, or gear descriptions */
+    .gear-summary, .gear-card, .consumables-list, .consumable-pill, .equipment-entry, #gearContainer {
+      max-height: none !important;
+      overflow: visible !important;
+      white-space: normal !important;
+      word-break: break-word !important;
+      text-overflow: unset !important;
+      -webkit-line-clamp: unset !important;
+    }
+    .gear-summary p, #gearContainer p, .consumable-pill div {
+      white-space: normal !important;
+      overflow: visible !important;
+    }
+
 </style>
 </head>
 <body>
