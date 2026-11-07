@@ -72,6 +72,28 @@ CLASS_PRIORITY_SKILLS: Dict[str, List[str]] = {
     "gunslinger": ["Acrobatics", "Crafting", "Intimidation"]
 }
 
+
+KINETICIST_ELEMENTS = {"air", "earth", "fire", "metal", "water", "wood"}
+
+def extract_gate_elements(subclass_name: str) -> set:
+    """Extract set of active elements from a Kineticist Kinetic Gate subclass name."""
+    if not subclass_name:
+        return set()
+    name_lower = subclass_name.lower()
+    return {elem for elem in KINETICIST_ELEMENTS if elem in name_lower}
+
+def is_kineticist_feat_allowed(feat: Dict[str, Any], gate_elements: set) -> bool:
+    """Check if a Kineticist impulse or class feat is compatible with active gate elements."""
+    traits = {t.lower() for t in feat.get("traits", [])}
+    required_elements = traits.intersection(KINETICIST_ELEMENTS)
+    
+    # Non-elemental kineticist feats (e.g. Weapon Infusion, Versatile Blast) are universal
+    if not required_elements:
+        return True
+        
+    # All elemental traits on the feat/impulse must be in the Kineticist's gate
+    return required_elements.issubset(gate_elements)
+
 def check_feat_prerequisites(
     feat: Dict[str, Any],
     skill_ranks: Dict[str, int],
