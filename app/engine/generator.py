@@ -379,8 +379,10 @@ class PF2eGenerator:
 
         if class_name and class_name.lower() in self.classes:
             cls = self.classes[class_name.lower()]
+            cls_name_lower = (cls["name"] if isinstance(cls, dict) else str(cls)).lower()
         else:
             cls = random.choice(list(self.classes.values()))
+            cls_name_lower = (cls["name"] if isinstance(cls, dict) else str(cls)).lower()
 
         if background_name and background_name.strip():
             matched_bg = next((b for b in self.backgrounds.values() if b["name"].lower() == background_name.strip().lower()), None)
@@ -1193,12 +1195,11 @@ class PF2eGenerator:
             (c for c in self.classes.values() if c["name"].lower() == cls_name),
             list(self.classes.values())[0]
         )
+        cls_name_lower = (cls["name"] if isinstance(cls, dict) else str(cls)).lower()
         bg = self.backgrounds.get(bg_name) or next(
             (b for b in self.backgrounds.values() if b["name"].lower() == bg_name),
             list(self.backgrounds.values())[0]
         )
-
-        # 2. Extract current attributes
         raw_attrs = current_char.get("attributes", {})
         attr_alias = {
             "str": ["str", "strength"],
