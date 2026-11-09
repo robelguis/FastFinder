@@ -133,9 +133,17 @@ EIDOLON_CATALOG: Dict[str, Dict[str, Any]] = {
     }
 }
 
-def resolve_eidolon(master_hp: int, level: int = 1) -> PartnerCreatureData:
-    key = random.choice(list(EIDOLON_CATALOG.keys()))
-    cfg = EIDOLON_CATALOG[key]
+def resolve_eidolon(master_hp: int = 20, level: int = 1, eidolon_type: Optional[str] = None) -> PartnerCreatureData:
+    chosen_key = None
+    if eidolon_type:
+        clean = eidolon_type.lower()
+        for k, v in EIDOLON_CATALOG.items():
+            if k in clean or clean in k or v.get("sub_type", "").lower() in clean or clean in v.get("sub_type", "").lower():
+                chosen_key = k
+                break
+    if not chosen_key:
+        chosen_key = random.choice(list(EIDOLON_CATALOG.keys()))
+    cfg = EIDOLON_CATALOG[chosen_key]
 
     name = random.choice(cfg["name_options"])
     
@@ -181,7 +189,7 @@ def resolve_eidolon(master_hp: int, level: int = 1) -> PartnerCreatureData:
 
     return PartnerCreatureData(
         name=f"{name} ({cfg['sub_type']})",
-        creature_type="Eidolon",
+        creature_type=cfg.get("sub_type", "Eidolon"),
         sub_type=cfg["sub_type"],
         stage=f"{cfg['tradition']} Bond",
         size=cfg["size"],

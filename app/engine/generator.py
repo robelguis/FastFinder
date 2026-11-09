@@ -1046,10 +1046,16 @@ class PF2eGenerator:
         all_feat_str = " ".join([f.name.lower() for f in chosen_feats])
 
         if cls_name_lower == "summoner":
-            eidolon_partner = resolve_eidolon(master_hp=total_hp, level=level)
+            sub_type = subclass_data.get("name", "") if isinstance(subclass_data, dict) else getattr(subclass_data, "name", "")
+            eidolon_partner = resolve_eidolon(master_hp=total_hp, level=level, eidolon_type=sub_type)
             collected_partners.append(eidolon_partner)
-            if not subclass_data and eidolon_partner:
-                subclass_data = {"name": eidolon_partner.name, "title": "Eidolon", "description": f"{eidolon_partner.creature_type} partner"}
+            # Ensure character subclass matches the resolved eidolon partner exactly
+            if eidolon_partner:
+                # Extract specific subtype from partner (e.g., "Dragon Eidolon", "Anger Phantom Eidolon")
+                e_type = getattr(eidolon_partner, "creature_type", "")
+                if not e_type or e_type == "Eidolon":
+                    e_type = getattr(eidolon_partner, "stage", "Eidolon")
+                subclass_data = {"name": e_type, "title": "Eidolon", "description": f"{e_type} tactical partner"}
         elif cls_name_lower == "inventor":
             collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
         elif cls_name_lower == "witch":
