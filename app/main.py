@@ -24,7 +24,7 @@ generator = PF2eGenerator()
 
 class LevelUpPayload(BaseModel):
     character: Dict[str, Any]
-    target_level: int = Field(..., ge=1, le=7)
+    target_level: int = Field(..., ge=1, le=8)
     use_dedication: bool = False
     archetype: Optional[str] = None
 
