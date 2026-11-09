@@ -1,3 +1,62 @@
+
+ANCESTRY_BG_MAP = {
+    "dwarf": ["dwarf", "dwarven"],
+    "elf": ["elf", "elven"],
+    "gnome": ["gnome", "gnomish"],
+    "goblin": ["goblin"],
+    "halfling": ["halfling"],
+    "human": ["human"],
+    "orc": ["orc", "orcish"],
+    "kobold": ["kobold"],
+    "leshy": ["leshy"],
+    "kashrishi": ["kashrishi"],
+    "catfolk": ["catfolk", "amurrun"],
+    "lizardfolk": ["lizardfolk", "iruxi"],
+    "ratfolk": ["ratfolk", "ysoki"],
+    "tengu": ["tengu"],
+    "anadi": ["anadi"],
+    "automaton": ["automaton"],
+    "conrasu": ["conrasu"],
+    "fetchling": ["fetchling"],
+    "fleshwarp": ["fleshwarp"],
+    "goloma": ["goloma"],
+    "grippli": ["grippli"],
+    "poppet": ["poppet"],
+    "shisk": ["shisk"],
+    "shoony": ["shoony"],
+    "skeleton": ["skeleton"],
+    "strix": ["strix"],
+    "vanara": ["vanara"],
+    "vishkanya": ["vishkanya"],
+    "nagaji": ["nagaji"]
+}
+
+def is_background_compatible_with_ancestry(bg_data: dict, ancestry_name: str) -> bool:
+    anc_lower = ancestry_name.lower()
+    bg_name = bg_data.get("name", "").lower()
+    bg_lore = bg_data.get("trained_lore", "").lower()
+    name_words = [w.strip("(),.-") for w in bg_name.split()]
+
+    bg_restricted_ancestry = None
+    for target_anc, aliases in ANCESTRY_BG_MAP.items():
+        for alias in aliases:
+            if f"{alias} lore" in bg_lore or alias in name_words:
+                bg_restricted_ancestry = target_anc
+                break
+        if bg_restricted_ancestry:
+            break
+
+    # If background is universal, it is always compatible
+    if not bg_restricted_ancestry:
+        return True
+
+    # If restricted, the character's ancestry must match
+    for alias in ANCESTRY_BG_MAP.get(bg_restricted_ancestry, [bg_restricted_ancestry]):
+        if alias in anc_lower:
+            return True
+
+    return False
+
 import json
 import re
 import random
@@ -388,7 +447,12 @@ class PF2eGenerator:
             matched_bg = next((b for b in self.backgrounds.values() if b["name"].lower() == background_name.strip().lower()), None)
             bg = matched_bg if matched_bg else random.choice(list(self.backgrounds.values()))
         else:
-            bg = random.choice(list(self.backgrounds.values()))
+            char_anc_name = anc.get("name", "") if isinstance(anc, dict) else getattr(anc, "name", "")
+            eligible_bgs = [
+                b for b in self.backgrounds.values()
+                if is_background_compatible_with_ancestry(b, char_anc_name)
+            ]
+            bg = random.choice(eligible_bgs) if eligible_bgs else random.choice(list(self.backgrounds.values()))
 
         if heritage_name and str(heritage_name).strip() and str(heritage_name).strip().lower() not in ["none", ""]:
             heritage_data = {"name": str(heritage_name).strip(), "description": ""}
