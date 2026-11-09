@@ -370,7 +370,7 @@ class PF2eGenerator:
         heritage_name: Optional[str] = None,
         subclass_name: Optional[str] = None
     ) -> CharacterSheet:
-        level = max(1, min(7, int(level)))
+        level = max(1, min(8, int(level)))
 
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
@@ -979,6 +979,42 @@ class PF2eGenerator:
                 description="You have learned how to inflict greater injuries with your favored weapons. You deal 2 additional damage with weapons and unarmed attacks in which you are trained."
             ))
 
+        
+        if level >= 8:
+            owned_names = {f.name for f in chosen_feats}
+            arch_feats_8 = []
+            if archetype_data:
+                arch_feats_8 = [f for f in archetype_data.get("level_8_feats", []) if f["name"] not in owned_names]
+
+            if arch_feats_8 and random.random() < 0.6:
+                af8 = random.choice(arch_feats_8)
+                chosen_feats.append(FeatSummary(
+                    id=af8["id"],
+                    name=af8["name"],
+                    category=f"Archetype Feat (Level 8 - {archetype_data['name']})",
+                    action_cost=None,
+                    traits=["archetype"],
+                    description=clean_pf2e_text(af8["description"])
+                ))
+            else:
+                lvl8_class_feats = [
+                    f for f in self.feats
+                    if f.get("category") == "class"
+                    and f.get("level") in (6, 8)
+                    and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                    and f["name"] not in owned_names
+                ]
+                if lvl8_class_feats:
+                    cf8 = random.choice(lvl8_class_feats)
+                    chosen_feats.append(FeatSummary(
+                        id=cf8["id"],
+                        name=cf8["name"],
+                        category="Class Feat (Level 8)",
+                        action_cost=None,
+                        traits=[cls_name_lower],
+                        description=clean_pf2e_text(cf8["description"])
+                    ))
+
         planned_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else None
         if planned_arch:
             arch_lower = planned_arch.lower()
@@ -1179,7 +1215,7 @@ class PF2eGenerator:
         use_dedication: bool = False,
         archetype_name: Optional[str] = None
     ) -> CharacterSheet:
-        target_level = max(1, min(7, int(target_level)))
+        target_level = max(1, min(8, int(target_level)))
         old_level = int(current_char.get("level", 1))
 
         # 1. Recover base info and core data
@@ -1619,6 +1655,70 @@ class PF2eGenerator:
                             description=clean_pf2e_text(cf5["description"])
                         ))
                         existing_feat_names.add(cf5["name"])
+
+            
+            elif lvl == 7:
+                # Level 7: General Feat & Weapon Specialization
+                if "Weapon Specialization" not in existing_feat_names:
+                    chosen_feats.append(FeatSummary(
+                        id="class-feat-weapon-specialization",
+                        name="Weapon Specialization",
+                        category="Class Feature (Level 7)",
+                        action_cost=None,
+                        traits=[cls_name_lower],
+                        description="You deal 2 additional damage with weapons and unarmed attacks in which you are trained."
+                    ))
+                    existing_feat_names.add("Weapon Specialization")
+                
+                gen_feats_7 = [f for f in self.feats if f.get("category") == "general" and f.get("level", 1) <= 7 and f["name"] not in existing_feat_names]
+                if gen_feats_7:
+                    gf7 = random.choice(gen_feats_7)
+                    chosen_feats.append(FeatSummary(
+                        id=gf7["id"],
+                        name=gf7["name"],
+                        category="General Feat (Level 7)",
+                        action_cost=None,
+                        traits=["general"],
+                        description=clean_pf2e_text(gf7["description"])
+                    ))
+                    existing_feat_names.add(gf7["name"])
+
+            elif lvl == 8:
+                # Level 8: Class Feat (or Archetype Feat) & Skill Feat
+                arch_feats_8 = []
+                if archetype_data:
+                    arch_feats_8 = [f for f in archetype_data.get("level_8_feats", []) if f["name"] not in existing_feat_names]
+                
+                if arch_feats_8 and random.random() < 0.6:
+                    af8 = random.choice(arch_feats_8)
+                    chosen_feats.append(FeatSummary(
+                        id=af8["id"],
+                        name=af8["name"],
+                        category=f"Archetype Feat (Level 8 - {archetype_data['name']})",
+                        action_cost=None,
+                        traits=["archetype"],
+                        description=clean_pf2e_text(af8["description"])
+                    ))
+                    existing_feat_names.add(af8["name"])
+                else:
+                    lvl8_class_feats = [
+                        f for f in self.feats
+                        if f.get("category") == "class"
+                        and f.get("level") in (6, 8)
+                        and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                        and f["name"] not in existing_feat_names
+                    ]
+                    if lvl8_class_feats:
+                        cf8 = random.choice(lvl8_class_feats)
+                        chosen_feats.append(FeatSummary(
+                            id=cf8["id"],
+                            name=cf8["name"],
+                            category="Class Feat (Level 8)",
+                            action_cost=None,
+                            traits=[cls_name_lower],
+                            description=clean_pf2e_text(cf8["description"])
+                        ))
+                        existing_feat_names.add(cf8["name"])
 
             elif lvl == 6:
                 lvl6_class_feats = [

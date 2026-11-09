@@ -563,6 +563,8 @@
             <option value="4">Level 4</option>
             <option value="5">Level 5</option>
             <option value="6">Level 6</option>
+              <option value="7">Level 7</option>
+              <option value="8">Level 8</option>
                     <option value="7">Level 7</option>
           </select>
         </div>
@@ -618,6 +620,8 @@
               <option value="4">4</option>
               <option value="5">5</option>
               <option value="6">6</option>
+              <option value="7">7</option>
+              <option value="8">8</option>
               <option value="7">7</option>
             </select>
             <button type="button" id="btnLevelUp" class="btn-level-step" onclick="handleLevelStep(1)" title="Level Up">+</button>
@@ -1055,7 +1059,7 @@
       const lvl = parseInt(level, 10) || 1;
       if (!btn) return;
 
-      if (lvl >= 7) {
+      if (lvl >= 8) {
         btn.disabled = true;
         btn.textContent = "Max Level";
         btn.style.display = "none";
@@ -1544,7 +1548,7 @@
         btnDown.textContent = "-";
       }
       if (btnUp) {
-        btnUp.disabled = (lvl >= 7);
+        btnUp.disabled = (lvl >= 8);
         btnUp.textContent = "+";
       }
       if (sel) {
@@ -1560,7 +1564,7 @@
       }
       const currentLvl = parseInt(char.level, 10) || 1;
       const targetLvl = currentLvl + delta;
-      if (targetLvl < 1 || targetLvl > 7) return;
+      if (targetLvl < 1 || targetLvl > 8) return;
       await applyTargetLevel(targetLvl);
     }
 

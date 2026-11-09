@@ -80,7 +80,7 @@ async def generate_character(
 async def level_up_endpoint(payload: LevelUpPayload):
     char_data = payload.character
     current_level = int(char_data.get("level", 1))
-    target = max(1, min(7, int(payload.target_level)))
+    target = max(1, min(8, int(payload.target_level)))
 
     if target == current_level:
         return char_data
