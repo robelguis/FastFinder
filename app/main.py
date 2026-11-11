@@ -1,16 +1,15 @@
-from app.engine.subclasses import CLASS_SUBCLASSES
-from app.engine.archetypes import ARCHETYPES_CATALOG, get_all_archetype_names
 from pathlib import Path
-from typing import Dict, Any, Optional, List
-from fastapi import FastAPI, Query, HTTPException
-from fastapi.staticfiles import StaticFiles
+from typing import Any, Dict, Optional
+
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from app.engine.archetypes import get_all_archetype_names
+from app.engine.foundry import export_to_foundry_actor
 from app.engine.generator import PF2eGenerator
 from app.engine.subclasses import CLASS_SUBCLASSES
-from app.engine.archetypes import ARCHETYPES_CATALOG, get_all_archetype_names
-from app.engine.foundry import export_to_foundry_actor
 
 app = FastAPI(title="FastFinder PF2e Generator")
 
@@ -30,15 +29,16 @@ class LevelUpPayload(BaseModel):
 
 
 @app.get("/")
-async def root():
+def root():
     return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/api/options")
 def get_options():
-    subclasses_by_class = {}
-    for cls_k, sub_info in CLASS_SUBCLASSES.items():
-        subclasses_by_class[cls_k.lower()] = [o["name"] for o in sub_info.get("options", [])]
+    subclasses_by_class = {
+        cls_k.lower(): [o["name"] for o in sub_info.get("options", [])]
+        for cls_k, sub_info in CLASS_SUBCLASSES.items()
+    }
 
     return {
         "ancestries": sorted([a["name"] for a in generator.ancestries.values()]),
@@ -48,8 +48,9 @@ def get_options():
         "subclasses": subclasses_by_class,
     }
 
+
 @app.get("/api/generate")
-async def generate_character(
+def generate_character(
     name: Optional[str] = None,
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
@@ -60,7 +61,11 @@ async def generate_character(
     dedication: bool = Query(False),
 ):
     try:
-        clean_arch = None if not archetype or archetype.lower() in ["any", "any archetype", "none"] else archetype
+        clean_arch = (
+            None
+            if not archetype or archetype.lower() in ["any", "any archetype", "none"]
+            else archetype.strip()
+        )
         sheet = generator.generate(
             ancestry_name=ancestry,
             class_name=class_name,
@@ -77,7 +82,7 @@ async def generate_character(
 
 
 @app.post("/api/levelup")
-async def level_up_endpoint(payload: LevelUpPayload):
+def level_up_endpoint(payload: LevelUpPayload):
     char_data = payload.character
     current_level = int(char_data.get("level", 1))
     target = max(1, min(9, int(payload.target_level)))
@@ -94,7 +99,11 @@ async def level_up_endpoint(payload: LevelUpPayload):
         locked_arch = str(existing_arch).strip()
     else:
         req_arch = payload.archetype
-        locked_arch = None if not req_arch or req_arch.lower() in ["any", "any archetype", "none"] else req_arch.strip()
+        locked_arch = (
+            None
+            if not req_arch or req_arch.lower() in ["any", "any archetype", "none"]
+            else req_arch.strip()
+        )
 
     # In PF2e, dedication archetypes are level 2+ only
     use_ded = (payload.use_dedication or bool(locked_arch)) if target >= 2 else False
@@ -104,33 +113,46 @@ async def level_up_endpoint(payload: LevelUpPayload):
             char_data,
             target,
             use_dedication=use_ded,
-            archetype_name=locked_arch
+            archetype_name=locked_arch,
         )
         return updated_sheet
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.get("/api/export/foundry")
-async def export_foundry(
+def export_foundry(
     name: Optional[str] = None,
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
+    subclass: Optional[str] = None,
+    background: Optional[str] = None,
+    archetype: Optional[str] = None,
     level: int = Query(1, ge=1, le=9),
     dedication: bool = Query(False),
 ):
     try:
+        clean_arch = (
+            None
+            if not archetype or archetype.lower() in ["any", "any archetype", "none"]
+            else archetype.strip()
+        )
         sheet = generator.generate(
             ancestry_name=ancestry,
             class_name=class_name,
+            subclass_name=subclass,
+            background_name=background,
+            archetype_name=clean_arch,
             char_name=name,
             level=level,
-            use_dedication=dedication,
+            use_dedication=dedication or bool(clean_arch),
         )
         foundry_actor = export_to_foundry_actor(sheet)
-        filename = f"{sheet.name.lower().replace(' ', '_')}_foundry.json"
+
+        # Handle both dict access and object attribute access safely
+        char_name = getattr(sheet, "name", None) or (sheet.get("name") if isinstance(sheet, dict) else "character")
+        filename = f"{char_name.lower().replace(' ', '_')}_foundry.json"
+
         return JSONResponse(
             content=foundry_actor,
             headers={"Content-Disposition": f'attachment; filename="{filename}"'},
