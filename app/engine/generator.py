@@ -1803,6 +1803,42 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add(gf7["name"])
 
+            elif lvl == 9:
+                # Level 9: Ancestry Feat
+                anc_name_lower = (current_char.get("ancestry") or "").lower().strip()
+                lvl9_anc_feats = [
+                    f for f in self.feats
+                    if f.get("category") == "ancestry"
+                    and f.get("level") in (1, 5, 9)
+                    and (not anc_name_lower or anc_name_lower in [t.lower() for t in f.get("traits", [])])
+                    and f["name"] not in existing_feat_names
+                ]
+                if lvl9_anc_feats:
+                    af9 = random.choice(lvl9_anc_feats)
+                    chosen_feats.append(FeatSummary(
+                        id=af9["id"],
+                        name=af9["name"],
+                        category="Ancestry Feat (Level 9)",
+                        action_cost=None,
+                        traits=af9.get("traits", ["ancestry"]),
+                        description=clean_pf2e_text(af9.get("description", ""))
+                    ))
+                    existing_feat_names.add(af9["name"])
+                else:
+                    fallback_af9 = {
+                        "name": f"{anc_name_lower.capitalize()} Resilience",
+                        "description": "Your bond with your heritage deepens, granting increased durability against ancestry-specific hazards."
+                    }
+                    chosen_feats.append(FeatSummary(
+                        id=f"anc-feat-{anc_name_lower}-9",
+                        name=fallback_af9["name"],
+                        category="Ancestry Feat (Level 9)",
+                        action_cost=None,
+                        traits=["ancestry"],
+                        description=fallback_af9["description"]
+                    ))
+                    existing_feat_names.add(fallback_af9["name"])
+
             elif lvl == 8:
                 # Level 8: Class Feat (or Archetype Feat) & Skill Feat
                 arch_feats_8 = []
