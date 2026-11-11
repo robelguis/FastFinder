@@ -522,23 +522,6 @@
       overflow: visible !important;
     }
 
-
-    .portrait-box {
-      border: 1px solid #475569;
-      background: #1e293b;
-      border-radius: 8px;
-      padding: 12px;
-      margin-bottom: 20px;
-      text-align: center;
-    }
-    .portrait-img {
-      max-width: 100%;
-      height: auto;
-      border-radius: 6px;
-      border: 1px solid #334155;
-      display: none;
-    }
-
 </style>
 </head>
 <body>
@@ -604,7 +587,6 @@
           <button class="action-btn" id="foundryBtn" onclick="downloadFoundryJson()">Foundry JSON</button>
           <button class="action-btn" id="printBtn" onclick="window.print()">Print / PDF</button>
             <button type="button" id="btnResetAll" class="btn btn-secondary" onclick="resetEverything()" title="Reset all selections and clear sheet" style="border-color: #475569; color: #94a3b8;"><i class="fas fa-undo"></i> Reset</button>
-            <button type="button" id="btnPortrait" class="btn btn-secondary" onclick="generateVisualRepresentation()" title="Generate character portrait artwork" style="border-color: #6366f1; color: #a5b4fc;"><i class="fas fa-paint-brush"></i> Portrait</button>
         </div>
       </div>
     </div><!-- STANDARD PF2E CHARACTER SHEET CONTAINER -->
@@ -1683,77 +1665,6 @@
       generate();
     }
 
-  
-    async function generateVisualRepresentation(forceReroll = false) {
-      const char = window.currentCharacterData;
-      if (!char) {
-        alert("Please generate a character first.");
-        return;
-      }
-
-      const modal = document.getElementById("portraitModal");
-      const loading = document.getElementById("portraitLoading");
-      const img = document.getElementById("characterPortraitImg");
-      const title = document.getElementById("portraitTitle");
-
-      modal.style.display = "flex";
-      title.textContent = (char.name || "Adventurer") + " - Portrait";
-
-      if (!forceReroll && img.dataset.charName === char.name && img.dataset.charLevel == char.level && img.src) {
-        // Already loaded for this character
-        loading.style.display = "none";
-        img.style.display = "block";
-        return;
-      }
-
-      loading.style.display = "block";
-      img.style.display = "none";
-
-      const name = char.name || "Adventurer";
-      const ancestry = char.ancestry_heritage || char.ancestry || "Hero";
-      const cls = char.class_archetype || char.class_name || "Adventurer";
-      const lvl = char.level || 1;
-
-      // Extract weapons
-      let weapons = "with adventuring gear";
-      if (char.strikes && char.strikes.length > 0) {
-        const weaponNames = char.strikes.slice(0, 2).map(s => (s.weapon || "").replace("+1", "").trim());
-        weapons = "wielding " + weaponNames.join(" and ");
-      }
-
-      // Extract Companion / Eidolon / Familiar
-      let companion = "";
-      if (char.eidolon) {
-        companion = `, accompanied by their bonded eidolon ${char.eidolon.name || "Eidolon"}`;
-      } else if (char.companion) {
-        companion = `, accompanied by their ${char.companion.type || "companion"} ${char.companion.name || ""}`;
-      } else if (char.familiar) {
-        companion = `, accompanied by a familiar named ${char.familiar.name || "Nyx"}`;
-      }
-
-      const visualPrompt = `Fantasy concept art portrait of ${name}, a Level ${lvl} ${ancestry} ${cls} ${weapons}${companion}. ` +
-        `Equipped with detailed traveling pack, belt pouches, and adventurer inventory. ` +
-        `Dynamic pose outdoors with moody atmospheric lighting. ` +
-        `Art style: vibrant blend of Paizo Pathfinder rulebook character illustration, Guild Wars 2 concept art brushstrokes, ` +
-        `and high-contrast Reaper Miniature tabletop edge highlights. High fantasy, cinematic lighting.`;
-
-      const seed = Math.floor(Math.random() * 999999);
-      const url = "https://image.pollinations.ai/p/" + encodeURIComponent(visualPrompt) + "?width=512&height=640&seed=" + seed + "&nologo=true";
-
-      const preloader = new Image();
-      preloader.onload = () => {
-        img.src = url;
-        img.dataset.charName = char.name;
-        img.dataset.charLevel = char.level;
-        loading.style.display = "none";
-        img.style.display = "block";
-      };
-      preloader.onerror = () => {
-        loading.innerHTML = '<span style="color: #f87171;">Could not load image. Please try again.</span>';
-      };
-      preloader.src = url;
-    }
-
     // Force show the visual portrait section wrapper on any new sheet load
     const originalRenderSheet = window.renderSheet;
     window.renderSheet = function(data) {
@@ -1770,22 +1681,6 @@
     };
 
 </script>
-
-    <!-- Character Portrait Modal / Box -->
-    <div id="portraitModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 9999; align-items: center; justify-content: center; padding: 20px;">
-      <div style="background: #1e293b; border: 1px solid #475569; border-radius: 12px; max-width: 560px; width: 100%; padding: 20px; position: relative; text-align: center; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
-        <button type="button" onclick="document.getElementById('portraitModal').style.display='none'" style="position: absolute; top: 12px; right: 16px; background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer;">&times;</button>
-        <h4 id="portraitTitle" style="color: #f1f5f9; margin-top: 0; margin-bottom: 12px; font-weight: 600;">Character Portrait</h4>
-        <div id="portraitLoading" style="display: none; padding: 40px 10px; color: #94a3b8;">
-          <i class="fas fa-circle-notch fa-spin fa-2x" style="color: #6366f1; margin-bottom: 12px;"></i>
-          <p style="margin: 0; font-size: 0.95rem;">Painting character portrait... (takes ~10s)</p>
-        </div>
-        <img id="characterPortraitImg" src="" alt="Character Art" style="max-width: 100%; max-height: 65vh; border-radius: 8px; border: 1px solid #334155; display: none; margin: 0 auto;" />
-        <div style="margin-top: 15px; display: flex; justify-content: center; gap: 10px;">
-          <button type="button" class="btn btn-primary btn-sm" onclick="generateVisualRepresentation(true)"><i class="fas fa-redo"></i> Re-roll Style</button>
-          <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('portraitModal').style.display='none'">Close</button>
-        </div>
-      </div>
     </div>
 
 </body>
