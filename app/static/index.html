@@ -1566,7 +1566,7 @@
       }
       const currentLvl = parseInt(char.level, 10) || 1;
       const targetLvl = currentLvl + delta;
-      if (targetLvl < 1 || targetLvl > 8) return;
+      if (targetLvl < 1 || targetLvl > 9) return;
       await applyTargetLevel(targetLvl);
     }
 
