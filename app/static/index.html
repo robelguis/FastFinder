@@ -522,6 +522,23 @@
       overflow: visible !important;
     }
 
+
+    .portrait-box {
+      border: 1px solid #475569;
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .portrait-img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      display: none;
+    }
+
 </style>
 </head>
 <body>
@@ -1665,6 +1682,96 @@
       generate();
     }
 
-  </script>
+  
+    async function generateVisualRepresentation() {
+      const char = window.currentCharacterData;
+      if (!char) {
+        alert("Please generate a character first.");
+        return;
+      }
+
+      const btn = document.getElementById("btnIllustrate");
+      const loading = document.getElementById("portraitLoading");
+      const img = document.getElementById("characterPortraitImg");
+
+      // Compile stats into an expressive artist visual prompt
+      const name = char.name || "Unnamed Hero";
+      const ancestry = char.ancestry_heritage || char.ancestry || "Human";
+      const cls = char.class_archetype || char.class_name || "Adventurer";
+      const lvl = char.level || 1;
+      const desc = char.poppet_description || char.vanara_description || char.description || "";
+      
+      // Grab starting weapons
+      let weapons = "with equipment";
+      if (char.strikes && char.strikes.length > 0) {
+        const weaponNames = char.strikes.slice(0, 2).map(s => s.weapon.replace("+1", "").strip || s.weapon);
+        weapons = "wielding " + weaponNames.join(" and ");
+      }
+
+      // Add Companion or Familiar details if present on the sheet
+      let buddy = "";
+      if (char.familiar) {
+        buddy = `, accompanied by a tiny ${char.familiar.type || "familiar"} companion named ${char.familiar.name || "Nyx"}`;
+      } else if (char.companion) {
+        buddy = `, accompanied by their loyal ${char.companion.type || "animal companion"}`;
+      }
+
+      const visualPrompt = `Fantasy character concept art portrait of ${name}, a Level ${lvl} ${ancestry} ${cls} ${weapons}${buddy}. ` +
+        `Armed and active with visible inventory, pouches, belts, and detailed adventurer pack. ` +
+        `Set in an atmospheric, dappled outdoor setting. ` +
+        `Masterfully blending the heroic, dynamic book-art style of Paizo Pathfinder, ` +
+        `the painterly, textured brushstrokes and colorful magical FX of Guild Wars 2 concept artwork, ` +
+        `and high-contrast, edge-highlighted detailing of a hand-painted Reaper Miniature tabletop figure. Detailed, scenic environment, cinematic lighting.`;
+
+      try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Preparing Sketch...';
+        loading.style.display = "block";
+        img.style.display = "none";
+
+        // Poll an open visual-sketch generator via standard Pollen/Stability free fallback APIs
+        // URL is dynamically mapped using the prompt encoded for GET
+        const encPrompt = encodeURIComponent(visualPrompt);
+        const freeGenUrl = `https://image.pollinations.ai/p/${encPrompt}?width=512&height=512&seed=${Math.floor(Math.random() * 9999)}&nologo=true`;
+        
+        // Wait for preload
+        const preloader = new Image();
+        preloader.onload = () => {
+          img.src = freeGenUrl;
+          img.style.display = "inline-block";
+          loading.style.display = "none";
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-magic"></i> Regenerate Portrait';
+        };
+        preloader.onerror = () => {
+          throw new Error("Sketch process was interrupted.");
+        };
+        preloader.src = freeGenUrl;
+
+      } catch (err) {
+        console.error("Portrait Generation error:", err);
+        alert("Failed to render portrait: " + err.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-magic"></i> Generate Character Portrait';
+        loading.style.display = "none";
+      }
+    }
+
+    // Force show the visual portrait section wrapper on any new sheet load
+    const originalRenderSheet = window.renderSheet;
+    window.renderSheet = function(data) {
+      if (originalRenderSheet) originalRenderSheet(data);
+      const portSec = document.getElementById("portraitSection");
+      if (portSec) {
+        portSec.style.display = "block";
+        // Hide old image on new load to avoid cross-character confusion
+        const img = document.getElementById("characterPortraitImg");
+        if (img) img.style.display = "none";
+        const btn = document.getElementById("btnIllustrate");
+        if (btn) btn.innerHTML = '<i class="fas fa-magic"></i> Generate Character Portrait';
+      }
+    };
+
+</script>
 </body>
 </html>
