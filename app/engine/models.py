@@ -103,6 +103,8 @@ class SpellcastingData(BaseModel):
     rank_1_spells: List[SpellSummary] = []
     rank_2_spells: List[SpellSummary] = []
     rank_3_spells: List[SpellSummary] = []
+    rank_4_spells: List[SpellSummary] = []
+    rank_5_spells: List[SpellSummary] = []
     slots: List[SpellSlotTracker] = []
 
 SpellcastingLoadout = SpellcastingData

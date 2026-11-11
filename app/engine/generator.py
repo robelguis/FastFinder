@@ -429,7 +429,7 @@ class PF2eGenerator:
         heritage_name: Optional[str] = None,
         subclass_name: Optional[str] = None
     ) -> CharacterSheet:
-        level = max(1, min(8, int(level)))
+        level = max(1, min(9, int(level)))
 
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
@@ -565,6 +565,15 @@ class PF2eGenerator:
                 will_rank = 2
             elif cls["name"].lower() == "champion" and fort_rank < 3:
                 fort_rank = 3
+        if level >= 9:
+            cls_lower = cls["name"].lower()
+            if cls_lower in ["rogue", "ranger"] and ref_rank < 3:
+                ref_rank = 3
+            elif cls_lower in ["cleric", "druid", "sorcerer", "witch", "wizard", "bard", "oracle", "animist", "psychic", "summoner"] and will_rank < 3:
+                will_rank = 3
+            elif cls_lower in ["fighter"] and (fort_rank < 3 or ref_rank < 3):
+                fort_rank = max(fort_rank, 3)
+                ref_rank = max(ref_rank, 3)
 
         fort_prof = self._calc_prof(fort_rank, level, mods["con"])
         ref_prof = self._calc_prof(ref_rank, level, mods["dex"])
@@ -1079,6 +1088,37 @@ class PF2eGenerator:
                         description=clean_pf2e_text(cf8["description"])
                     ))
 
+        if level >= 9:
+            anc_name_lower = anc["name"].lower()
+            owned_f_names = {f.name.lower() for f in chosen_feats}
+            lvl9_anc_feats = [
+                f for f in self.feats
+                if f.get("category") == "ancestry"
+                and f.get("level") in (5, 9)
+                and anc_name_lower in [t.lower() for t in f.get("traits", [])]
+                and f["name"].lower() not in owned_f_names
+            ]
+            if lvl9_anc_feats:
+                af9 = random.choice(lvl9_anc_feats)
+                chosen_feats.append(FeatSummary(
+                    id=af9["id"],
+                    name=af9["name"],
+                    category="Ancestry (Level 9)",
+                    action_cost=af9.get("action_cost"),
+                    traits=af9.get("traits", []),
+                    description=clean_pf2e_text(af9.get("description", ""))
+                ))
+            else:
+                fallback_af9 = random.choice(GENERIC_ANCESTRY_FEATS.get(anc_name_lower, [{"name": f"{anc['name']} Expertise", "description": "You draw on deeper heritage resilience."}]))
+                chosen_feats.append(FeatSummary(
+                    id=f"anc-feat-{anc_name_lower}-9",
+                    name=fallback_af9["name"],
+                    category="Ancestry (Level 9)",
+                    action_cost=None,
+                    traits=[anc_name_lower],
+                    description=clean_pf2e_text(fallback_af9["description"])
+                ))
+
         planned_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else None
         if planned_arch:
             arch_lower = planned_arch.lower()
@@ -1285,7 +1325,7 @@ class PF2eGenerator:
         use_dedication: bool = False,
         archetype_name: Optional[str] = None
     ) -> CharacterSheet:
-        target_level = max(1, min(8, int(target_level)))
+        target_level = max(1, min(9, int(target_level)))
         old_level = int(current_char.get("level", 1))
 
         # 1. Recover base info and core data

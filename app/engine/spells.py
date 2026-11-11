@@ -24,6 +24,16 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Fireball", "actions": "2 actions", "traits": ["Arcane", "Fire"], "range": "500 feet", "defense": "Basic Reflex", "description": "A roaring blast of flame erupts in a 20-foot burst, dealing 6d6 fire damage."},
             {"name": "Slow", "actions": "2 actions", "traits": ["Arcane", "Transmutation"], "range": "30 feet", "defense": "Fortitude", "description": "Dilates time around the target. On a failure, the target is slowed 1 for 1 minute; on a critical failure, slowed 2."},
             {"name": "Lightning Bolt", "actions": "2 actions", "traits": ["Arcane", "Electricity"], "range": "120-foot line", "defense": "Basic Reflex", "description": "A bolt of lightning arcs in a line dealing 4d12 electricity damage."}
+        ],
+        "rank_4": [
+            {"name": "Fly", "actions": "2 actions", "traits": ["Arcane", "Transmutation"], "range": "Touch", "defense": "None", "description": "Target gains a fly Speed equal to its Speed (or 40 feet)."},
+            {"name": "Fire Shield", "actions": "2 actions", "traits": ["Arcane", "Fire"], "range": "Self", "defense": "None", "description": "Flames wreath you, granting cold resistance 10 and damaging melee attackers."},
+            {"name": "Resilient Sphere", "actions": "2 actions", "traits": ["Arcane", "Force"], "range": "30 feet", "defense": "Reflex", "description": "A sphere of force traps a creature or shields an ally."}
+        ],
+        "rank_5": [
+            {"name": "Cone of Cold", "actions": "2 actions", "traits": ["Arcane", "Cold"], "range": "60-foot cone", "defense": "Basic Reflex", "description": "Freezing air deals 12d6 cold damage to creatures in the cone."},
+            {"name": "Wall of Stone", "actions": "3 actions", "traits": ["Arcane", "Earth", "Structure"], "range": "120 feet", "defense": "None", "description": "You shape a solid wall of stone blocking passage and line of effect."},
+            {"name": "Synaptic Pulse", "actions": "2 actions", "traits": ["Arcane", "Mental", "Stun"], "range": "30-foot emanation", "defense": "Will", "description": "A psychic shockwave pulses outward, leaving enemies stunned."}
         ]
     },
     "divine": {
@@ -126,26 +136,25 @@ def resolve_spellcasting(
         cat_data = SPELL_CATALOG["arcane"]
         cantrips = [SpellSummary(rank=0, **s) for s in cat_data["cantrips"]]
 
+        # PF2e Bounded Spellcasting slot progression
+        top_rank = (level + 1) // 2
+        low_rank = max(1, top_rank - 1)
+        
         if level <= 2:
             slots = [SpellSlotTracker(rank=1, max_slots=1 if level == 1 else 2)]
-            rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
-            rank_2, rank_3 = [], []
-        elif level in [3, 4]:
-            slots = [
-                SpellSlotTracker(rank=1, max_slots=2),
-                SpellSlotTracker(rank=2, max_slots=2)
-            ]
-            rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
-            rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])]
-            rank_3 = []
+        elif top_rank == low_rank:
+            slots = [SpellSlotTracker(rank=top_rank, max_slots=2)]
         else:
             slots = [
-                SpellSlotTracker(rank=2, max_slots=2),
-                SpellSlotTracker(rank=3, max_slots=2)
+                SpellSlotTracker(rank=low_rank, max_slots=2),
+                SpellSlotTracker(rank=top_rank, max_slots=2)
             ]
-            rank_1 = []
-            rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])]
-            rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])]
+
+        rank_1 = [SpellSummary(rank=1, **s) for s in cat_data.get("rank_1", [])] if low_rank <= 1 else []
+        rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])] if low_rank <= 2 <= top_rank else []
+        rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if low_rank <= 3 <= top_rank else []
+        rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if low_rank <= 4 <= top_rank else []
+        rank_5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])] if low_rank <= 5 <= top_rank else []
 
         return SpellcastingData(
             tradition=trad_name,
@@ -156,6 +165,8 @@ def resolve_spellcasting(
             rank_1_spells=rank_1,
             rank_2_spells=rank_2,
             rank_3_spells=rank_3,
+            rank_4_spells=rank_4,
+            rank_5_spells=rank_5,
             slots=slots
         )
 
@@ -178,26 +189,25 @@ def resolve_spellcasting(
         cat_data = SPELL_CATALOG.get(cat_key, SPELL_CATALOG["occult"])
         cantrips = [SpellSummary(rank=0, **s) for s in cat_data["cantrips"]]
 
+        # PF2e Bounded Spellcasting slot progression
+        top_rank = (level + 1) // 2
+        low_rank = max(1, top_rank - 1)
+        
         if level <= 2:
             slots = [SpellSlotTracker(rank=1, max_slots=1 if level == 1 else 2)]
-            rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
-            rank_2, rank_3 = [], []
-        elif level in [3, 4]:
-            slots = [
-                SpellSlotTracker(rank=1, max_slots=2),
-                SpellSlotTracker(rank=2, max_slots=2)
-            ]
-            rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
-            rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])]
-            rank_3 = []
+        elif top_rank == low_rank:
+            slots = [SpellSlotTracker(rank=top_rank, max_slots=2)]
         else:
             slots = [
-                SpellSlotTracker(rank=2, max_slots=2),
-                SpellSlotTracker(rank=3, max_slots=2)
+                SpellSlotTracker(rank=low_rank, max_slots=2),
+                SpellSlotTracker(rank=top_rank, max_slots=2)
             ]
-            rank_1 = []
-            rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])]
-            rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])]
+
+        rank_1 = [SpellSummary(rank=1, **s) for s in cat_data.get("rank_1", [])] if low_rank <= 1 else []
+        rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])] if low_rank <= 2 <= top_rank else []
+        rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if low_rank <= 3 <= top_rank else []
+        rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if low_rank <= 4 <= top_rank else []
+        rank_5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])] if low_rank <= 5 <= top_rank else []
 
         return SpellcastingData(
             tradition=trad_name,
@@ -208,6 +218,8 @@ def resolve_spellcasting(
             rank_1_spells=rank_1,
             rank_2_spells=rank_2,
             rank_3_spells=rank_3,
+            rank_4_spells=rank_4,
+            rank_5_spells=rank_5,
             slots=slots
         )
 
@@ -229,12 +241,18 @@ def resolve_spellcasting(
     rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
     rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])] if level >= 3 else []
     rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if level >= 5 else []
+    rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if level >= 7 else []
+    rank_5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])] if level >= 9 else []
 
     slots = [SpellSlotTracker(rank=1, max_slots=3 if level >= 3 else 2)]
     if level >= 3:
         slots.append(SpellSlotTracker(rank=2, max_slots=3 if level >= 5 else 2))
     if level >= 5:
-        slots.append(SpellSlotTracker(rank=3, max_slots=2))
+        slots.append(SpellSlotTracker(rank=3, max_slots=3 if level >= 7 else 2))
+    if level >= 7:
+        slots.append(SpellSlotTracker(rank=4, max_slots=3 if level >= 9 else 2))
+    if level >= 9:
+        slots.append(SpellSlotTracker(rank=5, max_slots=2))
 
     return SpellcastingData(
         tradition=cfg["tradition"],
@@ -245,5 +263,7 @@ def resolve_spellcasting(
         rank_1_spells=rank_1,
         rank_2_spells=rank_2,
         rank_3_spells=rank_3,
+        rank_4_spells=rank_4,
+        rank_5_spells=rank_5,
         slots=slots
     )
