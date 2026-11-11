@@ -56,7 +56,7 @@ async def generate_character(
     subclass: Optional[str] = None,
     background: Optional[str] = None,
     archetype: Optional[str] = None,
-    level: int = Query(1, ge=1, le=7),
+    level: int = Query(1, ge=1, le=9),
     dedication: bool = Query(False),
 ):
     try:
@@ -80,7 +80,7 @@ async def generate_character(
 async def level_up_endpoint(payload: LevelUpPayload):
     char_data = payload.character
     current_level = int(char_data.get("level", 1))
-    target = max(1, min(8, int(payload.target_level)))
+    target = max(1, min(9, int(payload.target_level)))
 
     if target == current_level:
         return char_data
@@ -118,7 +118,7 @@ async def export_foundry(
     name: Optional[str] = None,
     ancestry: Optional[str] = None,
     class_name: Optional[str] = None,
-    level: int = Query(1, ge=1, le=7),
+    level: int = Query(1, ge=1, le=9),
     dedication: bool = Query(False),
 ):
     try:
