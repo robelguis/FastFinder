@@ -397,7 +397,59 @@ def extract_bg_feat(bg_desc: str, feats_list: list) -> str:
             if "feat" in desc_l[idx:idx + 50]:
                 return f_real
     return ""
+WING_NATURAL_ANCESTRIES = {"strix", "sprite", "awakened animal"}
+WING_NATURAL_HERITAGES = {"dragonblood", "beastkin", "tiefling", "aasimar", "nephilim", "sylph"}
 
+def character_has_natural_wings(ancestry_name: str, heritage_name: str, feats: List[FeatSummary]) -> bool:
+    anc_l = (ancestry_name or "").lower().strip()
+    her_l = (heritage_name or "").lower().strip()
+    
+    if anc_l in WING_NATURAL_ANCESTRIES:
+        return True
+    if any(h in her_l for h in WING_NATURAL_HERITAGES):
+        return True
+    
+    feat_text = " ".join([f.name.lower() + " " + f.description.lower() for f in feats])
+    if "wing" in feat_text or "fly speed" in feat_text:
+        return True
+        
+    return False
+
+def apply_wing_graft_investment(
+    ancestry_name: str,
+    heritage_name: str,
+    chosen_feats: List[FeatSummary],
+    equipment_loadout: Any
+):
+    """
+    If the character takes Winged Warrior and does not have natural wings,
+    injects the Wing Graft (Beast Graft) into equipment and adds an Archetype Feature feat.
+    """
+    if character_has_natural_wings(ancestry_name, heritage_name, chosen_feats):
+        return
+
+    # 1. Prevent duplicate feat injection
+    feat_names = {f.name for f in chosen_feats}
+    if "Wing Graft Investment" not in feat_names:
+        chosen_feats.append(FeatSummary(
+            id="graft-wing-beast-graft",
+            name="Wing Graft Investment",
+            category="Graft Modification",
+            action_cost=None,
+            traits=["Invested", "Magical", "Transmutation"],
+            description=(
+                f"{WING_GRAFT_ITEM['name']} ({WING_GRAFT_ITEM['price']}): "
+                f"{WING_GRAFT_ITEM['description']} (Occupies 1 Investiture slot)."
+            )
+        ))
+
+    # 2. Add to equipment loadout if an items/worn list exists
+    if hasattr(equipment_loadout, "items") and isinstance(equipment_loadout.items, list):
+        if not any("Wing Graft" in (i if isinstance(i, str) else i.get("name", "")) for i in equipment_loadout.items):
+            equipment_loadout.items.append(WING_GRAFT_ITEM["name"])
+    elif hasattr(equipment_loadout, "worn") and isinstance(equipment_loadout.worn, list):
+        if not any("Wing Graft" in (i if isinstance(i, str) else i.get("name", "")) for i in equipment_loadout.worn):
+            equipment_loadout.worn.append(WING_GRAFT_ITEM["name"])
 
 class PF2eGenerator:
     def __init__(self):
@@ -829,6 +881,16 @@ class PF2eGenerator:
                 ))
                 if ded["name"] in ARCHETYPE_GRANTED_FEATURES:
                     chosen_feats.append(ARCHETYPE_GRANTED_FEATURES[ded["name"]])
+
+                # --- HOOK: Winged Warrior Graft Investment ---
+                if "winged warrior" in archetype_data["name"].lower():
+                    apply_wing_graft_investment(
+                        ancestry_name=anc["name"],
+                        heritage_name=heritage_data["name"],
+                        chosen_feats=chosen_feats,
+                        equipment_loadout=equipment_loadout
+                    )
+                # ---------------------------------------------
             else:
                 lvl2_feats = [
                     f for f in self.feats
