@@ -1668,6 +1668,8 @@ class PF2eGenerator:
                     
                 if target_level < 7 and f.name == "Weapon Specialization":
                     continue
+                if target_level < 2 and f.id == "graft-wing-beast-graft":
+                    continue
                 filtered_feats.append(f)
             chosen_feats = filtered_feats
 
@@ -1692,6 +1694,15 @@ class PF2eGenerator:
                         if extra_feat.name not in existing_feat_names:
                             chosen_feats.append(extra_feat)
                             existing_feat_names.add(extra_feat.name)
+                # --- HOOK: Winged Warrior Graft Investment on Level Up ---
+                    if "winged warrior" in archetype_data["name"].lower():
+                        apply_wing_graft_investment(
+                            ancestry_name=anc["name"],
+                            heritage_name=current_char.get("heritage", ""),
+                            chosen_feats=chosen_feats,
+                            equipment_loadout=equipment_loadout
+                        )
+                    # --------------------------------------------------------
                 else:
                     lvl2_feats = [
                         f for f in self.feats
