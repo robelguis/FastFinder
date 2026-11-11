@@ -1,8 +1,24 @@
 import json
 from pathlib import Path
 import random
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
+# --- GRAFT MODIFICATIONS ---
+WING_GRAFT_ITEM = {
+    "name": "Wing Graft (Beast Graft)",
+    "type": "equipment",
+    "level": 2,
+    "traits": ["Invested", "Magical", "Transmutation"],
+    "price": "35 gp",
+    "invested": True,
+    "description": (
+        "Surgically attached or magically fused beast wings grafted to your shoulders or back. "
+        "Grants permanent physical wings required for the Winged Warrior dedication."
+    ),
+    "grants_wings": True,
+}
+
+# --- FEAT POOLS ---
 CHAMPION_FEATS_POOL = [
     {
         "id": "ranged-reprisal",
@@ -58,6 +74,7 @@ ROGUE_FEATS_POOL = [
     }
 ]
 
+# --- ARCHETYPES CATALOG ---
 ARCHETYPES_CATALOG: Dict[str, Dict[str, Any]] = {
     "undead-master": {
         "name": "Undead Master",
@@ -208,6 +225,32 @@ ARCHETYPES_CATALOG: Dict[str, Dict[str, Any]] = {
             }
         ]
     },
+    "winged-warrior": {
+        "name": "Winged Warrior",
+        "level_2_dedication": {
+            "id": "winged-warrior-dedication",
+            "name": "Winged Warrior Dedication",
+            "traits": ["archetype", "dedication"],
+            "action_cost": None,
+            "description": "You leverage permanent wings in combat. Leap distance increases by 10 feet horizontally (capped at land Speed), and any fly Speed from permanent wings increases by +5 feet."
+        },
+        "level_4_feats": [
+            {
+                "id": "wing-deflection",
+                "name": "Wing Deflection",
+                "traits": ["archetype", "reaction"],
+                "action_cost": None,
+                "description": "Trigger: An attacker hits you with a ranged physical attack. Reaction: Interpose your wings to gain a +2 circumstance bonus to AC against the triggering attack."
+            },
+            {
+                "id": "wing-buffet",
+                "name": "Wing Buffet",
+                "traits": ["archetype"],
+                "action_cost": 1,
+                "description": "Make an agile, finesse unarmed melee Strike with your wings dealing 1d6 bludgeoning damage."
+            }
+        ]
+    },
     "champion-multiclass": {
         "name": "Champion Multiclass",
         "level_2_dedication": {
@@ -281,6 +324,13 @@ ARCHETYPE_RULES: Dict[str, Dict[str, Any]] = {
         "grants_skill": "Diplomacy",
         "grants_rank": 4
     },
+    "winged-warrior": {
+        "req_skills": {},
+        "req_attrs": {},
+        "grants_skill": "Acrobatics",
+        "grants_rank": 2,
+        "requires_wings": True  # Evaluated or fulfilled via Graft Investment
+    },
     "champion-multiclass": {
         "req_skills": {},
         "req_attrs": {"str": 2, "cha": 2},
@@ -306,6 +356,7 @@ ARCHETYPE_RULES: Dict[str, Dict[str, Any]] = {
         "grants_rank": 2
     }
 }
+
 
 def is_archetype_eligible(
     arch_key: str,
@@ -341,6 +392,7 @@ def is_archetype_eligible(
             return False
 
     return True
+
 
 def pick_archetype(
     excluded_class: str,
@@ -387,8 +439,11 @@ def pick_archetype(
         arch["level_4_feats"] = list(ROGUE_FEATS_POOL) + arch["level_4_feats"]
 
     return arch
-# --- DYNAMIC COMPENDIUM ARCHETYPES (250+ Feats) ---
+
+
+# --- DYNAMIC COMPENDIUM ARCHETYPES ---
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+
 
 def get_all_archetype_names() -> List[str]:
     feats_file = DATA_DIR / "feats.json"
@@ -403,7 +458,7 @@ def get_all_archetype_names() -> List[str]:
         for ft in feats:
             traits = [t.lower() for t in ft.get("traits", [])]
             name = ft.get("name", "")
-            if ("dedication" in traits or "Dedication" in name):
+            if "dedication" in traits or "Dedication" in name:
                 clean_name = name.replace(" Dedication", "").strip()
                 if clean_name:
                     names.add(clean_name)
@@ -426,7 +481,7 @@ def resolve_dynamic_archetype(archetype_name: str, feats_list: List[Dict[str, An
     for ft in feats_list:
         ft_name = ft.get("name", "")
         traits = [t.lower() for t in ft.get("traits", [])]
-        if ("dedication" in traits or "Dedication" in ft_name):
+        if "dedication" in traits or "Dedication" in ft_name:
             clean_name = ft_name.replace(" Dedication", "").strip().lower()
             if clean_name == target or clean_name == target_trait or f"{clean_name} multiclass" == target:
                 dedication_feat = ft
