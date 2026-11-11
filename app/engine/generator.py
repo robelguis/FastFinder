@@ -429,7 +429,7 @@ class PF2eGenerator:
         heritage_name: Optional[str] = None,
         subclass_name: Optional[str] = None
     ) -> CharacterSheet:
-        level = max(1, min(9, int(level)))
+        level = max(1, min(10, int(level)))
 
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
@@ -543,6 +543,14 @@ class PF2eGenerator:
                 if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
                     mods[attr] += 1
                     lvl5_boosts_applied.add(attr)
+
+        if level >= 10:
+            lvl10_boosts_applied: Set[str] = set()
+            lvl10_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl10_priority:
+                if len(lvl10_boosts_applied) < 4 and attr not in lvl10_boosts_applied:
+                    mods[attr] += 1
+                    lvl10_boosts_applied.add(attr)
 
         fort_rank = cls.get("saving_throws", {}).get("fortitude", 1)
         ref_rank = cls.get("saving_throws", {}).get("reflex", 1)
@@ -1325,7 +1333,7 @@ class PF2eGenerator:
         use_dedication: bool = False,
         archetype_name: Optional[str] = None
     ) -> CharacterSheet:
-        target_level = max(1, min(9, int(target_level)))
+        target_level = max(1, min(10, int(target_level)))
         old_level = int(current_char.get("level", 1))
 
         # 1. Recover base info and core data
@@ -1382,6 +1390,21 @@ class PF2eGenerator:
                 if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
                     mods[attr] = max(0, mods[attr] - 1)
                     lvl5_boosts_applied.add(attr)
+
+        if old_level < 10 and target_level >= 10:
+            lvl10_boosts_applied: Set[str] = set()
+            lvl10_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl10_priority:
+                if len(lvl10_boosts_applied) < 4 and attr not in lvl10_boosts_applied:
+                    mods[attr] += 1
+                    lvl10_boosts_applied.add(attr)
+        elif old_level >= 10 and target_level < 10:
+            lvl10_boosts_applied: Set[str] = set()
+            lvl10_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl10_priority:
+                if len(lvl10_boosts_applied) < 4 and attr not in lvl10_boosts_applied:
+                    mods[attr] = max(0, mods[attr] - 1)
+                    lvl10_boosts_applied.add(attr)
 
         # 3. Defenses & Proficiencies
         fort_rank = cls.get("saving_throws", {}).get("fortitude", 1)
@@ -1802,6 +1825,67 @@ class PF2eGenerator:
                         description=clean_pf2e_text(gf7["description"])
                     ))
                     existing_feat_names.add(gf7["name"])
+
+            elif lvl == 10:
+                # Level 10: Class Feat (or Archetype Feat) & Skill Feat
+                arch_feats_10 = []
+                if archetype_data:
+                    arch_feats_10 = [
+                        f for f in archetype_data.get("level_10_feats", archetype_data.get("level_8_feats", []))
+                        if f["name"] not in existing_feat_names
+                    ]
+
+                if arch_feats_10 and random.random() < 0.6:
+                    af10 = random.choice(arch_feats_10)
+                    chosen_feats.append(FeatSummary(
+                        id=af10["id"],
+                        name=af10["name"],
+                        category=f"Archetype Feat (Level 10 - {archetype_data['name']})",
+                        action_cost=None,
+                        traits=["archetype"],
+                        description=clean_pf2e_text(af10["description"])
+                    ))
+                    existing_feat_names.add(af10["name"])
+                else:
+                    lvl10_class_feats = [
+                        f for f in self.feats
+                        if f.get("category") == "class"
+                        and f.get("level") in (8, 10)
+                        and cls_name_lower in [t.lower() for t in f.get("traits", [])]
+                        and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+                        and f["name"] not in existing_feat_names
+                    ]
+                    if lvl10_class_feats:
+                        skill_ranks_tmp = {s.get("name"): s.get("rank", 0) for s in current_char.get("skills", []) if isinstance(s, dict)}
+                        cf10 = pick_weighted_feat(lvl10_class_feats, cls_name_lower, existing_feat_names, skill_ranks_tmp, {}, 10) or random.choice(lvl10_class_feats)
+                        chosen_feats.append(FeatSummary(
+                            id=cf10["id"],
+                            name=cf10["name"],
+                            category="Class Feat (Level 10)",
+                            action_cost=safe_action_cost(cf10.get("action_cost")),
+                            traits=cf10.get("traits", [cls_name_lower]),
+                            description=clean_pf2e_text(cf10["description"])
+                        ))
+                        existing_feat_names.add(cf10["name"])
+
+                # Level 10: Skill Feat
+                skill_feats_10 = [
+                    f for f in self.feats
+                    if f.get("category") == "skill"
+                    and f.get("level", 1) <= 10
+                    and f["name"] not in existing_feat_names
+                ]
+                if skill_feats_10:
+                    sf10 = random.choice(skill_feats_10)
+                    chosen_feats.append(FeatSummary(
+                        id=sf10["id"],
+                        name=sf10["name"],
+                        category="Skill Feat (Level 10)",
+                        action_cost=safe_action_cost(sf10.get("action_cost")),
+                        traits=sf10.get("traits", ["skill"]),
+                        description=clean_pf2e_text(sf10.get("description", ""))
+                    ))
+                    existing_feat_names.add(sf10["name"])
 
             elif lvl == 9:
                 # Level 9: Ancestry Feat

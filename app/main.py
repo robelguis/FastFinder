@@ -23,7 +23,7 @@ generator = PF2eGenerator()
 
 class LevelUpPayload(BaseModel):
     character: Dict[str, Any]
-    target_level: int = Field(..., ge=1, le=9)
+    target_level: int = Field(..., ge=1, le=10)
     use_dedication: bool = False
     archetype: Optional[str] = None
 
@@ -57,7 +57,7 @@ def generate_character(
     subclass: Optional[str] = None,
     background: Optional[str] = None,
     archetype: Optional[str] = None,
-    level: int = Query(1, ge=1, le=9),
+    level: int = Query(1, ge=1, le=10),
     dedication: bool = Query(False),
 ):
     try:
@@ -85,7 +85,7 @@ def generate_character(
 def level_up_endpoint(payload: LevelUpPayload):
     char_data = payload.character
     current_level = int(char_data.get("level", 1))
-    target = max(1, min(9, int(payload.target_level)))
+    target = max(1, min(10, int(payload.target_level)))
 
     if target == current_level:
         return char_data
@@ -128,7 +128,7 @@ def export_foundry(
     subclass: Optional[str] = None,
     background: Optional[str] = None,
     archetype: Optional[str] = None,
-    level: int = Query(1, ge=1, le=9),
+    level: int = Query(1, ge=1, le=10),
     dedication: bool = Query(False),
 ):
     try:
