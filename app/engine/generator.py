@@ -1566,11 +1566,21 @@ class PF2eGenerator:
             filtered_feats = []
             for f in chosen_feats:
                 cat = (f.category or "").lower()
+                fid = (f.id or "").lower()
+                
+                # Check level tags in category or ID (e.g. "Level 9", "-9", "level-8")
                 m = re.search(r"level\s*(\d+)", cat)
+                m_id = re.search(r"-(\d+)$", fid) or re.search(r"lvl(\d+)", fid)
+                
+                f_lvl = None
                 if m:
                     f_lvl = int(m.group(1))
-                    if f_lvl > target_level:
-                        continue
+                elif m_id:
+                    f_lvl = int(m_id.group(1))
+                    
+                if f_lvl and f_lvl > target_level:
+                    continue
+                    
                 if target_level < 7 and f.name == "Weapon Specialization":
                     continue
                 filtered_feats.append(f)

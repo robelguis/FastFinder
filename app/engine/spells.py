@@ -57,6 +57,16 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Heroism", "actions": "2 actions", "traits": ["Divine", "Mental"], "range": "Touch", "defense": "None", "description": "A willingness to face danger infuses the target, granting a +1 status bonus to attack rolls, Perception, saving throws, and skill checks for 10 minutes."},
             {"name": "Crisis of Faith", "actions": "2 actions", "traits": ["Divine", "Mental"], "range": "30 feet", "defense": "Will", "description": "You assault the target's convictions, dealing 6d6 mental damage and stupefying them."},
             {"name": "Vampiric Feast", "actions": "2 actions", "traits": ["Divine", "Void"], "range": "Touch", "defense": "Basic Fortitude", "description": "You drink vitality from a foe, dealing 6d6 void damage and gaining temporary HP equal to half."}
+        ],
+        "rank_4": [
+            {"name": "Divine Wrath", "actions": "2 actions", "traits": ["Divine", "Sanctified"], "range": "100 feet", "defense": "Basic Fortitude", "description": "You channel righteous fury, dealing 4d10 spirit damage in a 20-foot burst and sickening foes."},
+            {"name": "Vital Beacon", "actions": "2 actions", "traits": ["Divine", "Healing", "Vitality"], "range": "Self", "defense": "None", "description": "You radiate restorative energy that you or an ally can tap into as an action to heal HP."},
+            {"name": "Air Walk", "actions": "2 actions", "traits": ["Air", "Divine"], "range": "Touch", "defense": "None", "description": "The target can walk on air as if it were solid ground for 5 minutes."}
+        ],
+        "rank_5": [
+            {"name": "Breath of Life", "actions": "Reaction", "traits": ["Divine", "Healing"], "range": "60 feet", "defense": "None", "description": "Trigger: An ally within 60 ft would die. You restore 4d8 HP to prevent their death."},
+            {"name": "Divine Immolation", "actions": "2 actions", "traits": ["Divine", "Fire", "Sanctified"], "range": "120 feet", "defense": "Basic Reflex", "description": "Holy fire bursts in a 20-foot area dealing 6d10 fire damage plus 2d6 persistent spirit damage."},
+            {"name": "Cleanse Curse", "actions": "2 actions", "traits": ["Divine", "Healing"], "range": "Touch", "defense": "None", "description": "You attempt a counteract check against a curse or affliction afflicting the target."}
         ]
     },
     "primal": {
@@ -80,6 +90,16 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Lightning Bolt", "actions": "2 actions", "traits": ["Electricity", "Primal"], "range": "120-foot line", "defense": "Basic Reflex", "description": "A bolt of lightning arcs in a line dealing 4d12 electricity damage."},
             {"name": "Wall of Thorns", "actions": "3 actions", "traits": ["Plant", "Primal"], "range": "60 feet", "defense": "None", "description": "You create a dense barrier of briars. Creatures pushing through take 3d4 piercing damage."},
             {"name": "Cave Fangs", "actions": "2 actions", "traits": ["Earth", "Primal"], "range": "30 feet", "defense": "Basic Reflex", "description": "Stalagmites burst from the ground dealing 6d6 piercing damage and creating difficult terrain."}
+        ],
+        "rank_4": [
+            {"name": "Hydraulic Torrent", "actions": "2 actions", "traits": ["Primal", "Water"], "range": "60-foot line", "defense": "Basic Fortitude", "description": "A raging blast of water deals 8d6 bludgeoning damage and pushes creatures back."},
+            {"name": "Fly", "actions": "2 actions", "traits": ["Primal", "Transmutation"], "range": "Touch", "defense": "None", "description": "The target gains a fly Speed of 40 feet for 5 minutes."},
+            {"name": "Solid Fog", "actions": "3 actions", "traits": ["Cold", "Primal", "Water"], "range": "120 feet", "defense": "None", "description": "Creates a 20-foot burst of dense mist that is greater difficult terrain and grants concealment."}
+        ],
+        "rank_5": [
+            {"name": "Howling Blizzard", "actions": "2 actions", "traits": ["Cold", "Primal"], "range": "120 feet", "defense": "Basic Reflex", "description": "A fierce tempest deals 10d6 cold damage in a 20-foot burst and creates heavy difficult terrain."},
+            {"name": "Grasping Spire", "actions": "2 actions", "traits": ["Earth", "Primal"], "range": "120 feet", "defense": "Reflex", "description": "A spire of stone erupts dealing 6d8 piercing damage and immobilizing the target on a hit."},
+            {"name": "Heal", "actions": "1 to 3 actions", "traits": ["Healing", "Primal", "Vitality"], "range": "Varies", "defense": "None", "description": "Heightened to Rank 5: Restores 5d8 HP per action spent, or a 30-foot burst of 5d8 HP."}
         ]
     },
     "occult": {
@@ -103,6 +123,16 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Heroism", "actions": "2 actions", "traits": ["Mental", "Occult"], "range": "Touch", "defense": "None", "description": "Infuses target with confidence, granting +1 status bonus to attacks, Perception, saves, and skills for 10 minutes."},
             {"name": "Slow", "actions": "2 actions", "traits": ["Occult", "Transmutation"], "range": "30 feet", "defense": "Fortitude", "description": "Target becomes slowed 1 for 1 minute on a failed Fortitude save."},
             {"name": "Vampiric Feast", "actions": "2 actions", "traits": ["Occult", "Void"], "range": "Touch", "defense": "Basic Fortitude", "description": "Deals 6d6 void damage and grants temporary HP equal to half."}
+        ],
+        "rank_4": [
+            {"name": "Phantasmal Killer", "actions": "2 actions", "traits": ["Emotion", "Fear", "Illusion", "Mental", "Occult"], "range": "120 feet", "defense": "Will", "description": "Creates an illusion of fearsome doom dealing 8d6 mental damage and fleeing on a failure."},
+            {"name": "Fly", "actions": "2 actions", "traits": ["Occult", "Transmutation"], "range": "Touch", "defense": "None", "description": "The target gains a fly Speed of 40 feet for 5 minutes."},
+            {"name": "Vision of Death", "actions": "2 actions", "traits": ["Death", "Mental", "Occult"], "range": "30 feet", "defense": "Will", "description": "Forces a terrifying vision dealing 8d6 mental damage; critical failure causes instant death if below HP."}
+        ],
+        "rank_5": [
+            {"name": "Synaptic Pulse", "actions": "2 actions", "traits": ["Mental", "Occult", "Stun"], "range": "30-foot emanation", "defense": "Will", "description": "A telepathic wave pulses outward, stunning enemies for 1 round on a failed save."},
+            {"name": "Shadow Siphon", "actions": "Reaction", "traits": ["Illusion", "Occult", "Shadow"], "range": "60 feet", "defense": "None", "description": "Trigger: You or an ally would take energy damage. You weave shadows to reduce the damage by 5d8."},
+            {"name": "Soothe", "actions": "2 actions", "traits": ["Emotion", "Healing", "Mental", "Occult"], "range": "30 feet", "defense": "None", "description": "Heightened to Rank 5: Restores 5d10+20 HP to an ally and grants +2 status bonus vs mental effects."}
         ]
     }
 }
