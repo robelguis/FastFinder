@@ -566,6 +566,7 @@
               <option value="7">Level 7</option>
               <option value="8">Level 8</option>
               <option value="9">Level 9</option>
+              <option value="9">Level 9</option>
           </select>
         </div>
       </div>
@@ -1059,7 +1060,7 @@
       const lvl = parseInt(level, 10) || 1;
       if (!btn) return;
 
-      if (lvl >= 8) {
+      if (lvl >= 9) {
         btn.disabled = true;
         btn.textContent = "Max Level";
         btn.style.display = "none";
@@ -1474,8 +1475,8 @@
       }
 
       const currentLvl = currentCharacterData.level || 1;
-      if (currentLvl >= 7) {
-        alert("Maximum supported level is 7.");
+      if (currentLvl >= 9) {
+        alert("Maximum supported level is 9.");
         return;
       }
 
@@ -1548,7 +1549,7 @@
         btnDown.textContent = "-";
       }
       if (btnUp) {
-        btnUp.disabled = (lvl >= 8);
+        btnUp.disabled = (lvl >= 9);
         btnUp.textContent = "+";
       }
       if (sel) {
