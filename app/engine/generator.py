@@ -255,6 +255,115 @@ def load_data(filename: str) -> Any:
         return json.load(f)
 
 
+
+def sync_feat_partners(
+    existing_partners: list,
+    chosen_feats: list,
+    archetype_name: Optional[str],
+    class_name: str,
+    level: int,
+    master_ac: int,
+    master_fort: int,
+    master_ref: int,
+    master_will: int,
+    master_perception: int,
+) -> list:
+    partners = list(existing_partners)
+    feat_names = [f.name.lower() for f in chosen_feats]
+    all_feat_str = " ".join(feat_names)
+    arch_str = (archetype_name or "").lower()
+    cls_lower = class_name.lower()
+
+    existing_types = {(p.creature_type or "").lower() for p in partners}
+    existing_subs = {(p.sub_type or "").lower() for p in partners}
+
+    has_familiar = any("familiar" in t or "familiar" in s for t, s in zip(existing_types, existing_subs))
+    has_animal = any("animal" in t or "companion" in t for t in existing_types)
+    has_undead = any("undead" in t for t in existing_types)
+    has_plant = any("plant" in t for t in existing_types)
+    has_construct = any("construct" in t for t in existing_types)
+
+    # 1. Undead Companion / Undead Master
+    if not has_undead and ("undead master" in arch_str or "undead companion" in all_feat_str):
+        partners.append(resolve_undead_companion(level=level))
+        has_undead = True
+
+    # 2. Construct Companion / Clockwork Reanimator
+    if not has_construct and ("clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str):
+        partners.append(resolve_construct_companion(master_int_mod=2, level=level))
+        has_construct = True
+
+    # 3. Plant Companion / Leaf Order
+    if not has_plant and ("plant companion" in all_feat_str or (cls_lower == "druid" and "leaf" in all_feat_str)):
+        partners.append(resolve_plant_companion(level=level))
+        has_plant = True
+
+    # 4. Animal Companion / Mounts (Beastmaster, Cavalier, Mammoth Lord, Animal Companion)
+    animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal")
+    animal_arch_triggers = ("beastmaster", "cavalier", "mammoth lord")
+    if not has_animal and (
+        any(tr in all_feat_str for tr in animal_triggers)
+        or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
+    ):
+        comp = resolve_companion(
+            class_name=class_name,
+            feats=chosen_feats,
+            archetype=archetype_name if (archetype_name and level >= 2) else None,
+            level=level,
+        )
+        if comp:
+            partners.append(comp)
+            has_animal = True
+
+    # 5. Familiars & Pets (Marine Ally, Familiar, Pet, Familiar Master, Leshy/Elemental/Shadow Familiar)
+    has_marine_ally = "marine ally" in feat_names
+    familiar_triggers = (
+        "familiar",
+        "marine ally",
+        "leshy familiar",
+        "elemental familiar",
+        "shadow familiar",
+        "spirit guide",
+        "glyph familiar",
+        "call wizardly tools",
+    )
+    has_pet_feat = "pet" in feat_names
+
+    if not has_familiar and cls_lower != "witch":
+        if has_marine_ally or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
+            partners.append(
+                resolve_familiar(
+                    master_ac=master_ac,
+                    master_fort=master_fort,
+                    master_ref=master_ref,
+                    master_will=master_will,
+                    master_perception=master_perception,
+                    class_name=class_name,
+                    level=level,
+                    aquatic_only=has_marine_ally,
+                    is_pet=False,
+                )
+            )
+            has_familiar = True
+        elif has_pet_feat:
+            partners.append(
+                resolve_familiar(
+                    master_ac=master_ac,
+                    master_fort=master_fort,
+                    master_ref=master_ref,
+                    master_will=master_will,
+                    master_perception=master_perception,
+                    class_name=class_name,
+                    level=level,
+                    aquatic_only=False,
+                    is_pet=True,
+                )
+            )
+            has_familiar = True
+
+    return partners
+
+
 def scale_existing_companion(companion_data: dict, old_level: int, target_level: int, master_hp: int) -> dict:
     comp = dict(companion_data)
     level_delta = target_level - old_level
@@ -1253,32 +1362,18 @@ class PF2eGenerator:
                     level=level
                 ))
 
-        has_undead_master = (level >= 2 and archetype_data and "undead master" in arch_name)
-        has_beastmaster = (level >= 2 and archetype_data and "beastmaster" in arch_name)
-
-        if has_undead_master or "undead companion" in all_feat_str:
-            collected_partners.append(resolve_undead_companion(level=level))
-        elif "plant companion" in all_feat_str or (cls_name_lower == "druid" and "leaf" in all_feat_str):
-            collected_partners.append(resolve_plant_companion(level=level))
-        elif has_beastmaster or "animal companion" in all_feat_str:
-            comp = resolve_companion(
-                class_name=cls["name"],
-                feats=chosen_feats,
-                archetype=archetype_data["name"] if (archetype_data and level >= 2) else None,
-                level=level
-            )
-            if comp:
-                collected_partners.append(comp)
-        elif "familiar" in all_feat_str and cls_name_lower != "witch":
-            collected_partners.append(resolve_familiar(
-                master_ac=calculated_ac,
-                master_fort=fort_prof.modifier,
-                master_ref=ref_prof.modifier,
-                master_will=will_prof.modifier,
-                master_perception=perception_prof.modifier,
-                class_name=cls["name"],
-                level=level
-            ))
+        collected_partners = sync_feat_partners(
+            existing_partners=collected_partners,
+            chosen_feats=chosen_feats,
+            archetype_name=archetype_data["name"] if (archetype_data and level >= 2) else None,
+            class_name=cls["name"],
+            level=level,
+            master_ac=calculated_ac,
+            master_fort=fort_prof.modifier,
+            master_ref=ref_prof.modifier,
+            master_will=will_prof.modifier,
+            master_perception=perception_prof.modifier,
+        )
 
         primary_companion = collected_partners[0] if collected_partners else None
         extra_partners = collected_partners[1:] if len(collected_partners) > 1 else []
@@ -2200,33 +2295,21 @@ class PF2eGenerator:
             for p in raw_extra_partners
         ]
 
-        all_partner_types = [
-            (existing_companion.creature_type or "").lower() if existing_companion else ""
-        ] + [
-            (p.creature_type or "").lower() for p in existing_extra_partners
-        ]
-
-        arch_str = (resolved_arch_name or "").lower()
-        if old_level < 2 and target_level >= 2:
-            if "beastmaster" in arch_str and not any("animal" in t or "companion" in t for t in all_partner_types):
-                new_partner = resolve_companion(
-                    class_name=cls["name"],
-                    feats=chosen_feats,
-                    archetype=resolved_arch_name,
-                    level=target_level
-                )
-                if new_partner:
-                    if not existing_companion:
-                        existing_companion = new_partner
-                    else:
-                        existing_extra_partners.append(new_partner)
-            elif "undead master" in arch_str and not any("undead" in t for t in all_partner_types):
-                new_partner = resolve_undead_companion(level=target_level)
-                if new_partner:
-                    if not existing_companion:
-                        existing_companion = new_partner
-                    else:
-                        existing_extra_partners.append(new_partner)
+        combined_partners = ([existing_companion] if existing_companion else []) + existing_extra_partners
+        combined_partners = sync_feat_partners(
+            existing_partners=combined_partners,
+            chosen_feats=chosen_feats,
+            archetype_name=resolved_arch_name if target_level >= 2 else None,
+            class_name=cls["name"],
+            level=target_level,
+            master_ac=calculated_ac,
+            master_fort=fort_prof.modifier,
+            master_ref=ref_prof.modifier,
+            master_will=will_prof.modifier,
+            master_perception=perception_prof.modifier,
+        )
+        existing_companion = combined_partners[0] if combined_partners else None
+        existing_extra_partners = combined_partners[1:] if len(combined_partners) > 1 else []
 
 
         # Refresh Sneak Attack feat descriptions on level up / down
