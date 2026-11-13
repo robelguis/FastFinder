@@ -1016,18 +1016,18 @@
           });
         }
 
-        const archSelect = document.getElementById("archetypeSelect");
+        const archSelect = .getElementById("archetypeSelect");
         if (archSelect && data.archetypes) {
           archSelect.innerHTML = '<option value="">Any Archetype</option>';
           data.archetypes.forEach(a => {
-            const opt = document.createElement("option");
+            const opt = .createElement("option");
             opt.value = a;
             opt.textContent = a;
             archSelect.appendChild(opt);
           });
           archSelect.addEventListener("change", () => {
-            const dedCheck = document.getElementById("dedicationToggle");
-            const lvlSelect = document.getElementById("levelSelect");
+            const dedCheck = .getElementById("dedicationToggle");
+            const lvlSelect = .getElementById("levelSelect");
             if (archSelect.value) {
               if (dedCheck) dedCheck.checked = true;
               if (lvlSelect && parseInt(lvlSelect.value) < 2) {
@@ -1047,11 +1047,11 @@
     }
 
     function renderSpellList(containerId, spells) {
-      const box = document.getElementById(containerId);
+      const box = .getElementById(containerId);
       box.innerHTML = '';
       if (!Array.isArray(spells)) return;
       spells.forEach(s => {
-        const card = document.createElement('div');
+        const card = .createElement('div');
         card.className = 'detail-card';
         card.innerHTML = `
           <div class="detail-card-head">
@@ -1135,10 +1135,34 @@
       currentCharacterData = data;
       const currentLevel = data.level || 1;
 
-      document.getElementById('sheetCard').style.display = 'block';
-      document.getElementById('sheetName').textContent = data.name;
-      document.getElementById('sheetAncestry').textContent = data.heritage ? `${data.ancestry} (${data.heritage})` : data.ancestry;
-      document.getElementById('sheetBackground').textContent = data.background;
+      document.getElementById('epic-backstory-btn').addEventListener('click', async () => {
+    if (!currentCharacterData) {
+        alert("Please generate a character sheet first!");
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/epic-backstory', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(currentCharacterData)
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to generate epic backstory.");
+        }
+
+        const data = await response.json();
+        
+        // Display the chapters in your backstory modal or UI panel
+        displayEpicBackstoryModal(data.chapters);
+
+    } catch (err) {
+        alert("Error generating backstory: " + err.message);
+    }
+});
       
       const classDisplay = data.subclass ? `${data.character_class} (${data.subclass.name})` : data.character_class;
       document.getElementById('sheetClass').textContent = classDisplay;
