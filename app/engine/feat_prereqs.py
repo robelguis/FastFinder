@@ -112,6 +112,21 @@ def check_feat_prerequisites(
         p_clean = p.strip()
         p_lower = p_clean.lower()
 
+        # 0. Companion / Familiar / Eidolon gating
+        if "animal companion" in p_lower or "steed" in feat.get("name", "").lower():
+            has_ac = any(k in o for o in owned_lower for k in ("animal companion", "plant companion", "cavalier dedication", "beastmaster dedication"))
+            if not has_ac:
+                return False
+        if "familiar" in p_lower and "familiar" not in feat.get("name", "").lower():
+            has_fam = any(k in o for o in owned_lower for k in ("familiar", "leaf order", "witch"))
+            if not has_fam:
+                return False
+        if "eidolon" in p_lower:
+            has_eid = any(k in o for o in owned_lower for k in ("eidolon", "summoner"))
+            if not has_eid:
+                return False
+
+
         # 1. Skill rank check: e.g. "trained in Medicine", "expert in Athletics"
         skill_match = re.search(r"(trained|expert|master|legendary)\s+in\s+([A-Za-z\s]+)", p_lower)
         if skill_match:

@@ -567,6 +567,11 @@
               <option value="8">Level 8</option>
               <option value="9">Level 9</option>
               <option value="10">Level 10</option>
+            <option value="11">Level 11</option>
+            <option value="12">Level 12</option>
+            <option value="13">Level 13</option>
+            <option value="14">Level 14</option>
+            <option value="15">Level 15</option>
           </select>
         </div>
       </div>
@@ -626,6 +631,11 @@
               <option value="8">8</option>
               <option value="9">9</option>
               <option value="10">10</option>
+              <option value="11">11</option>
+              <option value="12">12</option>
+              <option value="13">13</option>
+              <option value="14">14</option>
+              <option value="15">15</option>
             </select>
             <button type="button" id="btnLevelUp" class="btn-level-step" onclick="handleLevelStep(1)" title="Level Up">+</button>
           </div>
@@ -1551,7 +1561,7 @@
         btnDown.textContent = "-";
       }
       if (btnUp) {
-        btnUp.disabled = (lvl >= 10);
+        btnUp.disabled = (lvl >= 15);
         btnUp.textContent = "+";
       }
       if (sel) {
@@ -1567,7 +1577,7 @@
       }
       const currentLvl = parseInt(char.level, 10) || 1;
       const targetLvl = currentLvl + delta;
-      if (targetLvl < 1 || targetLvl > 10) return;
+      if (targetLvl < 1 || targetLvl > 15) return;
       await applyTargetLevel(targetLvl);
     }
 

@@ -85,7 +85,7 @@ def generate_character(
 def level_up_endpoint(payload: LevelUpPayload):
     char_data = payload.character
     current_level = int(char_data.get("level", 1))
-    target = max(1, min(10, int(payload.target_level)))
+    target = max(1, min(15, int(payload.target_level)))
 
     if target == current_level:
         return char_data
