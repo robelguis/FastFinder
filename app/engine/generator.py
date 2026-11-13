@@ -1281,36 +1281,6 @@ class PF2eGenerator:
                     description=c_act["description"]
                 ))
                 added_feat_names.add(c_act["name"].lower())
-            
-        # 2. Handle Custom Background Actions explicitly (avoiding regex traps on background lore)
-        action_match = re.search(r"gain the\s+([A-Z][a-zA-Z0-9'\s\-]+?)\s+action", bg_desc, re.IGNORECASE)
-        if action_match:
-            action_name = action_match.group(1).strip()
-            action_key = action_name.lower()
-            if action_key not in ["seek", "sense motive"] and len(action_name) < 30:
-                clean_action_id = action_key.replace(" ", "-").replace("'", "")
-                if action_key in BACKGROUND_CUSTOM_ACTIONS:
-                    c_act = BACKGROUND_CUSTOM_ACTIONS[action_key]
-                    if not any(f.name.lower() == c_act["name"].lower() for f in chosen_feats):
-                        chosen_feats.append(FeatSummary(
-                            id=f"feat-bg-action-{clean_action_id}",
-                            name=c_act["name"],
-                            category="Background Action",
-                            action_cost=c_act.get("action_cost"),
-                            traits=c_act.get("traits", ["Background"]),
-                            description=c_act["description"]
-                        ))
-                else:
-                    # Fallback: extract any description sentences following the action mention in bg_desc
-                    chosen_feats.append(FeatSummary(
-                        id=f"feat-bg-action-{clean_action_id}",
-                        name=action_name,
-                        category="Background Action",
-                        action_cost=1,
-                        traits=["Background", "Action"],
-                        description=f"Special action granted by the {bg['name']} background. {clean_pf2e_text(bg_desc)}"
-                    ))
-        bg_feat_name = extract_bg_feat(bg_desc, self.feats)
 
         if bg_feat_name:
             chosen_feats.append(FeatSummary(
