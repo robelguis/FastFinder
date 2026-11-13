@@ -10,6 +10,7 @@ from app.engine.archetypes import get_all_archetype_names
 from app.engine.foundry import export_to_foundry_actor
 from app.engine.generator import PF2eGenerator
 from app.engine.subclasses import CLASS_SUBCLASSES
+from backstory_generator import generate_epic_backstory
 
 app = FastAPI(title="FastFinder PF2e Generator")
 
