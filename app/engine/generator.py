@@ -622,7 +622,37 @@ class PF2eGenerator:
             and len(f.get("traits", [])) > 0
             and f.get("name") not in ["Speedrun Strats"]
         ]
+    def generate_epic_backstory(self, char_data: dict) -> list:
+        name = char_data.get("name") or "The Hero"
+        ancestry = char_data.get("ancestry") or "Human"
+        cls = char_data.get("character_class") or "Adventurer"
+        lvl = int(char_data.get("level") or 1)
+        bg = char_data.get("background") or "unknown origins"
+        
+        # Scale narrative tone dynamically based on level
+        if lvl == 1:
+            zenith_narrative = f"Now taking their first steps at Level {lvl} as a {cls}, {name} leaves the safety of life as a {bg} behind, stepping out into a vast and dangerous world with little more than raw determination."
+        elif lvl <= 5:
+            zenith_narrative = f"Having grown accustomed to the perils of the road at Level {lvl}, {name}'s early trials as a {cls} have begun to forge a genuine reputation across the local frontier."
+        elif lvl <= 15:
+            zenith_narrative = f"Now a seasoned adventurer at Level {lvl}, {name}'s exploits as a {cls} are spoken of with growing respect as regional powers take notice of their rising influence."
+        else:
+            zenith_narrative = f"Standing at the absolute zenith of power as a Level {lvl} {cls}, {name} commands a legendary presence across the realm, their epic feats echoing through history like a force of nature."
 
+        return [
+            {
+                "chapter": "Chapter I: Roots in the Dust",
+                "narrative": f"Long before the weight of legendary arms rested upon {name}'s shoulders, there were quiet days spent as a {bg}. Raised amidst the rugged trials of the frontier, {name} learned early that survival is carved out of stubborn endurance rather than divine favor."
+            },
+            {
+                "chapter": "Chapter II: The Awakening Spark",
+                "narrative": f"As a {ancestry} navigating a world scarred by ancient powers, {name}'s path shifted when a latent calling took root. Stepping onto the path of the {cls}, every trial forged a sharper resolve, turning simple grit into disciplined power."
+            },
+            {
+                "chapter": "Chapter III: The Legend Unfolds",
+                "narrative": zenith_narrative
+            }
+        ]
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
         prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
         return Proficiency(rank=prof_bonus, rank_letter=letter, modifier=prof_bonus + level + attr_mod)
@@ -1711,37 +1741,7 @@ class PF2eGenerator:
             chosen_feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
-def generate_epic_backstory(char_data: dict) -> list:
-    name = char_data.get("name") or "The Hero"
-    ancestry = char_data.get("ancestry") or "Human"
-    cls = char_data.get("character_class") or "Adventurer"
-    lvl = int(char_data.get("level") or 1)
-    bg = char_data.get("background") or "unknown origins"
-    
-    # Scale narrative tone dynamically based on level
-    if lvl == 1:
-        zenith_narrative = f"Now taking their first steps at Level {lvl} as a {cls}, {name} leaves the safety of life as a {bg} behind, stepping out into a vast and dangerous world with little more than raw determination."
-    elif lvl <= 5:
-        zenith_narrative = f"Having grown accustomed to the perils of the road at Level {lvl}, {name}'s early trials as a {cls} have begun to forge a genuine reputation across the local frontier."
-    elif lvl <= 15:
-        zenith_narrative = f"Now a seasoned adventurer at Level {lvl}, {name}'s exploits as a {cls} are spoken of with growing respect as regional powers take notice of their rising influence."
-    else:
-        zenith_narrative = f"Standing at the absolute zenith of power as a Level {lvl} {cls}, {name} commands a legendary presence across the realm, their epic feats echoing through history like a force of nature."
 
-    return [
-        {
-            "chapter": "Chapter I: Roots in the Dust",
-            "narrative": f"Long before the weight of legendary arms rested upon {name}'s shoulders, there were quiet days spent as a {bg}. Raised amidst the rugged trials of the frontier, {name} learned early that survival is carved out of stubborn endurance rather than divine favor."
-        },
-        {
-            "chapter": "Chapter II: The Awakening Spark",
-            "narrative": f"As a {ancestry} navigating a world scarred by ancient powers, {name}'s path shifted when a latent calling took root. Stepping onto the path of the {cls}, every trial forged a sharper resolve, turning simple grit into disciplined power."
-        },
-        {
-            "chapter": "Chapter III: The Legend Unfolds",
-            "narrative": zenith_narrative
-        }
-    ]
     def level_up(
         self,
         current_char: Dict[str, Any],
