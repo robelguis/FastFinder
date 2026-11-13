@@ -1,4 +1,768 @@
-<script>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FastFinder - PF2e Remaster Character Generator</title>
+  <style>
+    :root {
+      --bg: #0b1120;
+      --panel-bg: #1e293b;
+      --accent-gold: #d97706;
+      --accent-light: #f59e0b;
+      --border: #334155;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --paizo-red: #58180d;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 1.5rem 1rem; }
+    .container { max-width: 1040px; margin: 0 auto; }
+
+    header { text-align: center; margin-bottom: 1.25rem; }
+    header h1 { font-size: 2.2rem; color: var(--accent-gold); letter-spacing: 0.05em; }
+    header p { color: var(--text-muted); font-size: 0.9rem; }
+
+    .pf2e-sheet {
+      background: #ffffff;
+      color: #111827;
+      border-radius: 6px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      border: 2px solid #000000;
+      padding: 1.25rem;
+    }
+
+    .sheet-header-banner {
+      display: grid;
+      grid-template-columns: 1.7fr 1.3fr 1fr 1.4fr 110px;
+      gap: 0.5rem;
+      background: #f1f5f9;
+      border: 1.5px solid #000000;
+      padding: 0.6rem 0.8rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+    .banner-block { display: flex; flex-direction: column; justify-content: center; }
+    .banner-label { font-size: 0.65rem; font-weight: 800; color: #475569; text-transform: uppercase; }
+    .banner-val { font-size: 1.05rem; font-weight: 800; color: #000000; line-height: 1.2; }
+    .banner-val.level-val { font-size: 1.6rem; text-align: center; color: var(--paizo-red); }
+
+    .level-block {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0.2rem;
+    }
+    .level-controls {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      margin-top: 0.25rem;
+    }
+    .btn-level-step {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      width: 26px;
+      height: 26px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-level-step:hover:not(:disabled) {
+      background: #d97706;
+      color: #fff;
+      border-color: #d97706;
+    }
+    .btn-level-step:disabled {
+      opacity: 0.35;
+      cursor: not-allowed;
+    }
+    .select-level-picker {
+      background: #1e293b;
+      color: #f8fafc;
+      border: 1px solid #d97706;
+      border-radius: 4px;
+      padding: 0.2rem 0.4rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .arch-badge {
+      display: inline-block;
+      background: #0284c7;
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+      margin-top: 0.2rem;
+      width: fit-content;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .sheet-body {
+      display: grid;
+      grid-template-columns: 310px 1fr;
+      gap: 1.25rem;
+    }
+
+    .sheet-box {
+      border: 1.5px solid #000000;
+      border-radius: 4px;
+      margin-bottom: 0.75rem;
+      background: #ffffff;
+      overflow: hidden;
+    }
+    .sheet-box-title {
+      background: #1e293b;
+      color: #ffffff;
+      font-size: 0.75rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 0.3rem 0.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sheet-box-content { padding: 0.5rem; }
+
+    .attributes-table {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.25rem;
+      text-align: center;
+    }
+    .attr-cell {
+      border: 1px solid #94a3b8;
+      border-radius: 3px;
+      padding: 0.25rem 0.1rem;
+      background: #f8fafc;
+    }
+    .attr-lbl { font-size: 0.65rem; font-weight: 800; color: #475569; }
+    .attr-mod { font-size: 1.25rem; font-weight: 900; color: #000000; }
+
+    .defense-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+    }
+    .defense-metric {
+      border: 1px solid #94a3b8;
+      border-radius: 4px;
+      padding: 0.4rem 0.5rem;
+      background: #f8fafc;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .defense-metric .lbl { font-size: 0.7rem; font-weight: 800; color: #475569; text-transform: uppercase; }
+    .defense-metric .val { font-size: 1.25rem; font-weight: 900; color: #000000; }
+
+    .saves-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.35rem;
+      text-align: center;
+    }
+    .save-box {
+      border: 1px solid #94a3b8;
+      background: #f8fafc;
+      border-radius: 4px;
+      padding: 0.3rem 0.2rem;
+    }
+    .save-lbl { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #475569; }
+    .save-val { font-size: 1.15rem; font-weight: 900; color: #000000; }
+    .save-rank { font-size: 0.65rem; font-weight: 700; color: #0369a1; }
+
+    .skills-ledger { display: flex; flex-direction: column; gap: 0.25rem; }
+    .skill-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.2rem 0.4rem;
+      border-bottom: 1px dotted #cbd5e1;
+      font-size: 0.78rem;
+    }
+    .skill-line:last-child { border-bottom: none; }
+    .skill-meta { display: flex; align-items: center; gap: 0.35rem; }
+    .skill-badge {
+      display: inline-block;
+      width: 17px;
+      height: 17px;
+      line-height: 17px;
+      text-align: center;
+      border-radius: 3px;
+      font-size: 0.65rem;
+      font-weight: 900;
+    }
+    .badge-t { background: #000000; color: #ffffff; }
+    .badge-e { background: #0369a1; color: #ffffff; }
+    .badge-u { background: #e2e8f0; color: #64748b; border: 1px solid #94a3b8; }
+    .skill-title { font-weight: 700; }
+    .skill-attr-tag { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
+    .skill-mod-val { font-weight: 900; font-size: 0.85rem; color: #000000; min-width: 25px; text-align: right; }
+
+    .strikes-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .strikes-table th {
+      background: #f1f5f9;
+      text-align: left;
+      padding: 0.3rem 0.4rem;
+      border: 1px solid #cbd5e1;
+      font-size: 0.68rem;
+      text-transform: uppercase;
+      font-weight: 800;
+      color: #475569;
+    }
+    .strikes-table td { padding: 0.4rem 0.4rem; border: 1px solid #cbd5e1; }
+    .w-name { font-weight: 800; color: #000000; font-size: 0.85rem; }
+    .w-map { font-family: monospace; font-size: 0.95rem; font-weight: 900; color: #0369a1; }
+    .w-dmg { font-weight: 800; color: #991b1b; }
+    .w-traits { font-size: 0.7rem; color: #475569; }
+
+    .detail-card {
+      border: 1px solid #cbd5e1;
+      background: #f8fafc;
+      border-radius: 4px;
+      padding: 0.5rem;
+      margin-bottom: 0.4rem;
+    }
+    .detail-card.arch-feat {
+      border-left: 3.5px solid #0284c7;
+      background: #f0f9ff;
+    }
+    .detail-card-head {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+      font-size: 0.82rem;
+      margin-bottom: 0.15rem;
+    }
+    .detail-card-meta {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #0369a1;
+      margin-bottom: 0.25rem;
+    }
+    .detail-card-body {
+      font-size: 0.75rem;
+      line-height: 1.35;
+      color: #334155;
+    }
+
+    .spells-scroll-container {
+      max-height: 520px;
+      overflow-y: auto;
+      padding-right: 0.25rem;
+    }
+
+    .slot-tracker-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: #e2e8f0;
+      padding: 0.3rem 0.5rem;
+      border-radius: 4px;
+      margin: 0.5rem 0 0.3rem;
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+    .slot-pips { display: flex; gap: 0.35rem; align-items: center; }
+    .slot-checkbox {
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+      accent-color: #0369a1;
+    }
+
+    .consumables-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.35rem;
+      margin-bottom: 0.5rem;
+    }
+    .consumable-pill {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 0.35rem 0.5rem;
+      font-size: 0.76rem;
+    }
+    .qty-tag {
+      background: #0284c7;
+      color: #ffffff;
+      padding: 0.1rem 0.35rem;
+      border-radius: 3px;
+      font-weight: 900;
+      font-size: 0.7rem;
+    }
+
+    .gear-summary { font-size: 0.75rem; color: #334155; line-height: 1.4; }
+    .money-row {
+      display: flex;
+      gap: 0.5rem;
+      font-weight: 800;
+      font-size: 0.78rem;
+      margin-bottom: 0.35rem;
+    }
+    .coin-badge {
+      background: #fef3c7;
+      border: 1px solid #f59e0b;
+      color: #92400e;
+      padding: 0.15rem 0.4rem;
+      border-radius: 3px;
+    }
+
+    .controls-wrapper {
+      background: #111827;
+      border: 1px solid #1e293b;
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      margin-bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.25rem;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
+    }
+    .controls-row-top {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr 1fr 0.8fr;
+      gap: 1rem;
+      align-items: flex-end;
+    }
+    .controls-row-bottom {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 1.25rem;
+      padding-top: 0.75rem;
+      border-top: 1px solid #1e293b;
+    }
+    .arch-field {
+      flex: 1 1 280px;
+      min-width: 240px;
+    }
+    .action-buttons-group {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-left: auto;
+    }
+    .field { display: flex; flex-direction: column; gap: 0.35rem; }
+    label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+    select, input, button {
+      padding: 0.6rem 0.75rem;
+      background: #0f172a;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    button.primary-btn {
+      background: var(--accent-gold);
+      color: #000;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      padding: 0.6rem 1rem;
+    }
+    button.primary-btn:hover { background: var(--accent-light); }
+    button.action-btn {
+      background: #334155;
+      color: #f8fafc;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.85rem;
+      white-space: nowrap;
+    }
+    button.action-btn:hover { background: #475569; }
+
+    .toggle-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.6rem;
+      background: #1e293b;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      transition: all 0.2s;
+    }
+    .toggle-pill:hover { background: #334155; }
+    .toggle-pill input[type="checkbox"] {
+      accent-color: #f59e0b;
+      width: 1.1rem;
+      height: 1.1rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>FastFinder</h1>
+      <p>Instant PF2e Remaster Character Generator & Tabletop Sheet</p>
+    </header>
+
+    <div class="controls-wrapper">
+      <div class="controls-row-top">
+        <div class="field">
+          <label for="charName">Name (Optional)</label>
+          <input type="text" id="charName" placeholder="(Auto by Ancestry)">
+        </div>
+        <div class="field">
+          <label for="ancestrySelect">Ancestry</label>
+          <select id="ancestrySelect"><option value="">Any Ancestry</option></select>
+        </div>
+        <div class="field">
+          <label for="classSelect">Class</label>
+          <select id="classSelect"><option value="">Any Class</option></select>
+        </div>
+        <div class="field">
+          <label for="subclassSelect">Subclass</label>
+          <select id="subclassSelect"><option value="">Any Subclass</option></select>
+        </div>
+        <div class="field">
+          <label for="backgroundSelect">Background</label>
+          <select id="backgroundSelect"><option value="">Any Background</option></select>
+        </div>
+        <div class="field">
+          <label for="levelSelect">Level</label>
+          <select id="levelSelect">
+            <option value="1" selected>Level 1</option>
+            <option value="2">Level 2</option>
+            <option value="3">Level 3</option>
+            <option value="4">Level 4</option>
+            <option value="5">Level 5</option>
+            <option value="6">Level 6</option>
+            <option value="7">Level 7</option>
+            <option value="8">Level 8</option>
+            <option value="9">Level 9</option>
+            <option value="10">Level 10</option>
+            <option value="11">Level 11</option>
+            <option value="12">Level 12</option>
+            <option value="13">Level 13</option>
+            <option value="14">Level 14</option>
+            <option value="15">Level 15</option>
+            <option value="16">Level 16</option>
+            <option value="17">Level 17</option>
+            <option value="18">Level 18</option>
+            <option value="19">Level 19</option>
+            <option value="20">Level 20</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="controls-row-bottom">
+        <div class="field arch-field">
+          <label for="archetypeSelect">Archetype / Dedication</label>
+          <select id="archetypeSelect"><option value="">Any Archetype</option></select>
+        </div>
+
+        <label class="toggle-pill" for="dedicationToggle">
+          <input type="checkbox" id="dedicationToggle" checked>
+          <span>Archetype Dedication</span>
+        </label>
+
+        <div class="action-buttons-group">
+          <button class="primary-btn" id="generateBtn" onclick="generate()">Generate</button>
+          <button class="action-btn" id="foundryBtn" onclick="downloadFoundryJson()">Foundry JSON</button>
+          <button class="action-btn" id="printBtn" onclick="window.print()">Print / PDF</button>
+          <button class="action-btn" id="backstoryBtn">Epic Backstory</button>
+          <button type="button" id="btnResetAll" class="action-btn" onclick="resetEverything()">Reset</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pf2e-sheet" id="sheetCard">
+      <div class="sheet-header-banner">
+        <div class="banner-block">
+          <span class="banner-label">Character Name</span>
+          <span class="banner-val" id="sheetName">—</span>
+        </div>
+        <div class="banner-block">
+          <span class="banner-label">Ancestry & Heritage</span>
+          <span class="banner-val" id="sheetAncestry">Human</span>
+        </div>
+        <div class="banner-block">
+          <span class="banner-label">Background</span>
+          <span class="banner-val" id="sheetBackground">Farmhand</span>
+        </div>
+        <div class="banner-block">
+          <span class="banner-label">Class & Archetype</span>
+          <span class="banner-val" id="sheetClass">Fighter</span>
+          <span id="sheetArchetypeBadge" class="arch-badge" style="display: none;"></span>
+        </div>
+        <div class="banner-block level-block">
+          <span class="banner-label">LEVEL</span>
+          <span class="banner-val level-val" id="sheetLevel">1</span>
+          <div class="level-controls">
+            <button type="button" id="btnLevelDown" class="btn-level-step" onclick="handleLevelStep(-1)" title="Level Down">-</button>
+            <select id="sheetLevelSelect" class="select-level-picker" onchange="handleLevelSelect(this.value)">
+              <option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option>
+              <option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option>
+              <option value="9">9</option><option value="10">10</option><option value="11">11</option><option value="12">12</option>
+              <option value="13">13</option><option value="14">14</option><option value="15">15</option><option value="16">16</option>
+              <option value="17">17</option><option value="18">18</option><option value="19">19</option><option value="20">20</option>
+            </select>
+            <button type="button" id="btnLevelUp" class="btn-level-step" onclick="handleLevelStep(1)" title="Level Up">+</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sheet-body">
+        <div class="left-col">
+          <div class="sheet-box">
+            <div class="sheet-box-title">Attributes</div>
+            <div class="sheet-box-content">
+              <div class="attributes-table">
+                <div class="attr-cell"><span class="attr-lbl">STR</span><div class="attr-mod" id="statStr">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">DEX</span><div class="attr-mod" id="statDex">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">CON</span><div class="attr-mod" id="statCon">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">INT</span><div class="attr-mod" id="statInt">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">WIS</span><div class="attr-mod" id="statWis">+0</div></div>
+                <div class="attr-cell"><span class="attr-lbl">CHA</span><div class="attr-mod" id="statCha">+0</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet-box">
+            <div class="sheet-box-title">Armor Class & Hit Points</div>
+            <div class="sheet-box-content">
+              <div class="defense-row">
+                <div class="defense-metric">
+                  <span class="lbl">Armor Class</span>
+                  <span class="val" id="vitalAc">18</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Max HP</span>
+                  <span class="val" id="vitalHp" style="color: #15803d;">20</span>
+                </div>
+              </div>
+              <div class="defense-row">
+                <div class="defense-metric">
+                  <span class="lbl">Speed</span>
+                  <span class="val" id="vitalSpeed">25 ft</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Perception</span>
+                  <span class="val" id="vitalPerception">+6</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet-box">
+            <div class="sheet-box-title">Saving Throws</div>
+            <div class="sheet-box-content">
+              <div class="saves-grid">
+                <div class="save-box">
+                  <div class="save-lbl">Fortitude</div>
+                  <div class="save-val" id="vitalFort">+7</div>
+                  <div class="save-rank" id="rankFort">Trained</div>
+                </div>
+                <div class="save-box">
+                  <div class="save-lbl">Reflex</div>
+                  <div class="save-val" id="vitalRef">+6</div>
+                  <div class="save-rank" id="rankRef">Trained</div>
+                </div>
+                <div class="save-box">
+                  <div class="save-lbl">Will</div>
+                  <div class="save-val" id="vitalWill">+5</div>
+                  <div class="save-rank" id="rankWill">Trained</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet-box">
+            <div class="sheet-box-title">Skills Ledger</div>
+            <div class="sheet-box-content">
+              <div class="skills-ledger" id="skillsContainer"></div>
+            </div>
+          </div>
+
+          <div class="sheet-box" id="ancestryBox" style="margin-top: 0.6rem;">
+            <div class="sheet-box-title" id="ancestryBoxTitle">Ancestry Description</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
+              <p id="ancestryBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
+            </div>
+          </div>
+
+          <div class="sheet-box" id="backgroundBox" style="margin-top: 0.6rem;">
+            <div class="sheet-box-title" id="backgroundBoxTitle">Background Description</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
+              <p id="backgroundBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
+            </div>
+          </div>
+
+          <div class="sheet-box" id="archetypeBox" style="margin-top: 0.6rem; display: none;">
+            <div class="sheet-box-title" id="archetypeBoxTitle">Archetype / Dedication</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
+              <p id="archetypeBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
+            </div>
+          </div>
+
+          <div class="sheet-box" id="languagesBox" style="margin-top: 0.6rem;">
+            <div class="sheet-box-title">Languages</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
+              <div id="characterLanguages" style="display: flex; flex-wrap: wrap; gap: 0.35rem; font-size: 0.78rem;">
+                <span style="background: #e2e8f0; color: #334155; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 500;">Common</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="right-col">
+          <div class="sheet-box">
+            <div class="sheet-box-title">Strikes & Attacks</div>
+            <div class="sheet-box-content" style="padding: 0;">
+              <table class="strikes-table">
+                <thead>
+                  <tr>
+                    <th>Weapon</th>
+                    <th>Strikes (1st / 2nd / 3rd)</th>
+                    <th>Damage</th>
+                    <th>Traits</th>
+                  </tr>
+                </thead>
+                <tbody id="strikesTbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div id="partnerCreaturesContainer"></div>
+
+          <div class="sheet-box" id="focusSection" style="display: none; border-left: 3.5px solid #d97706;">
+            <div class="sheet-box-title" style="background: #78350f;">
+              <span>Focus Spells & Focus Pool</span>
+              <span id="focusTraditionMeta" style="font-size: 0.65rem; color: #fef08a;"></span>
+            </div>
+            <div class="sheet-box-content">
+              <div class="defense-row" style="margin-bottom: 0.4rem;">
+                <div class="defense-metric">
+                  <span class="lbl">Focus DC</span>
+                  <span class="val" id="focusDc">17</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Focus Attack</span>
+                  <span class="val" id="focusAttack">+7</span>
+                </div>
+              </div>
+              <div class="slot-tracker-bar" style="background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;">
+                <span id="focusPoolLabel">FOCUS POINTS (1 MAX)</span>
+                <div class="slot-pips" id="focusPipsContainer"></div>
+              </div>
+              <div id="focusSpellsList" style="margin-top: 0.4rem;"></div>
+            </div>
+          </div>
+
+          <div class="sheet-box" id="spellsSection" style="display: none;">
+            <div class="sheet-box-title">
+              <span>Spellcasting</span>
+              <span id="spellTraditionMeta" style="font-size: 0.65rem; color: #fef08a;"></span>
+            </div>
+            <div class="sheet-box-content">
+              <div class="defense-row" style="margin-bottom: 0.4rem;">
+                <div class="defense-metric">
+                  <span class="lbl">Spell DC</span>
+                  <span class="val" id="spellDc">17</span>
+                </div>
+                <div class="defense-metric">
+                  <span class="lbl">Spell Attack</span>
+                  <span class="val" id="spellAttack">+7</span>
+                </div>
+              </div>
+              <div id="slotTrackerContainer"></div>
+              <div class="spells-scroll-container">
+                <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Cantrips</div>
+                <div id="cantripsContainer"></div>
+                <div id="rank1Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 1 Spells</div>
+                <div id="rank1Container"></div>
+                <div id="rank2Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 2 Spells</div>
+                <div id="rank2Container"></div>
+                <div id="rank3Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 3 Spells</div>
+                <div id="rank3Container"></div>
+                <div id="rank4Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 4 Spells</div>
+                <div id="rank4Container"></div>
+                <div id="rank5Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 5 Spells</div>
+                <div id="rank5Container"></div>
+                <div id="rank6Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 6 Spells</div>
+                <div id="rank6Container"></div>
+                <div id="rank7Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 7 Spells</div>
+                <div id="rank7Container"></div>
+                <div id="rank8Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 8 Spells</div>
+                <div id="rank8Container"></div>
+                <div id="rank9Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 9 Spells</div>
+                <div id="rank9Container"></div>
+                <div id="rank10Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 10 Spells</div>
+                <div id="rank10Container"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet-box" id="actionsSection" style="display: none; border-left: 3.5px solid #2563eb;">
+            <div class="sheet-box-title" style="background: #1e3a8a;">
+              <span>Actions</span>
+              <span id="actionsCountBadge" style="font-size: 0.65rem; color: #93c5fd; font-weight: 800;"></span>
+            </div>
+            <div class="sheet-box-content" id="actionsContainer"></div>
+          </div>
+
+          <div class="sheet-box" id="reactionsSection" style="display: none; border-left: 3.5px solid #d97706;">
+            <div class="sheet-box-title" style="background: #78350f;">
+              <span>Reactions & Free Actions</span>
+              <span id="reactionsCountBadge" style="font-size: 0.65rem; color: #fcd34d; font-weight: 800;"></span>
+            </div>
+            <div class="sheet-box-content" id="reactionsContainer"></div>
+          </div>
+
+          <div class="sheet-box">
+            <div class="sheet-box-title">Feats & Special Abilities</div>
+            <div class="sheet-box-content" id="featsContainer"></div>
+          </div>
+
+          <div class="sheet-box">
+            <div class="sheet-box-title">Consumables & Gear Tracker</div>
+            <div class="sheet-box-content">
+              <div class="money-row" id="moneyContainer"></div>
+              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.4rem 0 0.25rem;">
+                Tracked Consumables (Potions / Elixirs / Ammo)
+              </div>
+              <div class="consumables-list" id="consumablesContainer"></div>
+              <div style="font-weight: 700; font-size: 0.75rem; margin-top: 0.4rem; margin-bottom: 0.2rem;">
+                Armor & Shield: <span id="armorSpan" style="font-weight: 400; color: #334155;"></span>
+              </div>
+              <div class="gear-summary" id="gearContainer"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
     let currentCharacterData = null;
 
     async function loadOptions() {
@@ -122,12 +886,10 @@
       slots.forEach(slot => {
         const bar = document.createElement('div');
         bar.className = 'slot-tracker-bar';
-        
         let pipsHtml = '';
         for (let i = 0; i < slot.max_slots; i++) {
           pipsHtml += `<input type="checkbox" class="slot-checkbox" title="Check when spell slot is cast">`;
         }
-
         bar.innerHTML = `
           <span>RANK ${slot.rank} SPELL SLOTS (${slot.max_slots} MAX)</span>
           <div class="slot-pips">${pipsHtml}</div>
@@ -197,7 +959,6 @@
       document.getElementById('sheetLevel').textContent = currentLevel;
       updateLevelUpControls(currentLevel);
 
-      // Populate Ancestry Description Box
       const ancDescEl = document.getElementById("ancestryBoxDesc");
       const ancTitleEl = document.getElementById("ancestryBoxTitle");
       if (ancTitleEl) {
@@ -207,7 +968,6 @@
         ancDescEl.textContent = data.ancestry_description || "Lore details not found in compendium.";
       }
 
-      // Populate Background Description Box
       const bgBoxEl = document.getElementById("backgroundBox");
       const bgTitleEl = document.getElementById("backgroundBoxTitle");
       const bgDescEl = document.getElementById("backgroundBoxDesc");
@@ -216,7 +976,6 @@
         bgDescEl.textContent = data.background_description || "Background details not found in compendium.";
       }
 
-      // Populate Languages Box
       const langContainer = document.getElementById("characterLanguages");
       if (langContainer) {
         const langs = (data.languages && data.languages.length > 0) ? data.languages : ["Common"];
@@ -225,7 +984,6 @@
         ).join("");
       }
 
-      // Populate Archetype / Dedication Box
       const archBoxEl = document.getElementById("archetypeBox");
       const archTitleEl = document.getElementById("archetypeBoxTitle");
       const archDescEl = document.getElementById("archetypeBoxDesc");
@@ -239,7 +997,6 @@
         }
       }
 
-      // Attributes
       const attrs = data.attributes || {};
       document.getElementById('statStr').textContent = formatMod(attrs.str ?? attrs.strength);
       document.getElementById('statDex').textContent = formatMod(attrs.dex ?? attrs.dexterity);
@@ -248,7 +1005,6 @@
       document.getElementById('statWis').textContent = formatMod(attrs.wis ?? attrs.wisdom);
       document.getElementById('statCha').textContent = formatMod(attrs.cha ?? attrs.charisma);
 
-      // Defenses & HP
       document.getElementById('vitalHp').textContent = data.defenses?.hp ?? 0;
       const shieldBonus = data.defenses?.shield_bonus ?? 0;
       const acBase = data.defenses?.ac ?? 10;
@@ -256,7 +1012,6 @@
       document.getElementById('vitalSpeed').textContent = `${data.speed ?? 25} ft`;
       document.getElementById('vitalPerception').textContent = formatMod(data.perception?.modifier);
 
-      // Saves
       document.getElementById('vitalFort').textContent = formatMod(data.defenses?.fortitude?.modifier);
       const rankLabel = (r) => ({ L: 'Legendary', M: 'Master', E: 'Expert', T: 'Trained' }[r] || 'Trained');
       document.getElementById('rankFort').textContent = rankLabel(data.defenses?.fortitude?.rank_letter);
@@ -265,7 +1020,6 @@
       document.getElementById('vitalWill').textContent = formatMod(data.defenses?.will?.modifier);
       document.getElementById('rankWill').textContent = rankLabel(data.defenses?.will?.rank_letter);
 
-      // Strikes & MAP
       const strikesTbody = document.getElementById('strikesTbody');
       strikesTbody.innerHTML = '';
       (data.equipment?.strikes || []).forEach(s => {
@@ -282,7 +1036,6 @@
         strikesTbody.appendChild(row);
       });
 
-      // Skills Ledger
       const skillsContainer = document.getElementById('skillsContainer');
       skillsContainer.innerHTML = '';
       const rawSkills = Array.isArray(data.all_skills) ? data.all_skills : (Array.isArray(data.trained_skills) ? data.trained_skills : []);
@@ -302,7 +1055,6 @@
         skillsContainer.appendChild(row);
       });
 
-      // Spellcasting Section
       const spellsSection = document.getElementById('spellsSection');
       if (data.spellcasting) {
         spellsSection.style.display = 'block';
@@ -329,7 +1081,6 @@
         spellsSection.style.display = 'none';
       }
 
-      // Actions, Reactions & Passive Feats Sections
       const actionsSec = document.getElementById('actionsSection');
       const actionsBox = document.getElementById('actionsContainer');
       const reactionsSec = document.getElementById('reactionsSection');
@@ -396,7 +1147,6 @@
         featsBox.appendChild(renderFeatCard(f, 'Passive', '#f1f5f9', '#475569'));
       });
 
-      // Currency, Consumables & Equipment
       const moneyBox = document.getElementById('moneyContainer');
       moneyBox.innerHTML = '';
       if (data.equipment?.money) {
@@ -409,7 +1159,6 @@
       
       renderConsumables(data.equipment?.consumables || []);
 
-      // Render Partner Creatures (Eidolon, Animal Companion, Familiar)
       const container = document.getElementById("partnerCreaturesContainer");
       if (container) {
         container.innerHTML = "";
@@ -475,73 +1224,37 @@
                   Size: ${comp.size || "Medium"} | Speed: ${comp.speed || "25 ft"} | Perception: ${formatMod(comp.perception)}
                 </div>
               </div>
-
               <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.72rem; color: #166534; margin: 0.35rem 0;">
-                <span style="font-weight: 800;">Command an Animal (1 Action):</span> Grants companion 2 actions this turn (Stride, Strike, Support, etc.).
+                <span style="font-weight: 800;">Command an Animal (1 Action):</span> Grants companion 2 actions this turn.
               </div>
-
               <div style="display: flex; gap: 0.35rem; justify-content: space-between; margin-bottom: 0.4rem;">
                 ${attrHtml}
               </div>
-
               <div class="defense-row" style="margin-bottom: 0.4rem;">
-                <div class="defense-metric">
-                  <span class="lbl">AC</span>
-                  <span class="val">${comp.ac}</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Max HP</span>
-                  <span class="val" style="color: #15803d;">${isEidolon ? `${comp.hp} (Shared)` : comp.hp}</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Fort</span>
-                  <span class="val">${formatMod(comp.fortitude)}</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Ref</span>
-                  <span class="val">${formatMod(comp.reflex)}</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Will</span>
-                  <span class="val">${formatMod(comp.will)}</span>
-                </div>
+                <div class="defense-metric"><span class="lbl">AC</span><span class="val">${comp.ac}</span></div>
+                <div class="defense-metric"><span class="lbl">Max HP</span><span class="val" style="color: #15803d;">${isEidolon ? `${comp.hp} (Shared)` : comp.hp}</span></div>
+                <div class="defense-metric"><span class="lbl">Fort</span><span class="val">${formatMod(comp.fortitude)}</span></div>
+                <div class="defense-metric"><span class="lbl">Ref</span><span class="val">${formatMod(comp.reflex)}</span></div>
+                <div class="defense-metric"><span class="lbl">Will</span><span class="val">${formatMod(comp.will)}</span></div>
               </div>
-
               <div style="font-size: 0.72rem; line-height: 1.35; color: #334155; margin-bottom: 0.4rem; padding: 0.25rem 0.4rem; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0;">
                 <div><span style="font-weight: 700; color: #0f172a;">Senses:</span> ${sensesText}</div>
                 ${skillsList ? `<div><span style="font-weight: 700; color: #0f172a;">Skills:</span> ${skillsList}</div>` : ""}
               </div>
-
               <div style="margin-top: 0.4rem;">
                 <div class="table-caption-bar">COMPANION STRIKES</div>
                 <table class="fast-table">
-                  <thead>
-                    <tr><th>Action</th><th>Attack</th><th>Damage</th><th>Traits</th></tr>
-                  </thead>
+                  <thead><tr><th>Action</th><th>Attack</th><th>Damage</th><th>Traits</th></tr></thead>
                   <tbody>${strikesHtml}</tbody>
                 </table>
               </div>
-
-              ${primaryText ? `
-                <div class="detail-card" style="margin-top: 0.4rem;">
-                  <div class="detail-card-head">${primaryTitle}</div>
-                  <div class="detail-card-body">${primaryText}</div>
-                </div>
-              ` : ""}
-              ${secondaryText ? `
-                <div class="detail-card" style="margin-top: 0.4rem;">
-                  <div class="detail-card-head">${secondaryTitle}</div>
-                  <div class="detail-card-body">${secondaryText}</div>
-                </div>
-              ` : ""}
+              ${primaryText ? `<div class="detail-card" style="margin-top: 0.4rem;"><div class="detail-card-head">${primaryTitle}</div><div class="detail-card-body">${primaryText}</div></div>` : ""}
+              ${secondaryText ? `<div class="detail-card" style="margin-top: 0.4rem;"><div class="detail-card-head">${secondaryTitle}</div><div class="detail-card-body">${secondaryText}</div></div>` : ""}
             </div>
           `;
           container.appendChild(card);
         });
       }
-
-      const legacyComp = document.getElementById("companionSection");
-      if (legacyComp) legacyComp.style.display = "none";
 
       const focusSection = document.getElementById("focusSection");
       if (data.focus_spells && data.focus_spells.spells && data.focus_spells.spells.length > 0) {
@@ -619,7 +1332,6 @@
       window.location.href = '/api/export/foundry?' + params.toString();
     }
 
-    // Epic Backstory Button Listener
     document.addEventListener('DOMContentLoaded', () => {
       const backstoryBtn = document.getElementById('backstoryBtn');
       if (backstoryBtn) {
@@ -641,8 +1353,6 @@
             }
 
             const data = await response.json();
-            
-            // Render/display chapters (fallback alert if modal function is missing)
             if (typeof displayEpicBackstoryModal === 'function') {
               displayEpicBackstoryModal(data.chapters);
             } else {
@@ -734,9 +1444,6 @@
     }
 
     function resetEverything() {
-      const nameInput = document.getElementById("charNameInput") || document.getElementById("nameInput");
-      if (nameInput) nameInput.value = "";
-
       const selects = [
         "ancestrySelect",
         "classSelect",
@@ -761,4 +1468,6 @@
 
       generate();
     }
-</script>
+  </script>
+</body>
+</html>
