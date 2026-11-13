@@ -417,7 +417,6 @@
       cursor: pointer;
     }
 
-    /* --- PLACE THE PRINT MEDIA QUERY BLOCK RIGHT HERE --- */
     @media print {
       @page { size: letter portrait; margin: 0.35in; }
       body { background: #ffffff !important; padding: 0 !important; }
@@ -430,7 +429,6 @@
       .spells-scroll-container { max-height: none !important; overflow: visible !important; }
       .slot-checkbox { appearance: none; -webkit-appearance: none; border: 1.5px solid #000000; border-radius: 2px; }
 
-      /* Forcefully remove borders, background fills, and arrows from all inputs and selects during print */
       input, select, textarea, .select-level-picker {
         border: none !important;
         background: transparent !important;
@@ -443,7 +441,6 @@
       }
       select::-ms-expand { display: none; }
     }
-    /* -------------------------------------------------- */
   </style>
 </head>
 <body>
@@ -1300,6 +1297,33 @@
       const useDedication = document.getElementById('dedicationToggle')?.checked;
       params.append('dedication', useDedication ? 'true': 'false');
       window.location.href = '/api/export/foundry?' + params.toString();
+    }
+
+    // Modal display function for Epic Backstory
+    function displayEpicBackstoryModal(chapters) {
+      let modal = document.getElementById('backstoryModal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'backstoryModal';
+        modal.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);display:flex;justify-content:center;align-items:center;z-index:9999;padding:1rem;";
+        document.body.appendChild(modal);
+      }
+
+      const contentHtml = chapters.map(c => `
+        <div style="margin-bottom: 1rem;">
+            <h3 style="color: #d97706; margin-bottom: 0.25rem;">${c.chapter}</h3>
+            <p style="color: #334155; font-size: 0.9rem; line-height: 1.4;">${c.narrative}</p>
+        </div>
+      `).join('');
+
+      modal.innerHTML = `
+        <div style="background: #ffffff; color: #111827; padding: 2rem; border-radius: 8px; max-width: 600px; width: 100%; max-height: 80vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <h2 style="margin-bottom: 1rem; border-bottom: 2px solid #d97706; padding-bottom: 0.5rem;">Epic Backstory</h2>
+            ${contentHtml}
+            <button onclick="document.getElementById('backstoryModal').style.display='none'" style="margin-top: 1rem; background: #d97706; color: #fff; border: none; padding: 0.5rem 1rem; font-weight: bold; border-radius: 4px; cursor: pointer;">Close</button>
+        </div>
+      `;
+      modal.style.display = 'flex';
     }
 
     document.addEventListener('DOMContentLoaded', () => {
