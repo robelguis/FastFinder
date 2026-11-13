@@ -80,6 +80,13 @@ def generate_character(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/backstory")
+def api_generate_backstory(character: dict):
+    try:
+        chapters = generator.generate_epic_backstory(character)
+        return {"chapters": chapters}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/levelup")
 def level_up_endpoint(payload: LevelUpPayload):
