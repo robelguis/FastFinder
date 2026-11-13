@@ -883,11 +883,26 @@
                 <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Cantrips</div>
                 <div id="cantripsContainer"></div>
 
-                <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 1 Spells</div>
+                <div id="rank1Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 1 Spells</div>
                 <div id="rank1Container"></div>
-
                 <div id="rank2Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 2 Spells</div>
                 <div id="rank2Container"></div>
+                <div id="rank3Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 3 Spells</div>
+                <div id="rank3Container"></div>
+                <div id="rank4Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 4 Spells</div>
+                <div id="rank4Container"></div>
+                <div id="rank5Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 5 Spells</div>
+                <div id="rank5Container"></div>
+                <div id="rank6Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 6 Spells</div>
+                <div id="rank6Container"></div>
+                <div id="rank7Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 7 Spells</div>
+                <div id="rank7Container"></div>
+                <div id="rank8Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 8 Spells</div>
+                <div id="rank8Container"></div>
+                <div id="rank9Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 9 Spells</div>
+                <div id="rank9Container"></div>
+                <div id="rank10Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 10 Spells</div>
+                <div id="rank10Container"></div>
               </div>
             </div>
           </div>
@@ -1237,14 +1252,18 @@
         
         renderSlotTrackers(data.spellcasting.slots);
         renderSpellList('cantripsContainer', data.spellcasting.cantrips);
-        renderSpellList('rank1Container', data.spellcasting.rank_1_spells);
 
-        if (data.spellcasting.rank_2_spells && data.spellcasting.rank_2_spells.length > 0) {
-          document.getElementById('rank2Header').style.display = 'block';
-          renderSpellList('rank2Container', data.spellcasting.rank_2_spells);
-        } else {
-          document.getElementById('rank2Header').style.display = 'none';
-          document.getElementById('rank2Container').innerHTML = '';
+        for (let r = 1; r <= 10; r++) {
+          const spellsForRank = data.spellcasting[`rank_${r}_spells`];
+          const hdr = document.getElementById(`rank${r}Header`);
+          const box = document.getElementById(`rank${r}Container`);
+          if (spellsForRank && spellsForRank.length > 0) {
+            if (hdr) hdr.style.display = 'block';
+            if (box) renderSpellList(`rank${r}Container`, spellsForRank);
+          } else {
+            if (hdr) hdr.style.display = 'none';
+            if (box) box.innerHTML = '';
+          }
         }
       } else {
         spellsSection.style.display = 'none';

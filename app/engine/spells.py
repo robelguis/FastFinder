@@ -34,6 +34,31 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Cone of Cold", "actions": "2 actions", "traits": ["Arcane", "Cold"], "range": "60-foot cone", "defense": "Basic Reflex", "description": "Freezing air deals 12d6 cold damage to creatures in the cone."},
             {"name": "Wall of Stone", "actions": "3 actions", "traits": ["Arcane", "Earth", "Structure"], "range": "120 feet", "defense": "None", "description": "You shape a solid wall of stone blocking passage and line of effect."},
             {"name": "Synaptic Pulse", "actions": "2 actions", "traits": ["Arcane", "Mental", "Stun"], "range": "30-foot emanation", "defense": "Will", "description": "A psychic shockwave pulses outward, leaving enemies stunned."}
+        ],
+        "rank_6": [
+            {"name": "Chain Lightning", "actions": "2 actions", "traits": ["Arcane", "Electricity"], "range": "500 feet", "defense": "Basic Reflex", "description": "An arc of lightning deals 8d12 electricity damage and leaps from target to target."},
+            {"name": "Disintegrate", "actions": "2 actions", "traits": ["Arcane", "Attack"], "range": "120 feet", "defense": "Fortitude", "description": "A green ray deals 12d10 damage and turns slain targets to fine dust."},
+            {"name": "True Seeing", "actions": "2 actions", "traits": ["Arcane", "Revelation"], "range": "Self", "defense": "None", "description": "You see things as they actually are, piercing illusions and transmutations."}
+        ],
+        "rank_7": [
+            {"name": "Contingency", "actions": "10 minutes", "traits": ["Arcane"], "range": "Self", "defense": "None", "description": "You prepare a spell to trigger automatically when a specified condition occurs."},
+            {"name": "Eclipse Burst", "actions": "2 actions", "traits": ["Arcane", "Cold", "Darkness", "Void"], "range": "500 feet", "defense": "Basic Reflex", "description": "A 60-foot burst of freezing shadow deals 8d10 cold and 8d4 void damage."},
+            {"name": "Prismatic Spray", "actions": "2 actions", "traits": ["Arcane", "Light"], "range": "30-foot cone", "defense": "Varies", "description": "Seven brilliant beams of light strike creatures with varied chromatic effects."}
+        ],
+        "rank_8": [
+            {"name": "Polar Ray", "actions": "2 actions", "traits": ["Arcane", "Attack", "Cold"], "range": "120 feet", "defense": "AC", "description": "A blue-white ray deals 10d8 cold damage and inflicts drained 2."},
+            {"name": "Maze", "actions": "2 actions", "traits": ["Arcane", "Extradimensional", "Teleportation"], "range": "30 feet", "defense": "None", "description": "Banishes a target into an extradimensional labyrinth from which it must escape."},
+            {"name": "Undermine Reality", "actions": "2 actions", "traits": ["Arcane", "Illusion"], "range": "60 feet", "defense": "Will", "description": "Makes the target's attacks and spells feel unreal, reducing their damage and imposing stupefied."}
+        ],
+        "rank_9": [
+            {"name": "Falling Stars", "actions": "2 actions", "traits": ["Arcane", "Fire"], "range": "500 feet", "defense": "Basic Reflex", "description": "Calls down four meteors that explode in 40-foot bursts for 6d10 bludgeoning and 14d6 fire damage."},
+            {"name": "Foresight", "actions": "2 actions", "traits": ["Arcane", "Mental", "Prediction"], "range": "Touch", "defense": "None", "description": "Grants a sixth sense warning of danger, giving a +2 status bonus to initiative and reactions."},
+            {"name": "Weird", "actions": "2 actions", "traits": ["Arcane", "Death", "Fear", "Illusion", "Mental"], "range": "120 feet", "defense": "Will", "description": "Conjures each foe's worst nightmare, dealing 16d6 mental damage and frightening targets."}
+        ],
+        "rank_10": [
+            {"name": "Time Stop", "actions": "3 actions", "traits": ["Arcane"], "range": "Self", "defense": "None", "description": "You temporarily halt time for everyone else, gaining 3 free turns to act."},
+            {"name": "Wish", "actions": "3 actions", "traits": ["Arcane"], "range": "Varies", "defense": "Varies", "description": "You alter reality itself to duplicate spells or produce extraordinary effects."},
+            {"name": "Cataclysm", "actions": "2 actions", "traits": ["Arcane", "Air", "Cold", "Earth", "Fire", "Water"], "range": "1,000 feet", "defense": "Basic Reflex", "description": "Unleashes acid rain, earthquakes, lightning, and tsunami waves in a 60-foot burst."}
         ]
     },
     "divine": {
@@ -67,6 +92,31 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Breath of Life", "actions": "Reaction", "traits": ["Divine", "Healing"], "range": "60 feet", "defense": "None", "description": "Trigger: An ally within 60 ft would die. You restore 4d8 HP to prevent their death."},
             {"name": "Divine Immolation", "actions": "2 actions", "traits": ["Divine", "Fire", "Sanctified"], "range": "120 feet", "defense": "Basic Reflex", "description": "Holy fire bursts in a 20-foot area dealing 6d10 fire damage plus 2d6 persistent spirit damage."},
             {"name": "Cleanse Curse", "actions": "2 actions", "traits": ["Divine", "Healing"], "range": "Touch", "defense": "None", "description": "You attempt a counteract check against a curse or affliction afflicting the target."}
+        ],
+        "rank_6": [
+            {"name": "Blade Barrier", "actions": "3 actions", "traits": ["Divine", "Force"], "range": "120 feet", "defense": "Basic Reflex", "description": "A 120-foot wall of whirling force blades deals 7d8 force damage to creatures passing through."},
+            {"name": "Field of Life", "actions": "2 actions", "traits": ["Divine", "Healing", "Vitality"], "range": "30 feet", "defense": "None", "description": "A 20-foot burst of positive energy restores 1d8 HP each round to living creatures inside."},
+            {"name": "Spirit Blast", "actions": "2 actions", "traits": ["Divine", "Force"], "range": "30 feet", "defense": "Basic Fortitude", "description": "Damages a creature's spiritual essence directly for 16d6 force damage."}
+        ],
+        "rank_7": [
+            {"name": "Sunburst", "actions": "2 actions", "traits": ["Divine", "Fire", "Light", "Vitality"], "range": "500 feet", "defense": "Basic Reflex", "description": "A globe of searing sunlight deals 8d10 fire and 8d10 vitality damage to undead in a 60-foot burst."},
+            {"name": "Regenerate", "actions": "2 actions", "traits": ["Divine", "Healing", "Vitality"], "range": "Touch", "defense": "None", "description": "Grants regeneration 15 for 1 minute, reattaching severed limbs and preventing death."},
+            {"name": "Divine Decree", "actions": "2 actions", "traits": ["Divine", "Sanctified"], "range": "40-foot emanation", "defense": "Fortitude", "description": "Utters a sacred word dealing 7d10 spirit damage and enfeebling or paralyzing foes."}
+        ],
+        "rank_8": [
+            {"name": "Divine Aura", "actions": "2 actions", "traits": ["Divine", "Sanctified"], "range": "10-foot emanation", "defense": "None", "description": "Grants allies within 10 feet a +1 status bonus to AC and saves and resistance 10 to unholy/holy damage."},
+            {"name": "Moment of Renewal", "actions": "2 actions", "traits": ["Divine", "Healing"], "range": "Touch", "defense": "None", "description": "Up to 6 targets immediately gain the benefits of a full 8-hour night's rest."},
+            {"name": "Canticle of Everlasting Grief", "actions": "2 actions", "traits": ["Curse", "Divine", "Emotion", "Mental"], "range": "120 feet", "defense": "Will", "description": "Deals 10d6 mental damage and strips the target of all status bonuses."}
+        ],
+        "rank_9": [
+            {"name": "Foresight", "actions": "2 actions", "traits": ["Divine", "Mental", "Prediction"], "range": "Touch", "defense": "None", "description": "Grants a +2 status bonus to initiative and defensive reactions for 1 hour."},
+            {"name": "Overwhelming Presence", "actions": "2 actions", "traits": ["Auditory", "Divine", "Emotion", "Mental", "Visual"], "range": "40-foot burst", "defense": "Will", "description": "Reveals divine majesty, forcing foes to bow in awe and become stunned."},
+            {"name": "Massacre", "actions": "2 actions", "traits": ["Death", "Divine", "Void"], "range": "60-foot line", "defense": "Fortitude", "description": "A wave of necromantic entropy slays weaker creatures outright and deals 9d6 void damage."}
+        ],
+        "rank_10": [
+            {"name": "Miracle", "actions": "3 actions", "traits": ["Divine"], "range": "Varies", "defense": "Varies", "description": "Channels your deity's supreme power to duplicate spells or reshape fate."},
+            {"name": "Avatar", "actions": "2 actions", "traits": ["Divine", "Polymorph"], "range": "Self", "defense": "None", "description": "Transforms you into a towering battle avatar of your deity with fly Speed and devastating strikes."},
+            {"name": "Revival", "actions": "2 actions", "traits": ["Divine", "Healing", "Vitality"], "range": "30 feet", "defense": "None", "description": "Restores 10d8+40 HP to all allies in a 30-foot burst and returns recently slain allies to life."}
         ]
     },
     "primal": {
@@ -100,6 +150,31 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Howling Blizzard", "actions": "2 actions", "traits": ["Cold", "Primal"], "range": "120 feet", "defense": "Basic Reflex", "description": "A fierce tempest deals 10d6 cold damage in a 20-foot burst and creates heavy difficult terrain."},
             {"name": "Grasping Spire", "actions": "2 actions", "traits": ["Earth", "Primal"], "range": "120 feet", "defense": "Reflex", "description": "A spire of stone erupts dealing 6d8 piercing damage and immobilizing the target on a hit."},
             {"name": "Heal", "actions": "1 to 3 actions", "traits": ["Healing", "Primal", "Vitality"], "range": "Varies", "defense": "None", "description": "Heightened to Rank 5: Restores 5d8 HP per action spent, or a 30-foot burst of 5d8 HP."}
+        ],
+        "rank_6": [
+            {"name": "Chain Lightning", "actions": "2 actions", "traits": ["Electricity", "Primal"], "range": "500 feet", "defense": "Basic Reflex", "description": "An arc of lightning deals 8d12 electricity damage and jumps across multiple foes."},
+            {"name": "Tangling Creepers", "actions": "3 actions", "traits": ["Plant", "Primal"], "range": "500 feet", "defense": "Reflex", "description": "Dense vines fill a 40-foot burst, lashing out to grab and immobilize enemies."},
+            {"name": "Dragon Form", "actions": "2 actions", "traits": ["Polymorph", "Primal"], "range": "Self", "defense": "None", "description": "Transforms you into a fierce Large dragon with breath weapon, jaws, claws, and 100-ft fly Speed."}
+        ],
+        "rank_7": [
+            {"name": "Sunburst", "actions": "2 actions", "traits": ["Fire", "Light", "Primal", "Vitality"], "range": "500 feet", "defense": "Basic Reflex", "description": "A blinding sphere of solar fire deals 8d10 fire damage in a 60-foot burst."},
+            {"name": "Volcanic Eruption", "actions": "2 actions", "traits": ["Earth", "Fire", "Primal"], "range": "120 feet", "defense": "Basic Reflex", "description": "Magma erupts in a 5-foot-radius, 80-foot-tall cylinder dealing 14d6 fire damage and encasing foes in lava."},
+            {"name": "Regenerate", "actions": "2 actions", "traits": ["Healing", "Primal", "Vitality"], "range": "Touch", "defense": "None", "description": "Grants regeneration 15 for 1 minute, rapidly knitting wounds and preventing death."}
+        ],
+        "rank_8": [
+            {"name": "Earthquake", "actions": "2 actions", "traits": ["Earth", "Primal"], "range": "500 feet", "defense": "Reflex", "description": "Shakes a 60-foot burst violently, collapsing structures, opening fissures, and knocking foes prone."},
+            {"name": "Polar Ray", "actions": "2 actions", "traits": ["Attack", "Cold", "Primal"], "range": "120 feet", "defense": "AC", "description": "Fires an arctic beam dealing 10d8 cold damage and inflicting drained 2."},
+            {"name": "Monstrosity Form", "actions": "2 actions", "traits": ["Polymorph", "Primal"], "range": "Self", "defense": "None", "description": "Transforms you into a Gargantuan behemoth such as a phoenix, purple worm, or sea serpent."}
+        ],
+        "rank_9": [
+            {"name": "Falling Stars", "actions": "2 actions", "traits": ["Fire", "Primal"], "range": "500 feet", "defense": "Basic Reflex", "description": "Calls down four blazing meteors dealing 6d10 bludgeoning and 14d6 fire damage."},
+            {"name": "Storm of Vengeance", "actions": "3 actions", "traits": ["Air", "Electricity", "Primal"], "range": "800 feet", "defense": "Basic Reflex", "description": "Conjures a massive storm cloud unleashing acid rain, hail, gale winds, and lightning bolts."},
+            {"name": "Nature's Enmity", "actions": "2 actions", "traits": ["Plant", "Primal"], "range": "120 feet", "defense": "Will", "description": "Turns the natural world hostile against up to 5 targets, imposing clumsy and slowed."}
+        ],
+        "rank_10": [
+            {"name": "Primal Phenomenon", "actions": "3 actions", "traits": ["Primal"], "range": "Varies", "defense": "Varies", "description": "Commands the raw forces of nature to duplicate spells or reshape the environment."},
+            {"name": "Cataclysm", "actions": "2 actions", "traits": ["Air", "Cold", "Earth", "Fire", "Primal", "Water"], "range": "1,000 feet", "defense": "Basic Reflex", "description": "Unleashes combined elemental disasters across a 60-foot burst."},
+            {"name": "Nature Incarnate", "actions": "2 actions", "traits": ["Polymorph", "Primal"], "range": "Self", "defense": "None", "description": "Transforms you into a towering Green Man or Kaiju avatar of primeval nature."}
         ]
     },
     "occult": {
@@ -133,6 +208,31 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Synaptic Pulse", "actions": "2 actions", "traits": ["Mental", "Occult", "Stun"], "range": "30-foot emanation", "defense": "Will", "description": "A telepathic wave pulses outward, stunning enemies for 1 round on a failed save."},
             {"name": "Shadow Siphon", "actions": "Reaction", "traits": ["Illusion", "Occult", "Shadow"], "range": "60 feet", "defense": "None", "description": "Trigger: You or an ally would take energy damage. You weave shadows to reduce the damage by 5d8."},
             {"name": "Soothe", "actions": "2 actions", "traits": ["Emotion", "Healing", "Mental", "Occult"], "range": "30 feet", "defense": "None", "description": "Heightened to Rank 5: Restores 5d10+20 HP to an ally and grants +2 status bonus vs mental effects."}
+        ],
+        "rank_6": [
+            {"name": "Phantasmal Calamity", "actions": "2 actions", "traits": ["Illusion", "Mental", "Occult"], "range": "500 feet", "defense": "Will", "description": "Creates an apocalyptic psychic illusion in a 30-foot burst dealing 11d6 mental damage and stunning foes."},
+            {"name": "True Seeing", "actions": "2 actions", "traits": ["Occult", "Revelation"], "range": "Self", "defense": "None", "description": "Pierces illusions, invisibility, and transmutations within your line of sight."},
+            {"name": "Spirit Blast", "actions": "2 actions", "traits": ["Force", "Occult"], "range": "30 feet", "defense": "Basic Fortitude", "description": "Launches concentrated ectoplasmic force dealing 16d6 force damage."}
+        ],
+        "rank_7": [
+            {"name": "Warp Mind", "actions": "2 actions", "traits": ["Emotion", "Incapacitation", "Mental", "Occult"], "range": "120 feet", "defense": "Will", "description": "Shatters the target's psyche, inflicting severe confusion on a failed Will save."},
+            {"name": "Visions of Danger", "actions": "3 actions", "traits": ["Auditory", "Illusion", "Mental", "Occult", "Visual"], "range": "500 feet", "defense": "Basic Will", "description": "Fills a 30-foot burst with phantom horrors dealing 8d8 mental damage each round."},
+            {"name": "Plane Shift", "actions": "10 minutes", "traits": ["Occult", "Teleportation"], "range": "Touch", "defense": "Will", "description": "Transports you and up to 8 willing allies across planar boundaries."}
+        ],
+        "rank_8": [
+            {"name": "Uncontrollable Dance", "actions": "2 actions", "traits": ["Emotion", "Incapacitation", "Mental", "Occult"], "range": "Touch", "defense": "Will", "description": "Forces the target into an irresistible dance, making it off-guard and unable to use reactions."},
+            {"name": "Maze", "actions": "2 actions", "traits": ["Extradimensional", "Occult", "Teleportation"], "range": "30 feet", "defense": "None", "description": "Traps a foe inside an extradimensional labyrinth."},
+            {"name": "Spirit Song", "actions": "2 actions", "traits": ["Force", "Occult"], "range": "60-foot cone", "defense": "Basic Fortitude", "description": "A resonant psychic chord deals 18d6 force damage to creatures in a 60-foot cone."}
+        ],
+        "rank_9": [
+            {"name": "Weird", "actions": "2 actions", "traits": ["Death", "Fear", "Illusion", "Mental", "Occult"], "range": "120 feet", "defense": "Will", "description": "Manifests each creature's mortal dread in a 30-foot burst for 16d6 mental damage."},
+            {"name": "Foresight", "actions": "2 actions", "traits": ["Mental", "Occult", "Prediction"], "range": "Touch", "defense": "None", "description": "Grants a +2 status bonus to initiative and reactions for 1 hour."},
+            {"name": "Wail of the Banshee", "actions": "2 actions", "traits": ["Auditory", "Death", "Occult", "Void"], "range": "40-foot emanation", "defense": "Fortitude", "description": "Unleashes a soul-rending shriek dealing 8d10 void damage and inflicting drained."}
+        ],
+        "rank_10": [
+            {"name": "Alter Reality", "actions": "3 actions", "traits": ["Occult"], "range": "Varies", "defense": "Varies", "description": "Reshapes the fabric of existence to duplicate spells or rewrite reality."},
+            {"name": "Time Stop", "actions": "3 actions", "traits": ["Occult"], "range": "Self", "defense": "None", "description": "Halts the flow of time around you, granting 3 uninterrupted turns."},
+            {"name": "Fabricated Truth", "actions": "3 actions", "traits": ["Incapacitation", "Mental", "Occult"], "range": "100 feet", "defense": "Will", "description": "Implants an unshakeable belief in up to 5 targets' minds."}
         ]
     }
 }
@@ -185,6 +285,11 @@ def resolve_spellcasting(
         rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if low_rank <= 3 <= top_rank else []
         rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if low_rank <= 4 <= top_rank else []
         rank_5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])] if low_rank <= 5 <= top_rank else []
+        rank_6 = [SpellSummary(rank=6, **s) for s in cat_data.get("rank_6", [])] if low_rank <= 6 <= top_rank else []
+        rank_7 = [SpellSummary(rank=7, **s) for s in cat_data.get("rank_7", [])] if low_rank <= 7 <= top_rank else []
+        rank_8 = [SpellSummary(rank=8, **s) for s in cat_data.get("rank_8", [])] if low_rank <= 8 <= top_rank else []
+        rank_9 = [SpellSummary(rank=9, **s) for s in cat_data.get("rank_9", [])] if low_rank <= 9 <= top_rank else []
+        rank_10 = [SpellSummary(rank=10, **s) for s in cat_data.get("rank_10", [])] if low_rank <= 10 <= top_rank else []
 
         return SpellcastingData(
             tradition=trad_name,
@@ -197,6 +302,11 @@ def resolve_spellcasting(
             rank_3_spells=rank_3,
             rank_4_spells=rank_4,
             rank_5_spells=rank_5,
+            rank_6_spells=rank_6,
+            rank_7_spells=rank_7,
+            rank_8_spells=rank_8,
+            rank_9_spells=rank_9,
+            rank_10_spells=rank_10,
             slots=slots
         )
 
@@ -238,6 +348,11 @@ def resolve_spellcasting(
         rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if low_rank <= 3 <= top_rank else []
         rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if low_rank <= 4 <= top_rank else []
         rank_5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])] if low_rank <= 5 <= top_rank else []
+        rank_6 = [SpellSummary(rank=6, **s) for s in cat_data.get("rank_6", [])] if low_rank <= 6 <= top_rank else []
+        rank_7 = [SpellSummary(rank=7, **s) for s in cat_data.get("rank_7", [])] if low_rank <= 7 <= top_rank else []
+        rank_8 = [SpellSummary(rank=8, **s) for s in cat_data.get("rank_8", [])] if low_rank <= 8 <= top_rank else []
+        rank_9 = [SpellSummary(rank=9, **s) for s in cat_data.get("rank_9", [])] if low_rank <= 9 <= top_rank else []
+        rank_10 = [SpellSummary(rank=10, **s) for s in cat_data.get("rank_10", [])] if low_rank <= 10 <= top_rank else []
 
         return SpellcastingData(
             tradition=trad_name,
@@ -250,6 +365,11 @@ def resolve_spellcasting(
             rank_3_spells=rank_3,
             rank_4_spells=rank_4,
             rank_5_spells=rank_5,
+            rank_6_spells=rank_6,
+            rank_7_spells=rank_7,
+            rank_8_spells=rank_8,
+            rank_9_spells=rank_9,
+            rank_10_spells=rank_10,
             slots=slots
         )
 
@@ -273,6 +393,11 @@ def resolve_spellcasting(
     rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if level >= 5 else []
     rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if level >= 7 else []
     rank_5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])] if level >= 9 else []
+    rank_6 = [SpellSummary(rank=6, **s) for s in cat_data.get("rank_6", [])] if level >= 11 else []
+    rank_7 = [SpellSummary(rank=7, **s) for s in cat_data.get("rank_7", [])] if level >= 13 else []
+    rank_8 = [SpellSummary(rank=8, **s) for s in cat_data.get("rank_8", [])] if level >= 15 else []
+    rank_9 = [SpellSummary(rank=9, **s) for s in cat_data.get("rank_9", [])] if level >= 17 else []
+    rank_10 = [SpellSummary(rank=10, **s) for s in cat_data.get("rank_10", [])] if level >= 19 else []
 
     slots = [SpellSlotTracker(rank=1, max_slots=3 if level >= 3 else 2)]
     if level >= 3:
@@ -282,7 +407,17 @@ def resolve_spellcasting(
     if level >= 7:
         slots.append(SpellSlotTracker(rank=4, max_slots=3 if level >= 9 else 2))
     if level >= 9:
-        slots.append(SpellSlotTracker(rank=5, max_slots=2))
+        slots.append(SpellSlotTracker(rank=5, max_slots=3 if level >= 11 else 2))
+    if level >= 11:
+        slots.append(SpellSlotTracker(rank=6, max_slots=3 if level >= 13 else 2))
+    if level >= 13:
+        slots.append(SpellSlotTracker(rank=7, max_slots=3 if level >= 15 else 2))
+    if level >= 15:
+        slots.append(SpellSlotTracker(rank=8, max_slots=3 if level >= 17 else 2))
+    if level >= 17:
+        slots.append(SpellSlotTracker(rank=9, max_slots=3 if level >= 19 else 2))
+    if level >= 19:
+        slots.append(SpellSlotTracker(rank=10, max_slots=2 if level >= 20 else 1))
 
     return SpellcastingData(
         tradition=cfg["tradition"],
@@ -295,5 +430,10 @@ def resolve_spellcasting(
         rank_3_spells=rank_3,
         rank_4_spells=rank_4,
         rank_5_spells=rank_5,
+        rank_6_spells=rank_6,
+        rank_7_spells=rank_7,
+        rank_8_spells=rank_8,
+        rank_9_spells=rank_9,
+        rank_10_spells=rank_10,
         slots=slots
     )
