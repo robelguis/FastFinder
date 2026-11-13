@@ -1244,7 +1244,7 @@ class PF2eGenerator:
 
         cls_name_lower = cls["name"].lower()
         gate_elements = set()
-       chosen_feats: List[FeatSummary] = []
+        chosen_feats: List[FeatSummary] = []
         added_feat_names = set()
         
         bg_desc = bg.get("description", "")
