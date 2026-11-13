@@ -250,7 +250,95 @@ CLASS_TRADITION_MAP = {
     "magus": {"tradition": "Arcane", "attr": "int", "catalog": "arcane"}
 }
 
+def _apply_dedication_cantrips(
+    sc: Optional[SpellcastingData],
+    feats: Optional[List[Any]],
+    attribute_mods: Dict[str, int],
+    level: int,
+) -> Optional[SpellcastingData]:
+    if not feats:
+        return sc
+    feat_names = [
+        (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else "")).lower()
+        for f in feats
+    ]
+    if not any("bloodrager dedication" in fn for fn in feat_names):
+        return sc
+
+    extra_candidates = [
+        SpellSummary(
+            rank=0,
+            name="Gouging Claw (Bloodrager)",
+            actions="2 actions",
+            traits=["Arcane", "Attack", "Cantrip", "Concentrate", "Manipulate", "Morph"],
+            range="Touch",
+            defense="AC",
+            description="Granted by Bloodrager Dedication (CHA-based): You morph your hand into a wicked claw and make a melee spell attack dealing 2d6 slashing or piercing damage plus 2 bleed on a critical hit."
+        ),
+        SpellSummary(
+            rank=0,
+            name="Ignition (Bloodrager)",
+            actions="2 actions",
+            traits=["Arcane", "Attack", "Cantrip", "Concentrate", "Fire", "Manipulate"],
+            range="30 feet",
+            defense="AC",
+            description="Granted by Bloodrager Dedication (CHA-based): You hurl boiling arcane fire at a foe for 2d4 fire damage (critical hit deals persistent fire)."
+        ),
+        SpellSummary(
+            rank=0,
+            name="Divine Lance (Bloodrager)",
+            actions="2 actions",
+            traits=["Attack", "Cantrip", "Concentrate", "Divine", "Sanctified"],
+            range="30 feet",
+            defense="AC",
+            description="Granted by Bloodrager Dedication (CHA-based): You launch a lance of visceral spirit energy dealing 2d4 spirit damage."
+        ),
+    ]
+
+    if sc is None:
+        cha_mod = attribute_mods.get("cha", 2)
+        prof_bonus = 2 + level
+        return SpellcastingData(
+            tradition="Arcane / Divine (Bloodrager)",
+            casting_attribute="CHA",
+            spell_dc=10 + prof_bonus + cha_mod,
+            spell_attack=prof_bonus + cha_mod,
+            cantrips=extra_candidates[:2],
+            slots=[],
+        )
+
+    existing_cantrip_bases = {c.name.split("(")[0].strip().lower() for c in sc.cantrips}
+    added = 0
+    for cand in extra_candidates:
+        base = cand.name.split("(")[0].strip().lower()
+        if base not in existing_cantrip_bases:
+            sc.cantrips.append(cand)
+            existing_cantrip_bases.add(base)
+            added += 1
+        if added >= 2:
+            break
+    if added < 2:
+        for cand in extra_candidates:
+            if cand.name not in {c.name for c in sc.cantrips}:
+                sc.cantrips.append(cand)
+                added += 1
+            if added >= 2:
+                break
+    return sc
+
+
 def resolve_spellcasting(
+    class_name: str,
+    attribute_mods: Dict[str, int],
+    level: int = 1,
+    subclass_name: Optional[str] = None,
+    feats: Optional[List[Any]] = None,
+) -> Optional[SpellcastingData]:
+    sc = _resolve_base_spellcasting(class_name, attribute_mods, level, subclass_name)
+    return _apply_dedication_cantrips(sc, feats, attribute_mods, level)
+
+
+def _resolve_base_spellcasting(
     class_name: str,
     attribute_mods: Dict[str, int],
     level: int = 1,

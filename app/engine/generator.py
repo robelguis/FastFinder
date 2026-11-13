@@ -465,6 +465,23 @@ def can_take_additional_lore(existing_feat_names: set, cls_name: str, archetype_
     return current_count < 2
 
 
+def can_take_dedication(feat_name: str, existing_feats: list, existing_feat_names: set) -> bool:
+    fn_low = (feat_name or "").strip().lower()
+    if "dedication" not in fn_low:
+        return True
+    if any(fn_low == existing.strip().lower() for existing in existing_feat_names):
+        return False
+    dedications = [f for f in existing_feats if "dedication" in (getattr(f, "name", "") or "").lower()]
+    if not dedications:
+        return True
+    arch_feats = [
+        f for f in existing_feats
+        if "archetype" in (getattr(f, "category", "") or "").lower()
+        or "archetype" in [t.lower() for t in (getattr(f, "traits", []) or [])]
+    ]
+    return len(arch_feats) >= 3 * len(dedications)
+
+
 def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
     cleaned = clean_pf2e_text(raw_desc or "")
     if "(" in feat_name and ")" in feat_name:
@@ -627,6 +644,7 @@ class PF2eGenerator:
                 if f.get("category") == "general"
                 and f.get("level", 1) <= lvl
                 and f["name"] not in existing_feat_names
+                and can_take_dedication(f["name"], chosen_feats, existing_feat_names)
                 and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl)
             ]
             if gen_pool:
@@ -692,6 +710,7 @@ class PF2eGenerator:
                 and f.get("level", 1) <= lvl
                 and anc_lower in [t.lower() for t in f.get("traits", [])]
                 and f["name"] not in existing_feat_names
+                and can_take_dedication(f["name"], chosen_feats, existing_feat_names)
                 and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl)
             ]
             if anc_pool:
@@ -829,6 +848,7 @@ class PF2eGenerator:
             attribute_mods=mods,
             level=level,
             subclass_name=sub_name,
+            feats=chosen_feats,
         )
 
         focus_data = resolve_focus_spells(
@@ -1351,6 +1371,15 @@ class PF2eGenerator:
                 ))
                 if ded["name"] in ARCHETYPE_GRANTED_FEATURES:
                     chosen_feats.append(ARCHETYPE_GRANTED_FEATURES[ded["name"]])
+                if "bloodrager dedication" in ded["name"].lower() and not any("harvest blood" in f.name.lower() for f in chosen_feats):
+                    chosen_feats.append(FeatSummary(
+                        id="bloodrager-harvest-blood",
+                        name="Harvest Blood",
+                        category="Archetype Action (Bloodrager)",
+                        action_cost="1",
+                        traits=["archetype", "concentrate", "rage"],
+                        description="Requirements: Your last action was a successful melee Strike that dealt slashing or piercing damage to a living creature with blood. You drink or absorb the spilled blood to gain temporary HP equal to half your level and empower your bloodrager spells."
+                    ))
 
                 # --- HOOK: Winged Warrior Graft Investment ---
                 if "winged warrior" in archetype_data["name"].lower():
@@ -1439,8 +1468,12 @@ class PF2eGenerator:
                 ))
 
         if level >= 4:
+            arch_lvl4 = None
             if archetype_data:
-                arch_lvl4 = random.choice(archetype_data["level_4_feats"])
+                owned_lvl4 = {f.name for f in chosen_feats}
+                valid_arch_4 = [f for f in archetype_data.get("level_4_feats", []) if f["name"] not in owned_lvl4]
+                arch_lvl4 = random.choice(valid_arch_4) if valid_arch_4 else None
+            if archetype_data and arch_lvl4:
                 chosen_feats.append(FeatSummary(
                     id=arch_lvl4["id"],
                     name=arch_lvl4["name"],
@@ -2470,7 +2503,8 @@ class PF2eGenerator:
             class_name=cls["name"],
             attribute_mods=mods,
             level=target_level,
-            subclass_name=sub_name
+            subclass_name=sub_name,
+            feats=chosen_feats,
         )
 
         focus_data = resolve_focus_spells(

@@ -907,6 +907,22 @@
             </div>
           </div>
 
+          <div class="sheet-box" id="actionsSection" style="display: none; border-left: 3.5px solid #2563eb;">
+            <div class="sheet-box-title" style="background: #1e3a8a;">
+              <span>Actions</span>
+              <span id="actionsCountBadge" style="font-size: 0.65rem; color: #93c5fd; font-weight: 800;"></span>
+            </div>
+            <div class="sheet-box-content" id="actionsContainer"></div>
+          </div>
+
+          <div class="sheet-box" id="reactionsSection" style="display: none; border-left: 3.5px solid #d97706;">
+            <div class="sheet-box-title" style="background: #78350f;">
+              <span>Reactions & Free Actions</span>
+              <span id="reactionsCountBadge" style="font-size: 0.65rem; color: #fcd34d; font-weight: 800;"></span>
+            </div>
+            <div class="sheet-box-content" id="reactionsContainer"></div>
+          </div>
+
           <div class="sheet-box">
             <div class="sheet-box-title">Feats & Special Abilities</div>
             <div class="sheet-box-content" id="featsContainer"></div>
@@ -1269,22 +1285,71 @@
         spellsSection.style.display = 'none';
       }
 
-      // Feats Section
+      // Actions, Reactions & Passive Feats Sections
+      const actionsSec = document.getElementById('actionsSection');
+      const actionsBox = document.getElementById('actionsContainer');
+      const reactionsSec = document.getElementById('reactionsSection');
+      const reactionsBox = document.getElementById('reactionsContainer');
       const featsBox = document.getElementById('featsContainer');
+      actionsBox.innerHTML = '';
+      reactionsBox.innerHTML = '';
       featsBox.innerHTML = '';
+
+      const actionFeats = [];
+      const reactionFeats = [];
+      const passiveFeats = [];
+
       (data.feats || []).forEach(f => {
+        const rawCost = (f.action_cost || '').toString().trim().toLowerCase();
+        const descLow = (f.description || '').toLowerCase();
+        if (rawCost.includes('reaction') || rawCost === 'r' || descLow.startsWith('trigger:')) {
+          reactionFeats.push(f);
+        } else if (rawCost.includes('free') || rawCost === 'f' || ['1', '2', '3', '1 action', '2 actions', '3 actions', '1 to 3 actions'].includes(rawCost)) {
+          actionFeats.push(f);
+        } else {
+          passiveFeats.push(f);
+        }
+      });
+
+      const renderFeatCard = (f, badgeText, badgeBg, badgeColor) => {
         const card = document.createElement('div');
         const isArch = (f.category || '').toLowerCase().includes('archetype');
         card.className = isArch ? 'detail-card arch-feat' : 'detail-card';
         card.innerHTML = `
           <div class="detail-card-head">
             <span>${f.name}</span>
-            <span style="font-size: 0.7rem; color: #64748b;">${f.action_cost ? f.action_cost + ' Action(s)' : 'Passive'}</span>
+            <span style="font-size: 0.68rem; font-weight: 800; padding: 0.1rem 0.4rem; border-radius: 4px; background: ${badgeBg}; color: ${badgeColor};">${badgeText}</span>
           </div>
           <div class="detail-card-meta">${f.category} | Traits: [${(f.traits || []).join(', ')}]</div>
           <div class="detail-card-body">${f.description || ''}</div>
         `;
-        featsBox.appendChild(card);
+        return card;
+      };
+
+      if (actionFeats.length > 0) {
+        actionsSec.style.display = 'block';
+        document.getElementById('actionsCountBadge').textContent = `${actionFeats.length} ACTIVE`;
+        actionFeats.forEach(f => {
+          const c = (f.action_cost || '').toString().trim();
+          const label = c.toLowerCase().includes('free') ? 'Free Action' : `${c} Action${c === '1' ? '' : 's'}`;
+          actionsBox.appendChild(renderFeatCard(f, label, '#dbeafe', '#1e40af'));
+        });
+      } else {
+        actionsSec.style.display = 'none';
+      }
+
+      if (reactionFeats.length > 0) {
+        reactionsSec.style.display = 'block';
+        document.getElementById('reactionsCountBadge').textContent = `${reactionFeats.length} TRIGGERED`;
+        reactionFeats.forEach(f => {
+          reactionsBox.appendChild(renderFeatCard(f, 'Reaction', '#fef3c7', '#92400e'));
+        });
+      } else {
+        reactionsSec.style.display = 'none';
+      }
+
+      passiveFeats.forEach(f => {
+        featsBox.appendChild(renderFeatCard(f, 'Passive', '#f1f5f9', '#475569'));
       });
 
       // Currency, Consumables & Equipment
