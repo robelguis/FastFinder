@@ -8,41 +8,56 @@ def generate_epic_backstory(char_data: dict) -> list:
     lvl = int(char_data.get("level") or 1)
     bg = char_data.get("background") or "unknown origins"
     
-    bg_lower = bg.lower()
-    cls_lower = cls.lower()
-
-    # --- Chapter I: Completely Unique Origin Angles ---
-    if "artisan" in bg_lower or "craft" in bg_lower or "engineer" in bg_lower:
-        ch1 = f"{name} spent their formative years bent over smoking forges and workbench blueprints as a {bg}, believing their life's work would begin and end with mechanical perfection—until a fateful creation changed everything."
-    elif "corpse" in bg_lower or "graveyard" in bg_lower or "undertaker" in bg_lower:
-        ch1 = f"Working the bleak midnight shifts as a {bg}, {name} grew far too familiar with the quiet finality of death. While others fled from things that go bump in the night, {name} learned precisely how fragile mortal life truly is."
-    elif "scholar" in bg_lower or "acolyte" in bg_lower or "student" in bg_lower:
-        ch1 = f"Buried under ancient, crumbling tomes in dusty archives, {name} originally sought answers through scholarship as a {bg}. But history's margins held darker secrets than the library shelves ever intended to reveal."
+    # Pick a completely random structural layout style (0, 1, or 2)
+    style_choice = random.randint(0, 2)
+    
+    if style_choice == 0:
+        # Style A: The Chronicle / Legend Log format
+        return [
+            {
+                "chapter": "I. The Formative Years",
+                "narrative": f"Long before {name} ever caught the eye of fate, they were simply surviving day-to-day as a {bg}. Those early hardships forged an unyielding core long before any grand ambitions took root."
+            },
+            {
+                "chapter": "II. The Turning Point",
+                "narrative": f"A sudden shift shattered the quiet life. Drawing upon the hidden strengths of a {ancestry}, {name} stepped unhesitatingly onto the path of the {cls}, leaving their old world behind in a blaze of resolve."
+            },
+            {
+                "chapter": "III. Current Standing",
+                "narrative": f"Now operating at Level {lvl}, {name}'s presence as a {cls} commands attention across the region, turning heads and altering the balance of power wherever their travels take them."
+            }
+        ]
+        
+    elif style_choice == 1:
+        # Style B: Narrative Vignette format (More atmospheric, storytelling tone)
+        return [
+            {
+                "chapter": "The Dust of the Past",
+                "narrative": f"Ask anyone from the old days about {name}, and they will tell you stories of a weary traveler shaped entirely by the grueling lifestyle of a {bg}. Every scar and calloused hand told a story of endurance."
+            },
+            {
+                "chapter": "The Spark of Destiny",
+                "narrative": f"Bloodlines run deep, and for a {ancestry}, the call of something greater is never far away. When {name} embraced the mantle of a {cls}, the transition wasn't a choice—it was an awakening."
+            },
+            {
+                "chapter": "The Rising Tide",
+                "narrative": f"At Level {lvl}, the stakes are entirely different now. No longer a novice dodging shadows, {name} walks the realm as a seasoned {cls}, carving a path that history itself is beginning to notice."
+            }
+        ]
+        
     else:
-        ch1 = f"The unforgiving terrain of the frontier shaped {name} during their days as a {bg}. Away from civilization's comforts, they mastered the art of endurance long before drawing a weapon in anger."
-
-    # --- Chapter II: Class & Ancestry Dynamic Integration ---
-    if any(c in cls_lower for c in ["cleric", "oracle", "witch"]):
-        ch2 = f"When a profound, otherworldly summons pierced the veil of ordinary life, it upended everything. Embracing their heritage as a {ancestry}, {name} answered the divine call of the {cls}, binding their fate to unseen cosmic powers."
-    elif any(c in cls_lower for c in ["fighter", "guardian", "barbarian", "champion"]):
-        ch2 = f"Blood and iron tested {name}'s resolve when crisis struck. Drawing upon the stubborn bloodline of a {ancestry}, they stepped forward onto the brutal path of the {cls}, standing as an unyielding wall against oncoming doom."
-    elif any(c in cls_lower for c in ["rogue", "investigator", "ranger", "swashbuckler"]):
-        ch2 = f"Operating in the dangerous margins where law fails, {name} used their natural {ancestry} cunning to slip through the cracks. Committing entirely to the path of the {cls}, they became a phantom hunter navigating a treacherous world."
-    else:
-        ch2 = f"A sudden, catalytic turning point shattered {name}'s quiet routine. Harnessing the innate resilience of a {ancestry}, they embraced the rigorous discipline of the {cls}, stepping out to carve a new path through the chaos."
-
-    # --- Chapter III: Level & Impact Scaling ---
-    if lvl == 1:
-        ch3 = f"Now standing at the precipice of their journey as a Level 1 {cls}, {name} leaves the shadows of their past behind, armed with nothing more than raw instinct and a fierce refusal to break."
-    elif lvl <= 5:
-        ch3 = f"Having survived the brutal filtration of the early road, {name} has carved out a sharp reputation as a Level {lvl} {cls}. Local guilds and frontier outposts now speak their name with newfound respect."
-    elif lvl <= 15:
-        ch3 = f"Now a hardened veteran at Level {lvl}, {name}'s exploits as a {cls} ripple across regional borders. Rival factions and regional powers are finally beginning to realize what happens when they cross {name}'s path."
-    else:
-        ch3 = f"At the absolute zenith of mortal power as a Level {lvl} {cls}, {name} is no longer just a traveler—they are a living pillar of history, whose ongoing legend echoes like a force of nature across the realm."
-
-    return [
-        {"chapter": "Chapter I: Roots in the Dust", "narrative": ch1},
-        {"chapter": "Chapter II: The Awakening Spark", "narrative": ch2},
-        {"chapter": "Chapter III: The Legend Unfolds", "narrative": ch3}
-    ]
+        # Style C: Mythic/Epic Tale format (Slightly more dramatic and grand)
+        return [
+            {
+                "chapter": "Act I: Humble Beginnings",
+                "narrative": f"History rarely remembers where legends are born. For {name}, those days were spent laboring quietly as a {bg}, learning the brutal lessons of the world through patience and grit."
+            },
+            {
+                "chapter": "Act II: The Forge of Purpose",
+                "narrative": f"Destiny found {name} not in grand halls, but in the crucible of trial. Merging the ancient heritage of a {ancestry} with the lethal discipline of a {cls}, a true champion was forged."
+            },
+            {
+                "chapter": "Act III: The Unfolding Saga",
+                "narrative": f"Now standing as a formidable Level {lvl} {cls}, {name} commands a presence that echoes through taverns, camps, and royal courts alike, proving that the past is only prologue."
+            }
+        ]
