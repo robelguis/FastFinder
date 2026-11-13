@@ -1711,74 +1711,37 @@ class PF2eGenerator:
             chosen_feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
-    def generate_epic_backstory(self, character: Any) -> List[Dict[str, str]]:
-        """
-        Generates a rich, multi-chapter epic narrative biography tailored to the character's 
-        class, heritage, background, and level, strictly omitting any Pathfinder deities, 
-        historical events, or actual place names.
-        """
-        name = getattr(character, "name", "The Hero")
-        level = getattr(character, "level", 20)
-        ancestry = getattr(character, "ancestry", "Nomad")
-        heritage = getattr(character, "heritage", "Standard")
-        background = getattr(character, "background", "Wayfarer")
-        cls_name = getattr(character, "character_class", "Adventurer")
-        subclass_obj = getattr(character, "subclass", None)
-        subclass_name = subclass_obj.name if subclass_obj else "Specialization"
-        archetype = getattr(character, "archetype", None)
-        feats = getattr(character, "feats", [])
-        equipment = getattr(character, "equipment", None)
-        companion = getattr(character, "companion", None)
+    def generate_epic_backstory(char_data: dict) -> list:
+    name = char_data.get("name") or "The Hero"
+    ancestry = char_data.get("ancestry") or "Human"
+    cls = char_data.get("character_class") or "Adventurer"
+    lvl = int(char_data.get("level") or 1)
+    bg = char_data.get("background") or "unknown origins"
+    
+    # Scale narrative tone dynamically based on level
+    if lvl == 1:
+        zenith_narrative = f"Now taking their first steps at Level {lvl} as a {cls}, {name} leaves the safety of life as a {bg} behind, stepping out into a vast and dangerous world with little more than raw determination."
+    elif lvl <= 5:
+        zenith_narrative = f"Having grown accustomed to the perils of the road at Level {lvl}, {name}'s early trials as a {cls} have begun to forge a genuine reputation across the local frontier."
+    elif lvl <= 15:
+        zenith_narrative = f"Now a seasoned adventurer at Level {lvl}, {name}'s exploits as a {cls} are spoken of with growing respect as regional powers take notice of their rising influence."
+    else:
+        zenith_narrative = f"Standing at the absolute zenith of power as a Level {lvl} {cls}, {name} commands a legendary presence across the realm, their epic feats echoing through history like a force of nature."
 
-        feat_names = [f.name for f in feats if hasattr(f, "name")]
-        inventory_items = []
-        if equipment:
-            if hasattr(equipment, "weapons"):
-                inventory_items.extend([w.name for w in equipment.weapons if hasattr(w, "name")])
-            if hasattr(equipment, "worn"):
-                inventory_items.extend(equipment.worn)
-            if hasattr(equipment, "items"):
-                inventory_items.extend(equipment.items)
-
-        partner_name = companion.name if companion and hasattr(companion, "name") else "a faithful companion"
-
-        return [
-            {
-                "chapter": "1. Origins & Awakening",
-                "narrative": (
-                    f"Before achieving legendary status across the untamed frontiers, {name} forged an early life "
-                    f"bound to the rugged rhythms of the wild and quiet survival. As a proud member of the "
-                    f"{ancestry} people with a {heritage} heritage, {name}'s days were defined by seasonal migrations and "
-                    f"community bonds. However, an inciting catalyst rooted in their background as a '{background}' "
-                    f"disrupted this equilibrium, sparking an unyielding ambition that set {name} on the path of the {cls_name}."
-                )
-            },
-            {
-                "chapter": "2. The Crucible & The Path",
-                "narrative": (
-                    f"Navigating intermediate trials and Tier challenges, {name} honed a diverse arsenal of skills "
-                    f"and specialized feats such as {', '.join(feat_names[:3]) if feat_names else 'master-tier disciplines'}. "
-                    f"Along this arduous journey, {name} formed enduring bonds—most notably with {partner_name}—and "
-                    f"embraced advanced training through a {archetype if archetype else 'multidisciplinary'} archetype dedication."
-                )
-            },
-            {
-                "chapter": "3. The Mastery of Power",
-                "narrative": (
-                    f"Standing now at the pinnacle of mortal capability at Level {level}, {name} unleashes signature "
-                    f"abilities and extraordinary gear—including {', '.join(inventory_items[:3]) if inventory_items else 'masterwork armaments'}—with "
-                    f"breathtaking fluidity, embodying the ultimate mastery of the {subclass_name} path."
-                )
-            },
-            {
-                "channel": "4. Current Legend & Legacy",
-                "chapter": "4. Current Legend & Legacy",
-                "narrative": (
-                    f"Now a living myth across the realm, {name} stands as an eternal guardian of the boundary between "
-                    f"civilization and the wild unknown, driven by enduring personal vows and unresolved cosmic threats."
-                )
-            }
-        ]
+    return [
+        {
+            "chapter": "Chapter I: Roots in the Dust",
+            "narrative": f"Long before the weight of legendary arms rested upon {name}'s shoulders, there were quiet days spent as a {bg}. Raised amidst the rugged trials of the frontier, {name} learned early that survival is carved out of stubborn endurance rather than divine favor."
+        },
+        {
+            "chapter": "Chapter II: The Awakening Spark",
+            "narrative": f"As a {ancestry} navigating a world scarred by ancient powers, {name}'s path shifted when a latent calling took root. Stepping onto the path of the {cls}, every trial forged a sharper resolve, turning simple grit into disciplined power."
+        },
+        {
+            "chapter": "Chapter III: The Legend Unfolds",
+            "narrative": zenith_narrative
+        }
+    ]
     def level_up(
         self,
         current_char: Dict[str, Any],
