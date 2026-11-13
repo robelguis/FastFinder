@@ -1,957 +1,4 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FastFinder - PF2e Remaster Character Generator</title>
-  <style>
-    :root {
-      --bg: #0b1120;
-      --panel-bg: #1e293b;
-      --accent-gold: #d97706;
-      --accent-light: #f59e0b;
-      --border: #334155;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --paizo-red: #58180d;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 1.5rem 1rem; }
-    .container { max-width: 1040px; margin: 0 auto; }
-
-    header { text-align: center; margin-bottom: 1.25rem; }
-    header h1 { font-size: 2.2rem; color: var(--accent-gold); letter-spacing: 0.05em; }
-    header p { color: var(--text-muted); font-size: 0.9rem; }
-
-    .controls {
-      display: grid;
-      grid-template-columns: 1.5fr 1.2fr 1.2fr 0.8fr auto auto;
-      gap: 0.75rem;
-      background: var(--panel-bg);
-      padding: 1.25rem;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      margin-bottom: 1.5rem;
-      align-items: flex-end;
-    }
-    .field { display: flex; flex-direction: column; gap: 0.35rem; }
-    label { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
-    select, input, button {
-      padding: 0.6rem 0.75rem;
-      background: #0f172a;
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      color: var(--text);
-      font-size: 0.9rem;
-    }
-    .btn-group { display: flex; gap: 0.4rem; }
-    button.primary-btn {
-      background: var(--accent-gold);
-      color: #000;
-      font-weight: 700;
-      cursor: pointer;
-      border: none;
-      padding: 0.6rem 1rem;
-    }
-    button.primary-btn:hover { background: var(--accent-light); }
-    button.action-btn {
-      background: #334155;
-      color: #f8fafc;
-      font-weight: 700;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      padding: 0.6rem 0.85rem;
-      white-space: nowrap;
-    }
-    button.action-btn:hover { background: #475569; }
-
-    .pf2e-sheet {
-      background: #ffffff;
-      color: #111827;
-      border-radius: 6px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      border: 2px solid #000000;
-      padding: 1.25rem;
-    }
-
-    .sheet-header-banner {
-      display: grid;
-      grid-template-columns: 1.7fr 1.3fr 1fr 1.4fr 110px;
-      gap: 0.5rem;
-      background: #f1f5f9;
-      border: 1.5px solid #000000;
-      padding: 0.6rem 0.8rem;
-      border-radius: 4px;
-      margin-bottom: 1rem;
-    }
-    .banner-block { display: flex; flex-direction: column; justify-content: center; }
-    .banner-label { font-size: 0.65rem; font-weight: 800; color: #475569; text-transform: uppercase; }
-    .banner-val { font-size: 1.05rem; font-weight: 800; color: #000000; line-height: 1.2; }
-    .banner-val.level-val { font-size: 1.6rem; text-align: center; color: var(--paizo-red); }
-
-    .level-block {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 0.2rem;
-    }
-    .level-controls {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      margin-top: 0.25rem;
-    }
-    .btn-level-step {
-      background: #334155;
-      color: #e2e8f0;
-      border: 1px solid #475569;
-      width: 26px;
-      height: 26px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      border-radius: 4px;
-      font-size: 0.9rem;
-      font-weight: 700;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-    .btn-level-step:hover:not(:disabled) {
-      background: #d97706;
-      color: #fff;
-      border-color: #d97706;
-    }
-    .btn-level-step:disabled {
-      opacity: 0.35;
-      cursor: not-allowed;
-    }
-    .select-level-picker {
-      background: #1e293b;
-      color: #f8fafc;
-      border: 1px solid #d97706;
-      border-radius: 4px;
-      padding: 0.2rem 0.4rem;
-      font-size: 0.85rem;
-      font-weight: 700;
-      cursor: pointer;
-    }
-
-    .arch-badge {
-      display: inline-block;
-      background: #0284c7;
-      color: #ffffff;
-      font-size: 0.68rem;
-      font-weight: 800;
-      padding: 0.15rem 0.4rem;
-      border-radius: 3px;
-      margin-top: 0.2rem;
-      width: fit-content;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-    }
-
-    .sheet-body {
-      display: grid;
-      grid-template-columns: 310px 1fr;
-      gap: 1.25rem;
-    }
-
-    .sheet-box {
-      border: 1.5px solid #000000;
-      border-radius: 4px;
-      margin-bottom: 0.75rem;
-      background: #ffffff;
-      overflow: hidden;
-    }
-    .sheet-box-title {
-      background: #1e293b;
-      color: #ffffff;
-      font-size: 0.75rem;
-      font-weight: 800;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      padding: 0.3rem 0.5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .sheet-box-content { padding: 0.5rem; }
-
-    .attributes-table {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 0.25rem;
-      text-align: center;
-    }
-    .attr-cell {
-      border: 1px solid #94a3b8;
-      border-radius: 3px;
-      padding: 0.25rem 0.1rem;
-      background: #f8fafc;
-    }
-    .attr-lbl { font-size: 0.65rem; font-weight: 800; color: #475569; }
-    .attr-mod { font-size: 1.25rem; font-weight: 900; color: #000000; }
-
-    .defense-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 0.5rem;
-      margin-bottom: 0.5rem;
-    }
-    .defense-metric {
-      border: 1px solid #94a3b8;
-      border-radius: 4px;
-      padding: 0.4rem 0.5rem;
-      background: #f8fafc;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .defense-metric .lbl { font-size: 0.7rem; font-weight: 800; color: #475569; text-transform: uppercase; }
-    .defense-metric .val { font-size: 1.25rem; font-weight: 900; color: #000000; }
-
-    .saves-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 0.35rem;
-      text-align: center;
-    }
-    .save-box {
-      border: 1px solid #94a3b8;
-      background: #f8fafc;
-      border-radius: 4px;
-      padding: 0.3rem 0.2rem;
-    }
-    .save-lbl { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; color: #475569; }
-    .save-val { font-size: 1.15rem; font-weight: 900; color: #000000; }
-    .save-rank { font-size: 0.65rem; font-weight: 700; color: #0369a1; }
-
-    .skills-ledger { display: flex; flex-direction: column; gap: 0.25rem; }
-    .skill-line {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.2rem 0.4rem;
-      border-bottom: 1px dotted #cbd5e1;
-      font-size: 0.78rem;
-    }
-    .skill-line:last-child { border-bottom: none; }
-    .skill-meta { display: flex; align-items: center; gap: 0.35rem; }
-    .skill-badge {
-      display: inline-block;
-      width: 17px;
-      height: 17px;
-      line-height: 17px;
-      text-align: center;
-      border-radius: 3px;
-      font-size: 0.65rem;
-      font-weight: 900;
-    }
-    .badge-t { background: #000000; color: #ffffff; }
-    .badge-e { background: #0369a1; color: #ffffff; }
-    .badge-u { background: #e2e8f0; color: #64748b; border: 1px solid #94a3b8; }
-    .skill-title { font-weight: 700; }
-    .skill-attr-tag { font-size: 0.65rem; color: #64748b; text-transform: uppercase; }
-    .skill-mod-val { font-weight: 900; font-size: 0.85rem; color: #000000; min-width: 25px; text-align: right; }
-
-    .strikes-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
-    .strikes-table th {
-      background: #f1f5f9;
-      text-align: left;
-      padding: 0.3rem 0.4rem;
-      border: 1px solid #cbd5e1;
-      font-size: 0.68rem;
-      text-transform: uppercase;
-      font-weight: 800;
-      color: #475569;
-    }
-    .strikes-table td { padding: 0.4rem 0.4rem; border: 1px solid #cbd5e1; }
-    .w-name { font-weight: 800; color: #000000; font-size: 0.85rem; }
-    .w-map { font-family: monospace; font-size: 0.95rem; font-weight: 900; color: #0369a1; }
-    .w-dmg { font-weight: 800; color: #991b1b; }
-    .w-traits { font-size: 0.7rem; color: #475569; }
-
-    .detail-card {
-      border: 1px solid #cbd5e1;
-      background: #f8fafc;
-      border-radius: 4px;
-      padding: 0.5rem;
-      margin-bottom: 0.4rem;
-    }
-    .detail-card.arch-feat {
-      border-left: 3.5px solid #0284c7;
-      background: #f0f9ff;
-    }
-    .detail-card-head {
-      display: flex;
-      justify-content: space-between;
-      font-weight: 800;
-      font-size: 0.82rem;
-      margin-bottom: 0.15rem;
-    }
-    .detail-card-meta {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: #0369a1;
-      margin-bottom: 0.25rem;
-    }
-    .detail-card-body {
-      font-size: 0.75rem;
-      line-height: 1.35;
-      color: #334155;
-    }
-
-    /* SPELL SCROLL PANEL TO PREVENT OVER-EXPANSION */
-    .spells-scroll-container {
-      max-height: 520px;
-      overflow-y: auto;
-      padding-right: 0.25rem;
-    }
-
-    .slot-tracker-bar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      background: #e2e8f0;
-      padding: 0.3rem 0.5rem;
-      border-radius: 4px;
-      margin: 0.5rem 0 0.3rem;
-      font-size: 0.75rem;
-      font-weight: 800;
-    }
-    .slot-pips { display: flex; gap: 0.35rem; align-items: center; }
-    .slot-checkbox {
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-      accent-color: #0369a1;
-    }
-
-    .consumables-list {
-      display: flex;
-      flex-direction: column;
-      gap: 0.35rem;
-      margin-bottom: 0.5rem;
-    }
-    .consumable-pill {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      padding: 0.35rem 0.5rem;
-      font-size: 0.76rem;
-    }
-    .qty-tag {
-      background: #0284c7;
-      color: #ffffff;
-      padding: 0.1rem 0.35rem;
-      border-radius: 3px;
-      font-weight: 900;
-      font-size: 0.7rem;
-    }
-
-    .gear-summary { font-size: 0.75rem; color: #334155; line-height: 1.4; }
-    .money-row {
-      display: flex;
-      gap: 0.5rem;
-      font-weight: 800;
-      font-size: 0.78rem;
-      margin-bottom: 0.35rem;
-    }
-    .coin-badge {
-      background: #fef3c7;
-      border: 1px solid #f59e0b;
-      color: #92400e;
-      padding: 0.15rem 0.4rem;
-      border-radius: 3px;
-    }
-
-    @media print {
-      @page { size: letter portrait; margin: 0.35in; }
-      body { background: #ffffff !important; padding: 0 !important; }
-      .container { max-width: 100% !important; margin: 0 !important; }
-      header, .controls, .controls-wrapper, .level-controls, .btn-levelup { display: none !important; }
-      .pf2e-sheet { border: 2px solid #000000 !important; box-shadow: none !important; padding: 0 !important; }
-      .sheet-box { page-break-inside: avoid; }
-      .sheet-box-title { background: #000000 !important; color: #ffffff !important; }
-      .w-map, .w-dmg { color: #000000 !important; }
-      .spells-scroll-container { max-height: none !important; overflow: visible !important; }
-      .slot-checkbox { appearance: none; -webkit-appearance: none; border: 1.5px solid #000000; border-radius: 2px; }
-    }
-  
-    .controls-wrapper {
-      background: #111827;
-      border: 1px solid #1e293b;
-      border-radius: 12px;
-      padding: 1.25rem 1.5rem;
-      margin-bottom: 2rem;
-      display: flex;
-      flex-direction: column;
-      gap: 1.25rem;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4);
-    }
-    .controls-row-top {
-      display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr 1fr 0.8fr;
-      gap: 1rem;
-      align-items: flex-end;
-    }
-    .controls-row-bottom {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: 1.25rem;
-      padding-top: 0.75rem;
-      border-top: 1px solid #1e293b;
-    }
-    .arch-field {
-      flex: 1 1 280px;
-      min-width: 240px;
-    }
-    .action-buttons-group {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      margin-left: auto;
-    }
-    .toggle-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.6rem;
-      background: #1e293b;
-      padding: 0.6rem 1rem;
-      border-radius: 8px;
-      cursor: pointer;
-      user-select: none;
-      font-size: 0.85rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
-      color: #e2e8f0;
-      border: 1px solid #334155;
-      transition: all 0.2s;
-    }
-    .toggle-pill:hover {
-      background: #334155;
-    }
-    .toggle-pill input[type="checkbox"] {
-      accent-color: #f59e0b;
-      width: 1.1rem;
-      height: 1.1rem;
-      cursor: pointer;
-    }
-    @media (max-width: 900px) {
-      .controls-row-top {
-        grid-template-columns: 1fr 1fr;
-      }
-      .action-buttons-group {
-        margin-left: 0;
-        width: 100%;
-      }
-    }
-
-
-    /* Level Controls Overrides */
-    .level-block {
-      display: flex !important;
-      flex-direction: column !important;
-      align-items: center !important;
-      justify-content: center !important;
-      min-width: 100px !important;
-    }
-    .level-controls {
-      display: flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-      gap: 4px !important;
-      margin-top: 4px !important;
-    }
-    .btn-level-step {
-      background: #1e293b !important;
-      color: #f8fafc !important;
-      border: 1px solid #475569 !important;
-      width: 24px !important;
-      height: 24px !important;
-      line-height: 22px !important;
-      padding: 0 !important;
-      border-radius: 4px !important;
-      font-size: 1rem !important;
-      font-weight: 700 !important;
-      cursor: pointer !important;
-      display: inline-flex !important;
-      align-items: center !important;
-      justify-content: center !important;
-    }
-    .btn-level-step:hover:not(:disabled) {
-      background: #d97706 !important;
-      border-color: #d97706 !important;
-      color: #fff !important;
-    }
-    .btn-level-step:disabled {
-      opacity: 0.3 !important;
-      cursor: not-allowed !important;
-    }
-    .select-level-picker {
-      background: #0f172a !important;
-      color: #f8fafc !important;
-      border: 1px solid #d97706 !important;
-      border-radius: 4px !important;
-      height: 24px !important;
-      padding: 0 4px !important;
-      font-size: 0.85rem !important;
-      font-weight: 700 !important;
-      cursor: pointer !important;
-    }
-    
-
-    /* Ensure no truncation on items, consumables, or gear descriptions */
-    .gear-summary, .gear-card, .consumables-list, .consumable-pill, .equipment-entry, #gearContainer {
-      max-height: none !important;
-      overflow: visible !important;
-      white-space: normal !important;
-      word-break: break-word !important;
-      text-overflow: unset !important;
-      -webkit-line-clamp: unset !important;
-    }
-    .gear-summary p, #gearContainer p, .consumable-pill div {
-      white-space: normal !important;
-      overflow: visible !important;
-    }
-
-</style>
-</head>
-<body>
-  <div class="container">
-    <header>
-      <h1>FastFinder</h1>
-      <p>Instant PF2e Remaster Character Generator & Tabletop Sheet</p>
-    </header>
-
-    <div class="controls-wrapper">
-      <!-- Row 1: Core Character Parameters -->
-      <div class="controls-row-top">
-        <div class="field">
-          <label for="charName">Name (Optional)</label>
-          <input type="text" id="charName" placeholder="(Auto by Ancestry)">
-        </div>
-        <div class="field">
-          <label for="ancestrySelect">Ancestry</label>
-          <select id="ancestrySelect"><option value="">Any Ancestry</option></select>
-        </div>
-        <div class="field">
-          <label for="classSelect">Class</label>
-          <select id="classSelect"><option value="">Any Class</option></select>
-        </div>
-        <div class="field">
-          <label for="subclassSelect">Subclass</label>
-          <select id="subclassSelect"><option value="">Any Subclass</option></select>
-        </div>
-        <div class="field">
-          <label for="backgroundSelect">Background</label>
-          <select id="backgroundSelect"><option value="">Any Background</option></select>
-        </div>
-        <div class="field">
-          <label for="levelSelect">Level</label>
-          <select id="levelSelect">
-            <option value="1" selected>Level 1</option>
-            <option value="2">Level 2</option>
-            <option value="3">Level 3</option>
-            <option value="4">Level 4</option>
-            <option value="5">Level 5</option>
-            <option value="6">Level 6</option>
-              <option value="7">Level 7</option>
-              <option value="8">Level 8</option>
-              <option value="9">Level 9</option>
-              <option value="10">Level 10</option>
-            <option value="11">Level 11</option>
-            <option value="12">Level 12</option>
-            <option value="13">Level 13</option>
-            <option value="14">Level 14</option>
-            <option value="15">Level 15</option>
-            <option value="16">Level 16</option>
-            <option value="17">Level 17</option>
-            <option value="18">Level 18</option>
-            <option value="19">Level 19</option>
-            <option value="20">Level 20</option>
-          </select>
-        </div>
-      </div>
-
-      <!-- Row 2: Archetype Dedication & Actions -->
-      <div class="controls-row-bottom">
-        <div class="field arch-field">
-          <label for="archetypeSelect">Archetype / Dedication</label>
-          <select id="archetypeSelect"><option value="">Any Archetype</option></select>
-        </div>
-
-        <label class="toggle-pill" for="dedicationToggle">
-          <input type="checkbox" id="dedicationToggle" checked>
-          <span>Archetype Dedication</span>
-        </label>
-
-        <div class="action-buttons-group">
-          <button class="primary-btn" id="generateBtn" onclick="generate()">Generate</button>
-          <button class="action-btn" id="foundryBtn" onclick="downloadFoundryJson()">Foundry JSON</button>
-          <button class="action-btn" id="printBtn" onclick="window.print()">Print / PDF</button>
-          <button class="action-btn" id="backstoryBtn" onclick="alert('Backstory generation endpoint ready!')">Epic Backstory</button>  
-          <button type="button" id="btnResetAll" class="btn btn-secondary" onclick="resetEverything()" title="Reset all selections and clear sheet" style="border-color: #475569; color: #94a3b8;"><i class="fas fa-undo"></i> Reset</button>
-        </div>
-      </div>
-    </div><!-- STANDARD PF2E CHARACTER SHEET CONTAINER -->
-    <div class="pf2e-sheet" id="sheetCard" style="display: none;">
-      <div class="sheet-header-banner">
-        <div class="banner-block">
-          <span class="banner-label">Character Name</span>
-          <span class="banner-val" id="sheetName">—</span>
-        </div>
-        <div class="banner-block">
-          <span class="banner-label">Ancestry & Heritage</span>
-          <span class="banner-val" id="sheetAncestry">Human</span>
-        </div>
-        <div class="banner-block">
-          <span class="banner-label">Background</span>
-          <span class="banner-val" id="sheetBackground">Farmhand</span>
-        </div>
-        <div class="banner-block">
-          <span class="banner-label">Class & Archetype</span>
-          <span class="banner-val" id="sheetClass">Fighter</span>
-          <span id="sheetArchetypeBadge" class="arch-badge" style="display: none;"></span>
-        </div>
-                        <div class="banner-block level-block">
-          <span class="banner-label">LEVEL</span>
-          <span class="banner-val level-val" id="sheetLevel">1</span>
-          <div class="level-controls">
-            <button type="button" id="btnLevelDown" class="btn-level-step" onclick="handleLevelStep(-1)" title="Level Down">-</button>
-            <select id="sheetLevelSelect" class="select-level-picker" onchange="handleLevelSelect(this.value)">
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-              <option value="6">6</option>
-              <option value="7">7</option>
-              <option value="8">8</option>
-              <option value="9">9</option>
-              <option value="10">10</option>
-              <option value="11">11</option>
-              <option value="12">12</option>
-              <option value="13">13</option>
-              <option value="14">14</option>
-              <option value="15">15</option>
-              <option value="16">16</option>
-              <option value="17">17</option>
-              <option value="18">18</option>
-              <option value="19">19</option>
-              <option value="20">20</option>
-            </select>
-            <button type="button" id="btnLevelUp" class="btn-level-step" onclick="handleLevelStep(1)" title="Level Up">+</button>
-          </div>
-        </div>
-      </div>
-
-      <div class="sheet-body">
-        <!-- LEFT COLUMN: ABILITIES, DEFENSES, SKILLS -->
-        <div class="left-col">
-          <div class="sheet-box">
-            <div class="sheet-box-title">Attributes</div>
-            <div class="sheet-box-content">
-              <div class="attributes-table">
-                <div class="attr-cell"><span class="attr-lbl">STR</span><div class="attr-mod" id="statStr">+0</div></div>
-                <div class="attr-cell"><span class="attr-lbl">DEX</span><div class="attr-mod" id="statDex">+0</div></div>
-                <div class="attr-cell"><span class="attr-lbl">CON</span><div class="attr-mod" id="statCon">+0</div></div>
-                <div class="attr-cell"><span class="attr-lbl">INT</span><div class="attr-mod" id="statInt">+0</div></div>
-                <div class="attr-cell"><span class="attr-lbl">WIS</span><div class="attr-mod" id="statWis">+0</div></div>
-                <div class="attr-cell"><span class="attr-lbl">CHA</span><div class="attr-mod" id="statCha">+0</div></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="sheet-box">
-            <div class="sheet-box-title">Armor Class & Hit Points</div>
-            <div class="sheet-box-content">
-              <div class="defense-row">
-                <div class="defense-metric">
-                  <span class="lbl">Armor Class</span>
-                  <span class="val" id="vitalAc">18</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Max HP</span>
-                  <span class="val" id="vitalHp" style="color: #15803d;">20</span>
-                </div>
-              </div>
-              <div class="defense-row">
-                <div class="defense-metric">
-                  <span class="lbl">Speed</span>
-                  <span class="val" id="vitalSpeed">25 ft</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Perception</span>
-                  <span class="val" id="vitalPerception">+6</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="sheet-box">
-            <div class="sheet-box-title">Saving Throws</div>
-            <div class="sheet-box-content">
-              <div class="saves-grid">
-                <div class="save-box">
-                  <div class="save-lbl">Fortitude</div>
-                  <div class="save-val" id="vitalFort">+7</div>
-                  <div class="save-rank" id="rankFort">Trained</div>
-                </div>
-                <div class="save-box">
-                  <div class="save-lbl">Reflex</div>
-                  <div class="save-val" id="vitalRef">+6</div>
-                  <div class="save-rank" id="rankRef">Trained</div>
-                </div>
-                <div class="save-box">
-                  <div class="save-lbl">Will</div>
-                  <div class="save-val" id="vitalWill">+5</div>
-                  <div class="save-rank" id="rankWill">Trained</div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="sheet-box">
-            <div class="sheet-box-title">Skills Ledger</div>
-            <div class="sheet-box-content">
-              <div class="skills-ledger" id="skillsContainer"></div>
-            </div>
-          </div>
-
-          <div class="sheet-box" id="ancestryBox" style="margin-top: 0.6rem;">
-            <div class="sheet-box-title" id="ancestryBoxTitle">Ancestry Description</div>
-            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
-              <p id="ancestryBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
-            </div>
-          </div>
-
-          <div class="sheet-box" id="backgroundBox" style="margin-top: 0.6rem;">
-            <div class="sheet-box-title" id="backgroundBoxTitle">Background Description</div>
-            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
-              <p id="backgroundBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
-            </div>
-          </div>
-
-          <div class="sheet-box" id="archetypeBox" style="margin-top: 0.6rem; display: none;">
-            <div class="sheet-box-title" id="archetypeBoxTitle">Archetype / Dedication</div>
-            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
-              <p id="archetypeBoxDesc" style="font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;"></p>
-            </div>
-          </div>
-
-          <!-- Languages Box -->
-          <div class="sheet-box" id="languagesBox" style="margin-top: 0.6rem;">
-            <div class="sheet-box-title">Languages</div>
-            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem;">
-              <div id="characterLanguages" style="display: flex; flex-wrap: wrap; gap: 0.35rem; font-size: 0.78rem;">
-                <span style="background: #e2e8f0; color: #334155; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 500;">Common</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- RIGHT COLUMN: STRIKES, SPELLS, FEATS, CONSUMABLES & EQUIPMENT -->
-        <div class="right-col">
-          <div class="sheet-box">
-            <div class="sheet-box-title">Strikes & Attacks</div>
-            <div class="sheet-box-content" style="padding: 0;">
-              <table class="strikes-table">
-                <thead>
-                  <tr>
-                    <th>Weapon</th>
-                    <th>Strikes (1st / 2nd / 3rd)</th>
-                    <th>Damage</th>
-                    <th>Traits</th>
-                  </tr>
-                </thead>
-                <tbody id="strikesTbody"></tbody>
-              </table>
-            </div>
-          </div>
-
-          <!-- PARTNER CREATURES (EIDOLON, ANIMAL COMPANION, FAMILIAR) -->
-          <div id="partnerCreaturesContainer"></div>
-          <div class="sheet-box" id="companionSection" style="display: none; border-left: 3.5px solid #16a34a;">
-            <div class="sheet-box-title" style="background: #14532d;">
-               <span id="companionTitleHeader">Partner Creature</span>
-              <span id="companionStageBadge" style="font-size: 0.65rem; color: #86efac; font-weight: 800; text-transform: uppercase;"></span>
-            </div>
-            <div class="sheet-box-content">
-              <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0.4rem;">
-                <span id="companionName" style="font-size: 0.95rem; font-weight: 800; color: #0f172a;"></span>
-                <span id="companionMeta" style="font-size: 0.72rem; color: #475569; font-weight: 700;"></span>
-              </div>
-
-              <div class="defense-row" style="margin-bottom: 0.4rem;">
-                <div class="defense-metric">
-                  <span class="lbl">AC</span>
-                  <span class="val" id="compAc">17</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Max HP</span>
-                  <span class="val" id="compHp" style="color: #15803d;">26</span>
-                </div>
-              </div>
-
-              <div class="saves-grid" style="margin-bottom: 0.4rem;">
-                <div class="save-box">
-                  <div class="save-lbl">Fort</div>
-                  <div class="save-val" id="compFort">+6</div>
-                </div>
-                <div class="save-box">
-                  <div class="save-lbl">Ref</div>
-                  <div class="save-val" id="compRef">+7</div>
-                </div>
-                <div class="save-box">
-                  <div class="save-lbl">Will</div>
-                  <div class="save-val" id="compWill">+5</div>
-                </div>
-              </div>
-
-              <div style="font-weight: 800; font-size: 0.7rem; color: #475569; text-transform: uppercase; margin-bottom: 0.2rem;">Companion Strikes</div>
-              <table class="strikes-table" style="margin-bottom: 0.4rem;">
-                <tbody id="compStrikesTbody"></tbody>
-              </table>
-
-              <div class="detail-card" style="background: #f0fdf4; border: 1px solid #bbf7d0; margin-bottom: 0.3rem;">
-                <div class="detail-card-head" style="color: #166534;">Support Benefit</div>
-                <div class="detail-card-body" id="compSupport" style="color: #14532d;"></div>
-              </div>
-
-              <div class="detail-card" id="compAdvCard" style="display: none; background: #f0fdf4; border: 1px solid #bbf7d0;">
-                <div class="detail-card-head" style="color: #166534;">Advanced Maneuver</div>
-                <div class="detail-card-body" id="compAdv" style="color: #14532d;"></div>
-              </div>
-            </div>
-          </div>
-
-          <!-- DEDICATED FOCUS SPELLS & POOL TRACKER -->
-          <div class="sheet-box" id="focusSection" style="display: none; border-left: 3.5px solid #d97706;">
-            <div class="sheet-box-title" style="background: #78350f;">
-              <span>Focus Spells & Focus Pool</span>
-              <span id="focusTraditionMeta" style="font-size: 0.65rem; color: #fef08a;"></span>
-            </div>
-            <div class="sheet-box-content">
-              <div class="defense-row" style="margin-bottom: 0.4rem;">
-                <div class="defense-metric">
-                  <span class="lbl">Focus DC</span>
-                  <span class="val" id="focusDc">17</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Focus Attack</span>
-                  <span class="val" id="focusAttack">+7</span>
-                </div>
-              </div>
-
-              <div class="slot-tracker-bar" style="background: #fef3c7; border: 1px solid #f59e0b; color: #92400e;">
-                <span id="focusPoolLabel">FOCUS POINTS (1 MAX)</span>
-                <div class="slot-pips" id="focusPipsContainer"></div>
-              </div>
-
-              <div id="focusSpellsList" style="margin-top: 0.4rem;"></div>
-            </div>
-          </div>
-
-          <!-- SPELLCASTING WITH SCROLL CONTAINER -->
-          <div class="sheet-box" id="spellsSection" style="display: none;">
-            <div class="sheet-box-title">
-              <span>Spellcasting</span>
-              <span id="spellTraditionMeta" style="font-size: 0.65rem; color: #fef08a;"></span>
-            </div>
-            <div class="sheet-box-content">
-              <div class="defense-row" style="margin-bottom: 0.4rem;">
-                <div class="defense-metric">
-                  <span class="lbl">Spell DC</span>
-                  <span class="val" id="spellDc">17</span>
-                </div>
-                <div class="defense-metric">
-                  <span class="lbl">Spell Attack</span>
-                  <span class="val" id="spellAttack">+7</span>
-                </div>
-              </div>
-
-              <div id="slotTrackerContainer"></div>
-
-              <div class="spells-scroll-container">
-                <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Cantrips</div>
-                <div id="cantripsContainer"></div>
-
-                <div id="rank1Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 1 Spells</div>
-                <div id="rank1Container"></div>
-                <div id="rank2Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 2 Spells</div>
-                <div id="rank2Container"></div>
-                <div id="rank3Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 3 Spells</div>
-                <div id="rank3Container"></div>
-                <div id="rank4Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 4 Spells</div>
-                <div id="rank4Container"></div>
-                <div id="rank5Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 5 Spells</div>
-                <div id="rank5Container"></div>
-                <div id="rank6Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 6 Spells</div>
-                <div id="rank6Container"></div>
-                <div id="rank7Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 7 Spells</div>
-                <div id="rank7Container"></div>
-                <div id="rank8Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 8 Spells</div>
-                <div id="rank8Container"></div>
-                <div id="rank9Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 9 Spells</div>
-                <div id="rank9Container"></div>
-                <div id="rank10Header" style="display: none; font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.5rem 0 0.2rem;">Rank 10 Spells</div>
-                <div id="rank10Container"></div>
-              </div>
-            </div>
-          </div>
-
-          <div class="sheet-box" id="actionsSection" style="display: none; border-left: 3.5px solid #2563eb;">
-            <div class="sheet-box-title" style="background: #1e3a8a;">
-              <span>Actions</span>
-              <span id="actionsCountBadge" style="font-size: 0.65rem; color: #93c5fd; font-weight: 800;"></span>
-            </div>
-            <div class="sheet-box-content" id="actionsContainer"></div>
-          </div>
-
-          <div class="sheet-box" id="reactionsSection" style="display: none; border-left: 3.5px solid #d97706;">
-            <div class="sheet-box-title" style="background: #78350f;">
-              <span>Reactions & Free Actions</span>
-              <span id="reactionsCountBadge" style="font-size: 0.65rem; color: #fcd34d; font-weight: 800;"></span>
-            </div>
-            <div class="sheet-box-content" id="reactionsContainer"></div>
-          </div>
-
-          <div class="sheet-box">
-            <div class="sheet-box-title">Feats & Special Abilities</div>
-            <div class="sheet-box-content" id="featsContainer"></div>
-          </div>
-
-          <!-- INVENTORY & TRACKED CONSUMABLES -->
-          <div class="sheet-box">
-            <div class="sheet-box-title">Consumables & Gear Tracker</div>
-            <div class="sheet-box-content">
-              <div class="money-row" id="moneyContainer"></div>
-              
-              <div style="font-weight: 800; font-size: 0.72rem; color: #475569; text-transform: uppercase; margin: 0.4rem 0 0.25rem;">
-                Tracked Consumables (Potions / Elixirs / Ammo)
-              </div>
-              <div class="consumables-list" id="consumablesContainer"></div>
-
-              <div style="font-weight: 700; font-size: 0.75rem; margin-top: 0.4rem; margin-bottom: 0.2rem;">
-                Armor & Shield: <span id="armorSpan" style="font-weight: 400; color: #334155;"></span>
-              </div>
-              <div class="gear-summary" id="gearContainer"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <script>
+<script>
     let currentCharacterData = null;
 
     async function loadOptions() {
@@ -1016,18 +63,18 @@
           });
         }
 
-        const archSelect = .getElementById("archetypeSelect");
+        const archSelect = document.getElementById("archetypeSelect");
         if (archSelect && data.archetypes) {
           archSelect.innerHTML = '<option value="">Any Archetype</option>';
           data.archetypes.forEach(a => {
-            const opt = .createElement("option");
+            const opt = document.createElement("option");
             opt.value = a;
             opt.textContent = a;
             archSelect.appendChild(opt);
           });
           archSelect.addEventListener("change", () => {
-            const dedCheck = .getElementById("dedicationToggle");
-            const lvlSelect = .getElementById("levelSelect");
+            const dedCheck = document.getElementById("dedicationToggle");
+            const lvlSelect = document.getElementById("levelSelect");
             if (archSelect.value) {
               if (dedCheck) dedCheck.checked = true;
               if (lvlSelect && parseInt(lvlSelect.value) < 2) {
@@ -1047,11 +94,12 @@
     }
 
     function renderSpellList(containerId, spells) {
-      const box = .getElementById(containerId);
+      const box = document.getElementById(containerId);
+      if (!box) return;
       box.innerHTML = '';
       if (!Array.isArray(spells)) return;
       spells.forEach(s => {
-        const card = .createElement('div');
+        const card = document.createElement('div');
         card.className = 'detail-card';
         card.innerHTML = `
           <div class="detail-card-head">
@@ -1067,6 +115,7 @@
 
     function renderSlotTrackers(slots) {
       const container = document.getElementById('slotTrackerContainer');
+      if (!container) return;
       container.innerHTML = '';
       if (!Array.isArray(slots) || slots.length === 0) return;
 
@@ -1089,6 +138,7 @@
 
     function renderConsumables(consumables) {
       const container = document.getElementById('consumablesContainer');
+      if (!container) return;
       container.innerHTML = '';
       if (!Array.isArray(consumables) || consumables.length === 0) {
         container.innerHTML = '<span style="font-size: 0.75rem; color: #64748b;">None</span>';
@@ -1110,23 +160,21 @@
     }
 
     function updateLevelUpControls(level) {
-      const btn = document.getElementById("btnLevelUp");
       const lvl = parseInt(level, 10) || 1;
-      if (!btn) return;
+      const btnDown = document.getElementById("btnLevelDown");
+      const btnUp = document.getElementById("btnLevelUp");
+      const sel = document.getElementById("sheetLevelSelect");
 
-      if (lvl >= 9) {
-        btn.disabled = true;
-        btn.textContent = "Max Level";
-        btn.style.display = "none";
-      } else {
-        btn.disabled = false;
-        btn.style.display = "block";
-        btn.textContent = `Level Up to ${lvl + 1}`;
+      if (btnDown) {
+        btnDown.disabled = (lvl <= 1);
+        btnDown.textContent = "-";
       }
-
-      const levelSelect = document.getElementById("levelSelect");
-      if (levelSelect && levelSelect.value != lvl) {
-        levelSelect.value = String(lvl);
+      if (btnUp) {
+        btnUp.disabled = (lvl >= 20);
+        btnUp.textContent = "+";
+      }
+      if (sel) {
+        sel.value = String(lvl);
       }
     }
 
@@ -1134,35 +182,6 @@
       window.currentCharacterData = data;
       currentCharacterData = data;
       const currentLevel = data.level || 1;
-
-      document.getElementById('epic-backstory-btn').addEventListener('click', async () => {
-    if (!currentCharacterData) {
-        alert("Please generate a character sheet first!");
-        return;
-    }
-
-    try {
-        const response = await fetch('/api/epic-backstory', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(currentCharacterData)
-        });
-
-        if (!response.ok) {
-            throw new Error("Failed to generate epic backstory.");
-        }
-
-        const data = await response.json();
-        
-        // Display the chapters in your backstory modal or UI panel
-        displayEpicBackstoryModal(data.chapters);
-
-    } catch (err) {
-        alert("Error generating backstory: " + err.message);
-    }
-});
       
       const classDisplay = data.subclass ? `${data.character_class} (${data.subclass.name})` : data.character_class;
       document.getElementById('sheetClass').textContent = classDisplay;
@@ -1425,12 +444,10 @@
           card.className = "sheet-box";
           card.style.cssText = "margin-bottom: 0.8rem; border-left: 3.5px solid #16a34a;";
 
-          // Traits badges
           const traitBadges = (comp.traits || ["Animal", "Minion"]).map(t =>
             `<span style="background: #e2e8f0; color: #334155; font-size: 0.62rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; text-transform: uppercase;">${t}</span>`
           ).join(" ");
 
-          // Attributes strip
           const attrs = comp.attributes || { STR: 2, DEX: 2, CON: 2, INT: -4, WIS: 1, CHA: -4 };
           const attrHtml = Object.entries(attrs).map(([k, v]) => `
             <div style="text-align: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; padding: 2px 4px; min-width: 38px;">
@@ -1439,7 +456,6 @@
             </div>
           `).join("");
 
-          // Skills line
           const skillsMap = comp.skills || {};
           const skillsList = Object.entries(skillsMap).map(([s, m]) => `<strong>${s}</strong> ${formatMod(m)}`).join(", ");
           const sensesText = comp.senses || "Low-Light Vision, Scent (Imprecise) 30 ft";
@@ -1460,17 +476,14 @@
                 </div>
               </div>
 
-              <!-- Action Economy Command Helper -->
               <div style="background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px; padding: 0.25rem 0.5rem; font-size: 0.72rem; color: #166534; margin: 0.35rem 0;">
                 <span style="font-weight: 800;">Command an Animal (1 Action):</span> Grants companion 2 actions this turn (Stride, Strike, Support, etc.).
               </div>
 
-              <!-- Attributes Bar -->
               <div style="display: flex; gap: 0.35rem; justify-content: space-between; margin-bottom: 0.4rem;">
                 ${attrHtml}
               </div>
 
-              <!-- Defenses -->
               <div class="defense-row" style="margin-bottom: 0.4rem;">
                 <div class="defense-metric">
                   <span class="lbl">AC</span>
@@ -1494,13 +507,11 @@
                 </div>
               </div>
 
-              <!-- Senses & Skills -->
               <div style="font-size: 0.72rem; line-height: 1.35; color: #334155; margin-bottom: 0.4rem; padding: 0.25rem 0.4rem; background: #f8fafc; border-radius: 4px; border: 1px solid #e2e8f0;">
                 <div><span style="font-weight: 700; color: #0f172a;">Senses:</span> ${sensesText}</div>
                 ${skillsList ? `<div><span style="font-weight: 700; color: #0f172a;">Skills:</span> ${skillsList}</div>` : ""}
               </div>
 
-              <!-- Strikes Table -->
               <div style="margin-top: 0.4rem;">
                 <div class="table-caption-bar">COMPANION STRIKES</div>
                 <table class="fast-table">
@@ -1511,7 +522,6 @@
                 </table>
               </div>
 
-              <!-- Special Abilities -->
               ${primaryText ? `
                 <div class="detail-card" style="margin-top: 0.4rem;">
                   <div class="detail-card-head">${primaryTitle}</div>
@@ -1530,11 +540,9 @@
         });
       }
 
-      // Hide legacy static container
       const legacyComp = document.getElementById("companionSection");
       if (legacyComp) legacyComp.style.display = "none";
 
-      // Render Focus Spells & Pool
       const focusSection = document.getElementById("focusSection");
       if (data.focus_spells && data.focus_spells.spells && data.focus_spells.spells.length > 0) {
         focusSection.style.display = "block";
@@ -1586,8 +594,7 @@
       params.append('dedication', useDedication ? 'true' : 'false');
 
       try {
-        console.log("Generating with params:", params.toString());
-      const res = await fetch('/api/generate?' + params.toString());
+        const res = await fetch('/api/generate?' + params.toString());
         if (!res.ok) {
           const err = await res.json().catch(() => ({}));
           throw new Error((typeof err.detail === "string" ? err.detail : JSON.stringify(err.detail)) || `Server error ${res.status}`);
@@ -1597,58 +604,6 @@
       } catch (err) {
         console.error("Generation failed:", err);
         alert(`Generation failed: ${err.message}`);
-      }
-    }
-
-    async function handleLevelUp() {
-      if (!currentCharacterData) {
-        alert("Please generate a character first.");
-        return;
-      }
-
-      const currentLvl = currentCharacterData.level || 1;
-      if (currentLvl >= 9) {
-        alert("Maximum supported level is 9.");
-        return;
-      }
-
-      const targetLvl = currentLvl + 1;
-      const btn = document.getElementById("btnLevelUp");
-      const prevText = btn.textContent;
-
-      try {
-        btn.disabled = true;
-        btn.textContent = `...`;
-
-          const archVal = document.getElementById("archetypeSelect") ? document.getElementById("archetypeSelect").value : "";
-          const useDed = document.getElementById('dedicationToggle')?.checked;
-          const reqBody = {
-            character: currentCharacterData,
-            target_level: targetLvl,
-            use_dedication: !!useDed,
-            archetype: (archVal && !["any", "any archetype", "none"].includes(archVal.toLowerCase())) ? archVal : null
-          };
-          const res = await fetch('/api/levelup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(reqBody)
-        });
-
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          const detailMsg = Array.isArray(errData.detail)
-            ? errData.detail.map(d => `${d.loc ? d.loc.join('.') + ': ' : ''}${d.msg}`).join(', ')
-            : (typeof errData.detail === 'object' ? JSON.stringify(errData.detail) : errData.detail);
-          throw new Error(detailMsg || `Server error ${res.status}`);
-        }
-
-        const updatedSheet = await res.json();
-        renderSheet(updatedSheet);
-      } catch (err) {
-        console.error("Level up error:", err);
-        alert(`Level Up failed: ${err.message}`);
-        btn.textContent = prevText;
-        btn.disabled = false;
       }
     }
 
@@ -1664,30 +619,46 @@
       window.location.href = '/api/export/foundry?' + params.toString();
     }
 
+    // Epic Backstory Button Listener
+    document.addEventListener('DOMContentLoaded', () => {
+      const backstoryBtn = document.getElementById('backstoryBtn');
+      if (backstoryBtn) {
+        backstoryBtn.addEventListener('click', async () => {
+          if (!currentCharacterData) {
+            alert("Please generate a character sheet first!");
+            return;
+          }
+
+          try {
+            const response = await fetch('/api/epic-backstory', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(currentCharacterData)
+            });
+
+            if (!response.ok) {
+              throw new Error("Failed to generate epic backstory.");
+            }
+
+            const data = await response.json();
+            
+            // Render/display chapters (fallback alert if modal function is missing)
+            if (typeof displayEpicBackstoryModal === 'function') {
+              displayEpicBackstoryModal(data.chapters);
+            } else {
+              alert(data.chapters.map(c => `${c.chapter}\n\n${c.narrative}`).join('\n\n---?\n\n'));
+            }
+          } catch (err) {
+            alert("Error generating backstory: " + err.message);
+          }
+        });
+      }
+    });
+
     window.onload = async () => {
       await loadOptions();
       generate();
     };
-  
-    /* Bidirectional Level Switcher Logic */
-    function updateLevelUpControls(level) {
-      const lvl = parseInt(level, 10) || 1;
-      const btnDown = document.getElementById("btnLevelDown");
-      const btnUp = document.getElementById("btnLevelUp");
-      const sel = document.getElementById("sheetLevelSelect");
-
-      if (btnDown) {
-        btnDown.disabled = (lvl <= 1);
-        btnDown.textContent = "-";
-      }
-      if (btnUp) {
-        btnUp.disabled = (lvl >= 20);
-        btnUp.textContent = "+";
-      }
-      if (sel) {
-        sel.value = String(lvl);
-      }
-    }
 
     async function handleLevelStep(delta) {
       const char = window.currentCharacterData;
@@ -1761,14 +732,11 @@
         updateLevelUpControls(window.currentCharacterData?.level || targetLvl);
       }
     }
-    
 
     function resetEverything() {
-      // 1. Reset text input
       const nameInput = document.getElementById("charNameInput") || document.getElementById("nameInput");
       if (nameInput) nameInput.value = "";
 
-      // 2. Reset dropdown selects
       const selects = [
         "ancestrySelect",
         "classSelect",
@@ -1785,35 +753,12 @@
         }
       });
 
-      // 3. Reset Dedication toggle
       const dedToggle = document.getElementById("dedicationToggle");
       if (dedToggle) dedToggle.checked = false;
 
-      // 4. Reset in-sheet stepper select if present
       const sheetLvl = document.getElementById("sheetLevelSelect");
       if (sheetLvl) sheetLvl.value = "1";
 
-      // 5. Trigger fresh baseline generation
       generate();
     }
-
-    // Force show the visual portrait section wrapper on any new sheet load
-    const originalRenderSheet = window.renderSheet;
-    window.renderSheet = function(data) {
-      if (originalRenderSheet) originalRenderSheet(data);
-      const portSec = document.getElementById("portraitSection");
-      if (portSec) {
-        portSec.style.display = "block";
-        // Hide old image on new load to avoid cross-character confusion
-        const img = document.getElementById("characterPortraitImg");
-        if (img) img.style.display = "none";
-        const btn = document.getElementById("btnIllustrate");
-        if (btn) btn.innerHTML = '<i class="fas fa-magic"></i> Generate Character Portrait';
-      }
-    };
-
 </script>
-    </div>
-
-</body>
-</html>
