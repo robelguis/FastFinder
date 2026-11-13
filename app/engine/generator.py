@@ -1245,26 +1245,58 @@ class PF2eGenerator:
         cls_name_lower = cls["name"].lower()
         gate_elements = set()
         # Clear/initialize chosen_feats cleanly
+        # Clear/initialize chosen_feats and action containers cleanly with a tracking set
         chosen_feats: List[FeatSummary] = []
+        added_feat_names = set()
+        
         bg_desc = bg.get("description", "")
         bg_feat_name = extract_bg_feat(bg_desc, self.feats)
 
-        # 1. Inject Background Feat ONCE securely
-        if bg_feat_name:
+        # 1. Handle Custom Background Actions (like Stellar Misfortune) -> Goes to Actions block
+        action_match = re.search(r"gain the\s+([A-Z][a-zA-Z0-9'\s\-]+?)\s+action", bg_desc, re.IGNORECASE)
+        if action_match:
+            action_name = action_match.group(1).strip()
+            action_key = action_name.lower()
+            if action_key not in ["seek", "sense motive"] and len(action_name) < 30:
+                clean_action_id = action_key.replace(" ", "-").replace("'", "")
+                
+                if action_key in BACKGROUND_CUSTOM_ACTIONS:
+                    c_act = BACKGROUND_CUSTOM_ACTIONS[action_key]
+                    chosen_feats.append(FeatSummary(
+                        id=f"feat-bg-action-{clean_action_id}",
+                        name=c_act["name"],
+                        category="Background Action",
+                        action_cost=c_act.get("action_cost", 1),
+                        traits=c_act.get("traits", ["Background", "Action"]),
+                        description=c_act["description"]
+                    ))
+                else:
+                    # Fallback extracting mechanics text directly from background description
+                    chosen_feats.append(FeatSummary(
+                        id=f"feat-bg-action-{clean_action_id}",
+                        name=action_name,
+                        category="Background Action",
+                        action_cost=1,
+                        traits=["Background", "Action"],
+                        description=f"Special action granted by the {bg['name']} background. {clean_pf2e_text(bg_desc)}"
+                    ))
+                added_feat_names.add(action_key)
+
+        # 2. Inject Background Feat ONCE securely (if distinct from the action)
+        if bg_feat_name and bg_feat_name.lower() not in added_feat_names:
             matched_feat_def = next((f for f in self.feats if f["name"].lower() == bg_feat_name.lower()), None)
-            feat_desc = clean_pf2e_text(matched_feat_def.get("description", "")) if matched_feat_def else f"Granted by the {bg['name']} background."
+            feat_desc = clean_pf2e_text(matched_feat_def.get("description", "")) if matched_feat_def else clean_pf2e_text(bg_desc)
 
-            # Ensure we don't accidentally duplicate if already added
-            if not any(f.name.lower() == bg_feat_name.lower() for f in chosen_feats):
-                chosen_feats.append(FeatSummary(
-                    id=f"feat-bg-{bg_feat_name.lower().replace(' ', '-')}",
-                    name=bg_feat_name,
-                    category="Background Feat",
-                    action_cost=safe_action_cost(matched_feat_def.get("action_cost")) if matched_feat_def else None,
-                    traits=matched_feat_def.get("traits", ["General", "Skill"]) if matched_feat_def else ["General", "Skill"],
-                    description=feat_desc
-                ))
-
+            chosen_feats.append(FeatSummary(
+                id=f"feat-bg-{bg_feat_name.lower().replace(' ', '-')}",
+                name=bg_feat_name,
+                category="Background Feat",
+                action_cost=safe_action_cost(matched_feat_def.get("action_cost")) if matched_feat_def else None,
+                traits=matched_feat_def.get("traits", ["General", "Skill"]) if matched_feat_def else ["General", "Skill"],
+                description=feat_desc
+            ))
+            added_feat_names.add(bg_feat_name.lower())
+            
         # 2. Handle Custom Background Actions explicitly (avoiding regex traps on background lore)
         action_match = re.search(r"gain the\s+([A-Z][a-zA-Z0-9'\s\-]+?)\s+action", bg_desc, re.IGNORECASE)
         if action_match:
