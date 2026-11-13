@@ -1244,43 +1244,45 @@ class PF2eGenerator:
 
         cls_name_lower = cls["name"].lower()
         gate_elements = set()
+        # Clear/initialize chosen_feats cleanly
         chosen_feats: List[FeatSummary] = []
         bg_desc = bg.get("description", "")
         bg_feat_name = extract_bg_feat(bg_desc, self.feats)
 
+        # 1. Inject Background Feat ONCE securely
         if bg_feat_name:
-            # Find the actual feat definition to pull its description
             matched_feat_def = next((f for f in self.feats if f["name"].lower() == bg_feat_name.lower()), None)
             feat_desc = clean_pf2e_text(matched_feat_def.get("description", "")) if matched_feat_def else f"Granted by the {bg['name']} background."
 
-            chosen_feats.append(FeatSummary(
-                id=f"feat-bg-{bg_feat_name.lower().replace(' ', '-')}",
-                name=bg_feat_name,
-                category="Background Feat",
-                action_cost=safe_action_cost(matched_feat_def.get("action_cost")) if matched_feat_def else None,
-                traits=matched_feat_def.get("traits", ["General", "Skill"]) if matched_feat_def else ["General", "Skill"],
-                description=feat_desc
-            ))
+            # Ensure we don't accidentally duplicate if already added
+            if not any(f.name.lower() == bg_feat_name.lower() for f in chosen_feats):
+                chosen_feats.append(FeatSummary(
+                    id=f"feat-bg-{bg_feat_name.lower().replace(' ', '-')}",
+                    name=bg_feat_name,
+                    category="Background Feat",
+                    action_cost=safe_action_cost(matched_feat_def.get("action_cost")) if matched_feat_def else None,
+                    traits=matched_feat_def.get("traits", ["General", "Skill"]) if matched_feat_def else ["General", "Skill"],
+                    description=feat_desc
+                ))
 
-        action_match = (
-            re.search(r"gain the\s+@UUID\[[^\]]*actionspf2e\.Item\.([^\]]+)\]\s+action", bg_desc, re.IGNORECASE)
-            or re.search(r"gain the\s+([A-Z][a-zA-Z0-9'\s\-]+?)\s+action", bg_desc, re.IGNORECASE)
-        )
+        # 2. Handle Custom Background Actions explicitly (avoiding regex traps on background lore)
+        action_match = re.search(r"gain the\s+([A-Z][a-zA-Z0-9'\s\-]+?)\s+action", bg_desc, re.IGNORECASE)
         if action_match:
             action_name = action_match.group(1).strip()
             action_key = action_name.lower()
-            if action_key not in ["seek", "sense motive"]:
+            if action_key not in ["seek", "sense motive"] and len(action_name) < 30:
                 clean_action_id = action_key.replace(" ", "-").replace("'", "")
                 if action_key in BACKGROUND_CUSTOM_ACTIONS:
                     c_act = BACKGROUND_CUSTOM_ACTIONS[action_key]
-                    chosen_feats.append(FeatSummary(
-                        id=f"feat-bg-action-{clean_action_id}",
-                        name=c_act["name"],
-                        category="Background Action",
-                        action_cost=c_act.get("action_cost"),
-                        traits=c_act.get("traits", ["Background"]),
-                        description=c_act["description"]
-                    ))
+                    if not any(f.name.lower() == c_act["name"].lower() for f in chosen_feats):
+                        chosen_feats.append(FeatSummary(
+                            id=f"feat-bg-action-{clean_action_id}",
+                            name=c_act["name"],
+                            category="Background Action",
+                            action_cost=c_act.get("action_cost"),
+                            traits=c_act.get("traits", ["Background"]),
+                            description=c_act["description"]
+                        ))
                 else:
                     # Fallback: extract any description sentences following the action mention in bg_desc
                     chosen_feats.append(FeatSummary(
