@@ -604,7 +604,7 @@ class PF2eGenerator:
         cls_lower = cls_name.lower()
         anc_lower = anc_name.lower()
 
-        if lvl in (11, 15):
+        if lvl in (11, 15, 19):
             gen_pool = [
                 f for f in self.feats
                 if f.get("category") == "general"
@@ -629,7 +629,7 @@ class PF2eGenerator:
                 ))
                 existing_feat_names.add(gf_name)
 
-        if lvl in (12, 14):
+        if lvl in (12, 14, 16, 18, 20):
             arch_key = f"level_{lvl}_feats"
             arch_pool = [
                 f for f in (archetype_data.get(arch_key) or archetype_data.get("level_10_feats") or [])
@@ -668,11 +668,11 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add(cf["name"])
 
-        if lvl == 13:
+        if lvl in (13, 17):
             anc_pool = [
                 f for f in self.feats
                 if f.get("category") == "ancestry"
-                and f.get("level") in (5, 9, 13)
+                and f.get("level", 1) <= lvl
                 and anc_lower in [t.lower() for t in f.get("traits", [])]
                 and f["name"] not in existing_feat_names
                 and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl)
@@ -682,7 +682,7 @@ class PF2eGenerator:
                 chosen_feats.append(FeatSummary(
                     id=af13["id"],
                     name=af13["name"],
-                    category="Ancestry (Level 13)",
+                    category=f"Ancestry (Level {lvl})",
                     action_cost=safe_action_cost(af13.get("action_cost")),
                     traits=af13.get("traits", [anc_lower]),
                     description=clean_pf2e_text(af13.get("description", "")),
@@ -690,7 +690,7 @@ class PF2eGenerator:
                 existing_feat_names.add(af13["name"])
 
         # Skill feats at 12, 14 (all classes) and 11, 13, 15 (Rogue/Investigator; 15 for all classes too)
-        if lvl in (12, 14, 15) or (lvl in (11, 13) and cls_lower in ("rogue", "investigator")):
+        if lvl in (12, 14, 15, 16, 18, 20) or (lvl in (11, 13, 17, 19) and cls_lower in ("rogue", "investigator")):
             sk_pool = [
                 f for f in self.feats
                 if f.get("category") == "skill"
@@ -931,7 +931,7 @@ class PF2eGenerator:
         heritage_name: Optional[str] = None,
         subclass_name: Optional[str] = None
     ) -> CharacterSheet:
-        level = max(1, min(15, int(level)))
+        level = max(1, min(20, int(level)))
 
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
@@ -1063,6 +1063,15 @@ class PF2eGenerator:
                     if mods[attr] < 4 or attr in lvl10_boosts_applied:
                         mods[attr] += 1
                     lvl15_boosts_applied.add(attr)
+
+        if level >= 20:
+            lvl20_boosts_applied: Set[str] = set()
+            lvl20_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl20_priority:
+                if len(lvl20_boosts_applied) < 4 and attr not in lvl20_boosts_applied:
+                    if mods[attr] < 4 or attr in lvl15_boosts_applied:
+                        mods[attr] += 1
+                    lvl20_boosts_applied.add(attr)
 
         fort_rank, ref_rank, will_rank, perception_rank = get_class_saving_throws(
             cls["name"],
@@ -1710,7 +1719,7 @@ class PF2eGenerator:
         use_dedication: bool = False,
         archetype_name: Optional[str] = None
     ) -> CharacterSheet:
-        target_level = max(1, min(15, int(target_level)))
+        target_level = max(1, min(20, int(target_level)))
         old_level = int(current_char.get("level", 1))
 
         # 1. Recover base info and core data
@@ -1797,6 +1806,21 @@ class PF2eGenerator:
                 if len(lvl15_boosts_applied) < 4 and attr not in lvl15_boosts_applied:
                     mods[attr] = max(0, mods[attr] - 1)
                     lvl15_boosts_applied.add(attr)
+
+        if old_level < 20 and target_level >= 20:
+            lvl20_boosts_applied: Set[str] = set()
+            lvl20_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl20_priority:
+                if len(lvl20_boosts_applied) < 4 and attr not in lvl20_boosts_applied:
+                    mods[attr] += 1
+                    lvl20_boosts_applied.add(attr)
+        elif old_level >= 20 and target_level < 20:
+            lvl20_boosts_applied: Set[str] = set()
+            lvl20_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+            for attr in lvl20_priority:
+                if len(lvl20_boosts_applied) < 4 and attr not in lvl20_boosts_applied:
+                    mods[attr] = max(0, mods[attr] - 1)
+                    lvl20_boosts_applied.add(attr)
 
         # 3. Defenses & Proficiencies
         fort_rank, ref_rank, will_rank, perception_rank = get_class_saving_throws(
@@ -2174,7 +2198,7 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add(gf7["name"])
 
-            elif 11 <= lvl <= 15:
+            elif 11 <= lvl <= 20:
                 total_hp, _ = self._grant_tier3_feats(
                     lvl=lvl,
                     anc_name=anc["name"],

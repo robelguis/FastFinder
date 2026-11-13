@@ -572,6 +572,11 @@
             <option value="13">Level 13</option>
             <option value="14">Level 14</option>
             <option value="15">Level 15</option>
+            <option value="16">Level 16</option>
+            <option value="17">Level 17</option>
+            <option value="18">Level 18</option>
+            <option value="19">Level 19</option>
+            <option value="20">Level 20</option>
           </select>
         </div>
       </div>
@@ -636,6 +641,11 @@
               <option value="13">13</option>
               <option value="14">14</option>
               <option value="15">15</option>
+              <option value="16">16</option>
+              <option value="17">17</option>
+              <option value="18">18</option>
+              <option value="19">19</option>
+              <option value="20">20</option>
             </select>
             <button type="button" id="btnLevelUp" class="btn-level-step" onclick="handleLevelStep(1)" title="Level Up">+</button>
           </div>
@@ -1173,11 +1183,12 @@
 
       // Saves
       document.getElementById('vitalFort').textContent = formatMod(data.defenses?.fortitude?.modifier);
-      document.getElementById('rankFort').textContent = data.defenses?.fortitude?.rank_letter === 'E' ? 'Expert' : 'Trained';
+      const rankLabel = (r) => ({ L: 'Legendary', M: 'Master', E: 'Expert', T: 'Trained' }[r] || 'Trained');
+      document.getElementById('rankFort').textContent = rankLabel(data.defenses?.fortitude?.rank_letter);
       document.getElementById('vitalRef').textContent = formatMod(data.defenses?.reflex?.modifier);
-      document.getElementById('rankRef').textContent = data.defenses?.reflex?.rank_letter === 'E' ? 'Expert' : 'Trained';
+      document.getElementById('rankRef').textContent = rankLabel(data.defenses?.reflex?.rank_letter);
       document.getElementById('vitalWill').textContent = formatMod(data.defenses?.will?.modifier);
-      document.getElementById('rankWill').textContent = data.defenses?.will?.rank_letter === 'E' ? 'Expert' : 'Trained';
+      document.getElementById('rankWill').textContent = rankLabel(data.defenses?.will?.rank_letter);
 
       // Strikes & MAP
       const strikesTbody = document.getElementById('strikesTbody');
@@ -1561,7 +1572,7 @@
         btnDown.textContent = "-";
       }
       if (btnUp) {
-        btnUp.disabled = (lvl >= 15);
+        btnUp.disabled = (lvl >= 20);
         btnUp.textContent = "+";
       }
       if (sel) {
@@ -1577,7 +1588,7 @@
       }
       const currentLvl = parseInt(char.level, 10) || 1;
       const targetLvl = currentLvl + delta;
-      if (targetLvl < 1 || targetLvl > 15) return;
+      if (targetLvl < 1 || targetLvl > 20) return;
       await applyTargetLevel(targetLvl);
     }
 
