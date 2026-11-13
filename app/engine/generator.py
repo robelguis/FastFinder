@@ -1762,46 +1762,72 @@ class PF2eGenerator:
             chosen_feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
-    def generate_epic_backstory(self, character: CharacterSheet) -> List[Dict[str, str]]:
+    def generate_epic_backstory(self, character: Any) -> List[Dict[str, str]]:
         """
-        Constructs a multi-chapter narrative biography based on the generated character sheet.
-        Strictly avoids any reference to deities, historical events, or real-world place names.
+        Generates a rich, multi-chapter epic narrative biography tailored to the character's 
+        class, heritage, background, and level, strictly omitting any Pathfinder deities, 
+        historical events, or actual place names.
         """
-        name = character.name
-        level = character.level
-        ancestry = character.ancestry
-        heritage = character.heritage
-        background = character.background
-        cls_name = character.character_class
-        subclass_name = character.subclass.name if character.subclass else "Specialist"
-        archetype = character.archetype
-        feats = [f.name for f in character.feats] if character.feats else []
-        
-        inventory = []
-        if character.equipment:
-            if hasattr(character.equipment, "weapons"):
-                inventory.extend([w.name for w in character.equipment.weapons])
-            if hasattr(character.equipment, "worn"):
-                inventory.extend(character.equipment.worn)
+        name = getattr(character, "name", "The Hero")
+        level = getattr(character, "level", 20)
+        ancestry = getattr(character, "ancestry", "Nomad")
+        heritage = getattr(character, "heritage", "Standard")
+        background = getattr(character, "background", "Wayfarer")
+        cls_name = getattr(character, "character_class", "Adventurer")
+        subclass_obj = getattr(character, "subclass", None)
+        subclass_name = subclass_obj.name if subclass_obj else "Specialization"
+        archetype = getattr(character, "archetype", None)
+        feats = getattr(character, "feats", [])
+        equipment = getattr(character, "equipment", None)
+        companion = getattr(character, "companion", None)
 
-        partner_name = character.companion.name if character.companion else "a loyal companion"
+        feat_names = [f.name for f in feats if hasattr(f, "name")]
+        inventory_items = []
+        if equipment:
+            if hasattr(equipment, "weapons"):
+                inventory_items.extend([w.name for w in equipment.weapons if hasattr(w, "name")])
+            if hasattr(equipment, "worn"):
+                inventory_items.extend(equipment.worn)
+            if hasattr(equipment, "items"):
+                inventory_items.extend(equipment.items)
+
+        partner_name = companion.name if companion and hasattr(companion, "name") else "a faithful companion"
 
         return [
             {
                 "chapter": "1. Origins & Awakening",
-                "narrative": f"Before achieving legendary status across the untamed frontiers, {name} forged an early life bound to the rugged rhythms of the wild as a {ancestry} with a {heritage} heritage. Grounded by their background as a '{background}', an inciting catalyst sparked an unyielding ambition, setting them firmly on the path of the {cls_name}."
+                "narrative": (
+                    f"Before achieving legendary status across the untamed frontiers, {name} forged an early life "
+                    f"bound to the rugged rhythms of the wild and quiet survival. As a proud member of the "
+                    f"{ancestry} people with a {heritage} heritage, {name}'s days were defined by seasonal migrations and "
+                    f"community bonds. However, an inciting catalyst rooted in their background as a '{background}' "
+                    f"disrupted this equilibrium, sparking an unyielding ambition that set {name} on the path of the {cls_name}."
+                )
             },
             {
                 "chapter": "2. The Crucible & The Path",
-                "narrative": f"Navigating intermediate trials, {name} honed a diverse arsenal featuring feats like {', '.join(feats[:3]) if feats else 'master-tier techniques'}. Alongside {partner_name} and a {archetype if archetype else 'multidisciplinary'} archetype dedication, every challenge transformed raw potential into tactical brilliance."
+                "narrative": (
+                    f"Navigating intermediate trials and Tier challenges, {name} honed a diverse arsenal of skills "
+                    f"and specialized feats such as {', '.join(feat_names[:3]) if feat_names else 'master-tier disciplines'}. "
+                    f"Along this arduous journey, {name} formed enduring bonds—most notably with {partner_name}—and "
+                    f"embraced advanced training through a {archetype if archetype else 'multidisciplinary'} archetype dedication."
+                )
             },
             {
                 "chapter": "3. The Mastery of Power",
-                "narrative": f"Standing at the pinnacle of mortal capability at Level {level}, {name} unleashes signature abilities and master-tier gear—including {', '.join(inventory[:3]) if inventory else 'masterwork armaments'}—with breathtaking fluidity, embodying the ultimate mastery of the {subclass_name} path."
+                "narrative": (
+                    f"Standing now at the pinnacle of mortal capability at Level {level}, {name} unleashes signature "
+                    f"abilities and extraordinary gear—including {', '.join(inventory_items[:3]) if inventory_items else 'masterwork armaments'}—with "
+                    f"breathtaking fluidity, embodying the ultimate mastery of the {subclass_name} path."
+                )
             },
             {
+                "channel": "4. Current Legend & Legacy",
                 "chapter": "4. Current Legend & Legacy",
-                "narrative": f"Now a living myth across the realm, {name} stands as an eternal guardian of the boundary between civilization and the wild unknown, driven forward by enduring personal vows and cosmic threats."
+                "narrative": (
+                    f"Now a living myth across the realm, {name} stands as an eternal guardian of the boundary between "
+                    f"civilization and the wild unknown, driven by enduring personal vows and unresolved cosmic threats."
+                )
             }
         ]
     def level_up(
