@@ -416,6 +416,34 @@
       height: 1.1rem;
       cursor: pointer;
     }
+
+    /* --- PLACE THE PRINT MEDIA QUERY BLOCK RIGHT HERE --- */
+    @media print {
+      @page { size: letter portrait; margin: 0.35in; }
+      body { background: #ffffff !important; padding: 0 !important; }
+      .container { max-width: 100% !important; margin: 0 !important; }
+      header, .controls, .controls-wrapper, .level-controls, .btn-levelup, .action-buttons-group { display: none !important; }
+      .pf2e-sheet { border: 2px solid #000000 !important; box-shadow: none !important; padding: 0 !important; }
+      .sheet-box { page-break-inside: avoid; }
+      .sheet-box-title { background: #000000 !important; color: #ffffff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .w-map, .w-dmg { color: #000000 !important; }
+      .spells-scroll-container { max-height: none !important; overflow: visible !important; }
+      .slot-checkbox { appearance: none; -webkit-appearance: none; border: 1.5px solid #000000; border-radius: 2px; }
+
+      /* Forcefully remove borders, background fills, and arrows from all inputs and selects during print */
+      input, select, textarea, .select-level-picker {
+        border: none !important;
+        background: transparent !important;
+        background-color: transparent !important;
+        appearance: none !important;
+        -webkit-appearance: none !important;
+        -moz-appearance: none !important;
+        box-shadow: none !important;
+        color: #000000 !important;
+      }
+      select::-ms-expand { display: none; }
+    }
+    /* -------------------------------------------------- */
   </style>
 </head>
 <body>
@@ -879,13 +907,11 @@
       currentCharacterData = data;
       const currentLevel = data.level || 1;
       
-      // Fallback name rendering so it never shows a blank dash
       const displayName = (data.name && data.name !== "—" && data.name.trim() !== "") 
         ? data.name 
         : (data.ancestry ? `Unnamed ${data.ancestry}` : "Hero");
       document.getElementById('sheetName').textContent = displayName;
 
-      // Fallback ancestry & heritage rendering
       const ancestryText = data.heritage ? `${data.ancestry} (${data.heritage})` : (data.ancestry || "Human");
       document.getElementById('sheetAncestry').textContent = ancestryText;
 
