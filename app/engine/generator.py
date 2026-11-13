@@ -1762,7 +1762,48 @@ class PF2eGenerator:
             chosen_feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
+    def generate_epic_backstory(self, character: CharacterSheet) -> List[Dict[str, str]]:
+        """
+        Constructs a multi-chapter narrative biography based on the generated character sheet.
+        Strictly avoids any reference to deities, historical events, or real-world place names.
+        """
+        name = character.name
+        level = character.level
+        ancestry = character.ancestry
+        heritage = character.heritage
+        background = character.background
+        cls_name = character.character_class
+        subclass_name = character.subclass.name if character.subclass else "Specialist"
+        archetype = character.archetype
+        feats = [f.name for f in character.feats] if character.feats else []
+        
+        inventory = []
+        if character.equipment:
+            if hasattr(character.equipment, "weapons"):
+                inventory.extend([w.name for w in character.equipment.weapons])
+            if hasattr(character.equipment, "worn"):
+                inventory.extend(character.equipment.worn)
 
+        partner_name = character.companion.name if character.companion else "a loyal companion"
+
+        return [
+            {
+                "chapter": "1. Origins & Awakening",
+                "narrative": f"Before achieving legendary status across the untamed frontiers, {name} forged an early life bound to the rugged rhythms of the wild as a {ancestry} with a {heritage} heritage. Grounded by their background as a '{background}', an inciting catalyst sparked an unyielding ambition, setting them firmly on the path of the {cls_name}."
+            },
+            {
+                "chapter": "2. The Crucible & The Path",
+                "narrative": f"Navigating intermediate trials, {name} honed a diverse arsenal featuring feats like {', '.join(feats[:3]) if feats else 'master-tier techniques'}. Alongside {partner_name} and a {archetype if archetype else 'multidisciplinary'} archetype dedication, every challenge transformed raw potential into tactical brilliance."
+            },
+            {
+                "chapter": "3. The Mastery of Power",
+                "narrative": f"Standing at the pinnacle of mortal capability at Level {level}, {name} unleashes signature abilities and master-tier gear—including {', '.join(inventory[:3]) if inventory else 'masterwork armaments'}—with breathtaking fluidity, embodying the ultimate mastery of the {subclass_name} path."
+            },
+            {
+                "chapter": "4. Current Legend & Legacy",
+                "narrative": f"Now a living myth across the realm, {name} stands as an eternal guardian of the boundary between civilization and the wild unknown, driven forward by enduring personal vows and cosmic threats."
+            }
+        ]
     def level_up(
         self,
         current_char: Dict[str, Any],
