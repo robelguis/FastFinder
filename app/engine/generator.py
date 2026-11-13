@@ -1711,7 +1711,7 @@ class PF2eGenerator:
             chosen_feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
-    def generate_epic_backstory(char_data: dict) -> list:
+def generate_epic_backstory(char_data: dict) -> list:
     name = char_data.get("name") or "The Hero"
     ancestry = char_data.get("ancestry") or "Human"
     cls = char_data.get("character_class") or "Adventurer"
