@@ -442,10 +442,27 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
             "Politics Lore", "Sailing Lore", "Scouting Lore", "Settlement Lore",
             "Theatre Lore", "Underworld Lore", "Warfare Lore"
         ]
-        chosen = random.choice(lore_pool)
+        taken_lores = {
+            fn.split("(", 1)[1].rstrip(")").strip().lower()
+            for fn in existing_feat_names
+            if "additional lore" in fn.lower() and "(" in fn and ")" in fn
+        }
+        available_lores = [l for l in lore_pool if l.lower() not in taken_lores]
+        chosen = random.choice(available_lores) if available_lores else random.choice(lore_pool)
         return f"{feat_name} ({chosen})"
 
     return feat_name
+
+
+def can_take_additional_lore(existing_feat_names: set, cls_name: str, archetype_name: str = "") -> bool:
+    is_bard = (cls_name or "").strip().lower() == "bard"
+    has_bard_ded = "bard" in (archetype_name or "").lower() or any(
+        "bard dedication" in fn.lower() for fn in existing_feat_names
+    )
+    current_count = sum(1 for fn in existing_feat_names if "additional lore" in fn.lower())
+    if is_bard or has_bard_ded:
+        return current_count < 23
+    return current_count < 2
 
 
 def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
@@ -696,6 +713,7 @@ class PF2eGenerator:
                 if f.get("category") == "skill"
                 and f.get("level", 1) <= lvl
                 and f["name"] not in existing_feat_names
+                and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls_name, archetype_data.get("name", "") if archetype_data else ""))
                 and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl)
             ]
             if sk_pool:
@@ -1363,7 +1381,7 @@ class PF2eGenerator:
                     ))
 
             owned_names = {f.name for f in chosen_feats}
-            skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2]]
+            skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2] and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_names, cls["name"]))]
             sf = pick_weighted_feat(skill_feats_2, cls["name"], owned_names, {}, mods, 2)
             if sf:
                 resolved_feat_name2 = resolve_feat_subchoices(sf["name"], owned_names)
@@ -1536,7 +1554,7 @@ class PF2eGenerator:
                 f for f in self.feats
                 if f.get("category") == "skill"
                 and f.get("level") in [1, 2, 4, 6]
-            ]
+             and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_names, cls["name"]))]
             sf6 = pick_weighted_feat(skill_feats_6, cls["name"], owned_names, {}, mods, 6)
             if sf6:
                 resolved_name6 = resolve_feat_subchoices(sf6["name"], owned_names)
@@ -1631,7 +1649,7 @@ class PF2eGenerator:
                     description=clean_pf2e_text(af9.get("description", ""))
                 ))
             else:
-                fallback_af9 = random.choice(GENERIC_ANCESTRY_FEATS.get(anc_name_lower, [{"name": f"{anc['name']} Expertise", "description": "You draw on deeper heritage resilience."}]))
+                fallback_af9 = {"name": f"{anc['name']} Expertise", "description": "You draw on deeper heritage resilience."}
                 chosen_feats.append(FeatSummary(
                     id=f"anc-feat-{anc_name_lower}-9",
                     name=fallback_af9["name"],
@@ -2028,7 +2046,7 @@ class PF2eGenerator:
                     if f.get("category") == "skill"
                     and f.get("level") in [1, 2]
                     and f["name"] not in existing_feat_names
-                ]
+                 and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
                 if skill_feats_2:
                     sf = random.choice(skill_feats_2)
                     resolved_feat_name2 = resolve_feat_subchoices(sf["name"], existing_feat_names)
@@ -2109,7 +2127,7 @@ class PF2eGenerator:
                     if f.get("category") == "skill"
                     and f.get("level") in [1, 2, 4]
                     and f["name"] not in existing_feat_names
-                ]
+                 and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
                 if skill_feats_4:
                     sf4 = random.choice(skill_feats_4)
                     resolved_name4 = resolve_feat_subchoices(sf4["name"], existing_feat_names)
@@ -2396,7 +2414,7 @@ class PF2eGenerator:
                     f for f in self.feats
                     if f.get("category") == "skill"
                     and f.get("level") in [1, 2, 4, 6]
-                ]
+                 and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
                 sf6 = pick_weighted_feat(skill_feats_6, cls["name"], existing_feat_names, {}, mods, 6)
                 if sf6:
                     resolved_name6 = resolve_feat_subchoices(sf6["name"], existing_feat_names)

@@ -285,11 +285,14 @@ def resolve_character_skills(
         existing_lore_names = {s.name.lower() for s in result_skills}
         lore_regex = re.compile(r"(?:trained in|gain the|gain)\s+(?:your choice of\s+[^;.]+and\s+)?([A-Z][a-zA-Z\s]+ Lore)", re.IGNORECASE)
         for f_obj in feats:
+            f_nm = f_obj.get("name", "") if isinstance(f_obj, dict) else getattr(f_obj, "name", "")
+            if "additional lore" in f_nm.lower():
+                continue
             f_desc = f_obj.get("description", "") if isinstance(f_obj, dict) else getattr(f_obj, "description", "")
             found_lores = lore_regex.findall(f_desc)
             for raw_lore in found_lores:
                 clean_lore = raw_lore.strip()
-                if any(bad in clean_lore.lower() for bad in ["another", "associated", "appropriate", "choice"]):
+                if len(clean_lore.split()) > 4 or any(bad in clean_lore.lower() for bad in ["another", "associated", "appropriate", "choice", "additional", "skill increase", "apply", "chosen", "subcategory"]):
                     continue
                 if clean_lore.lower().startswith("in "):
                     clean_lore = clean_lore[3:].strip()
