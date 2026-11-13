@@ -86,14 +86,97 @@ from app.engine.models import EquipmentLoadout, Item, Strike, Wealth, Consumable
 # PF2e Remaster Character Wealth by Level (Lump sum alternative)
 # Level: (lump_sum_gp, min_consumables, typical_permanent_items)
 WEALTH_BY_LEVEL: Dict[int, Dict[str, Any]] = {
-    1: {"lump_gp": 15, "consumable_tier": "minor", "permanent_count": 0},
-    2: {"lump_gp": 30, "consumable_tier": "minor", "permanent_count": 0},
-    3: {"lump_gp": 75, "consumable_tier": "lesser", "permanent_count": 1},
-    4: {"lump_gp": 140, "consumable_tier": "lesser", "permanent_count": 2},
-    5: {"lump_gp": 270, "consumable_tier": "moderate", "permanent_count": 3},
-    6: {"lump_gp": 450, "consumable_tier": "moderate", "permanent_count": 4},
-    7: {"lump_gp": 720, "consumable_tier": "moderate_plus", "permanent_count": 5},
+    1: {"lump_gp": 15, "permanent_count": 0},
+    2: {"lump_gp": 30, "permanent_count": 1},
+    3: {"lump_gp": 75, "permanent_count": 1},
+    4: {"lump_gp": 140, "permanent_count": 2},
+    5: {"lump_gp": 270, "permanent_count": 3},
+    6: {"lump_gp": 450, "permanent_count": 4},
+    7: {"lump_gp": 720, "permanent_count": 5},
+    8: {"lump_gp": 1100, "permanent_count": 6},
+    9: {"lump_gp": 1600, "permanent_count": 7},
+    10: {"lump_gp": 2300, "permanent_count": 8},
+    11: {"lump_gp": 3200, "permanent_count": 8},
+    12: {"lump_gp": 4500, "permanent_count": 9},
+    13: {"lump_gp": 6400, "permanent_count": 9},
+    14: {"lump_gp": 9300, "permanent_count": 10},
+    15: {"lump_gp": 13500, "permanent_count": 10},
+    16: {"lump_gp": 20000, "permanent_count": 11},
+    17: {"lump_gp": 30000, "permanent_count": 11},
+    18: {"lump_gp": 45000, "permanent_count": 12},
+    19: {"lump_gp": 69000, "permanent_count": 12},
+    20: {"lump_gp": 112000, "permanent_count": 13},
 }
+
+
+def get_fundamental_rune_tiers(level: int) -> Dict[str, Any]:
+    lvl = max(1, min(20, int(level)))
+    wep_potency = 3 if lvl >= 16 else (2 if lvl >= 10 else (1 if lvl >= 2 else 0))
+    if lvl >= 19:
+        striking_label, dice_count = "Major Striking", 4
+    elif lvl >= 12:
+        striking_label, dice_count = "Greater Striking", 3
+    elif lvl >= 4:
+        striking_label, dice_count = "Striking", 2
+    else:
+        striking_label, dice_count = "", 1
+
+    armor_potency = 3 if lvl >= 18 else (2 if lvl >= 11 else (1 if lvl >= 5 else 0))
+    if lvl >= 20:
+        resilient_label, save_item_bonus = "Major Resilient", 3
+    elif lvl >= 14:
+        resilient_label, save_item_bonus = "Greater Resilient", 2
+    elif lvl >= 8:
+        resilient_label, save_item_bonus = "Resilient", 1
+    else:
+        resilient_label, save_item_bonus = "", 0
+
+    return {
+        "wep_potency": wep_potency,
+        "striking_label": striking_label,
+        "dice_count": dice_count,
+        "armor_potency": armor_potency,
+        "resilient_label": resilient_label,
+        "save_item_bonus": save_item_bonus,
+    }
+
+
+def format_runed_weapon_name(base_name: str, level: int) -> str:
+    tiers = get_fundamental_rune_tiers(level)
+    parts = []
+    if tiers["wep_potency"]:
+        parts.append(f"+{tiers['wep_potency']}")
+    if tiers["striking_label"]:
+        parts.append(tiers["striking_label"])
+    parts.append(base_name)
+    return " ".join(parts)
+
+
+def format_runed_armor_name(base_name: str, level: int) -> str:
+    tiers = get_fundamental_rune_tiers(level)
+    parts = []
+    if tiers["armor_potency"]:
+        parts.append(f"+{tiers['armor_potency']}")
+    if tiers["resilient_label"]:
+        parts.append(tiers["resilient_label"])
+    parts.append(base_name)
+    return " ".join(parts)
+
+
+def format_scaled_shield_name(base_shield: str, level: int) -> str:
+    if level >= 19:
+        return f"Sturdy Shield (Supreme) [{base_shield}]"
+    if level >= 16:
+        return f"Sturdy Shield (Major) [{base_shield}]"
+    if level >= 13:
+        return f"Sturdy Shield (Greater) [{base_shield}]"
+    if level >= 10:
+        return f"Sturdy Shield (Moderate) [{base_shield}]"
+    if level >= 7:
+        return f"Sturdy Shield (Lesser) [{base_shield}]"
+    if level >= 4:
+        return f"Sturdy Shield (Minor) [{base_shield}]"
+    return base_shield
 
 PERMANENT_MAGIC_ITEMS: List[Dict[str, Any]] = [
     {"name": "Healer's Gloves", "level": 3, "cost_gp": 50, "bulk": "L", "description": "+1 item bonus to Medicine; 1/day activate to heal 2d6+7 HP."},
@@ -369,12 +452,10 @@ def resolve_equipment(
     existing_weapons: Optional[List[Any]] = None
 ) -> Tuple[EquipmentLoadout, int, int]:
     cls_key = class_name.lower()
-    lvl = max(1, min(7, level))
+    lvl = max(1, min(20, int(level)))
     wealth_cfg = WEALTH_BY_LEVEL.get(lvl, WEALTH_BY_LEVEL[1])
+    tiers = get_fundamental_rune_tiers(lvl)
 
-    budget_gp = wealth_cfg["lump_gp"]
-
-    # 1. Base Weapon Selection & Rune Progression
     raw_weps = []
     if existing_weapons:
         for ew in existing_weapons:
@@ -383,35 +464,25 @@ def resolve_equipment(
             if base_w and base_w not in raw_weps:
                 raw_weps.append(base_w)
     if not raw_weps:
-        raw_weps = select_class_weapons(cls_key, str_mod, dex_mod, ancestry_name=ancestry_name, subclass_name=subclass_name, archetype_name=archetype_name)
+        raw_weps = select_class_weapons(
+            cls_key,
+            str_mod,
+            dex_mod,
+            ancestry_name=ancestry_name,
+            subclass_name=subclass_name,
+            archetype_name=archetype_name,
+        )
+
     weapons: List[Item] = []
     strikes: List[Strike] = []
 
-    has_potency = lvl >= 2
-    has_striking = lvl >= 4
-    has_armor_potency = lvl >= 5
-
-    # Runes cost tracking
-    if has_potency:
-        budget_gp -= 35
-    if has_striking:
-        budget_gp -= 65
-    if has_armor_potency:
-        budget_gp -= 160
-
-    potency_bonus = 1 if has_potency else 0
-    dice_count = 2 if has_striking else 1
+    potency_bonus = tiers["wep_potency"]
+    dice_count = tiers["dice_count"]
 
     for w in raw_weps:
-        w_name = w["name"]
-        if has_striking:
-            w_name = f"+1 Striking {w['name']}"
-        elif has_potency:
-            w_name = f"+1 {w['name']}"
-
+        w_name = format_runed_weapon_name(w["name"], lvl)
         weapons.append(Item(name=w_name, bulk="1", cost_sp=10))
 
-        # Strike calculations
         is_finesse = "Finesse" in w.get("traits", [])
         is_ranged = "Range" in " ".join(w.get("traits", []))
         atk_stat = dex_mod if (is_finesse or is_ranged) else max(str_mod, dex_mod if is_finesse else -99)
@@ -433,12 +504,11 @@ def resolve_equipment(
             traits=w.get("traits", [])
         ))
 
-    # Add Signature Alchemist Bomb Strike
     if cls_key == "alchemist":
-        bomb_tier = "moderate" if lvl >= 3 else "lesser"
-        # Default to Alchemist's Fire
-        chosen_bomb = ALCHEMICAL_BOMBS[bomb_tier][0]
-        bomb_prof = 2  # Trained in simple weapons / alchemical bombs
+        bomb_tier = "greater" if lvl >= 11 else ("moderate" if lvl >= 3 else "lesser")
+        tier_list = ALCHEMICAL_BOMBS.get(bomb_tier, ALCHEMICAL_BOMBS["moderate"])
+        chosen_bomb = tier_list[0]
+        bomb_prof = 2
         bomb_atk = bomb_prof + lvl + dex_mod + chosen_bomb["item_bonus"]
         dmg_desc = f"{chosen_bomb['dice']} + {chosen_bomb['persistent']} + {chosen_bomb['splash']}"
         strikes.insert(0, Strike(
@@ -451,97 +521,83 @@ def resolve_equipment(
             traits=chosen_bomb["traits"]
         ))
 
-    # 2. Armor and Shield Selection
     shield_bonus = 0
-    if cls_key in ["champion", "fighter", "cleric"]:
-        armor_name = "+1 Breastplate" if has_armor_potency else "Breastplate"
+    armor_pot = tiers["armor_potency"]
+    if cls_key in ["champion", "fighter", "cleric", "guardian"]:
+        armor_name = format_runed_armor_name("Breastplate", lvl)
         armor_item = Item(name=armor_name, bulk="2", cost_sp=80)
-        calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + (1 if has_armor_potency else 0)
-        shield_item = Item(name="Steel Shield", bulk="1", cost_sp=20)
+        calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + armor_pot
+        shield_item = Item(name=format_scaled_shield_name("Steel Shield", lvl), bulk="1", cost_sp=20)
         shield_bonus = 2
-    elif cls_key in ["rogue", "ranger", "bard"]:
-        armor_name = "+1 Leather Armor" if has_armor_potency else "Leather Armor"
+    elif cls_key in ["rogue", "ranger", "bard", "swashbuckler", "investigator", "gunslinger"]:
+        armor_name = format_runed_armor_name("Leather Armor", lvl)
         armor_item = Item(name=armor_name, bulk="1", cost_sp=20)
-        calculated_ac = 10 + 1 + min(dex_mod, 4) + (2 + lvl) + (1 if has_armor_potency else 0)
+        calculated_ac = 10 + 1 + min(dex_mod, 4) + (2 + lvl) + armor_pot
         shield_item = None
-    elif cls_key in ["wizard", "witch", "sorcerer", "oracle", "psychic"]:
-        armor_name = "+1 Explorer's Clothing" if has_armor_potency else "Explorer's Clothing"
+    elif cls_key in ["wizard", "witch", "sorcerer", "oracle", "psychic", "necromancer"]:
+        armor_name = format_runed_armor_name("Explorer's Clothing", lvl)
         armor_item = Item(name=armor_name, bulk="L", cost_sp=1)
-        calculated_ac = 10 + 0 + min(dex_mod, 5) + (2 + lvl) + (1 if has_armor_potency else 0)
+        calculated_ac = 10 + 0 + min(dex_mod, 5) + (2 + lvl) + armor_pot
         shield_item = None
     else:
-        armor_name = "+1 Hide Armor" if has_armor_potency else "Hide Armor"
+        armor_name = format_runed_armor_name("Hide Armor", lvl)
         armor_item = Item(name=armor_name, bulk="2", cost_sp=20)
-        calculated_ac = 10 + 2 + min(dex_mod, 2) + (2 + lvl) + (1 if has_armor_potency else 0)
-        shield_item = Item(name="Wooden Shield", bulk="1", cost_sp=10)
+        calculated_ac = 10 + 2 + min(dex_mod, 2) + (2 + lvl) + armor_pot
+        shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
         shield_bonus = 2
 
-    # 3. Permanent Magic Item Purchases
     gear: List[str] = ["Adventurer's Pack (Backpack, Bedroll, Rations, Torches, Waterskin, Rope)"]
     num_perm = wealth_cfg.get("permanent_count", 0)
     if num_perm > 0:
         eligible_items = []
-        for l in range(1, lvl + 1):
+        for l in range(1, min(lvl, max(COMPENDIUM_MAGIC_ITEMS.keys())) + 1):
             for item in COMPENDIUM_MAGIC_ITEMS.get(l, []):
                 if can_equip_item(item, cls_key, str_mod, dex_mod, lvl):
                     eligible_items.append(item)
         if not eligible_items:
-            eligible_items = [i for i in PERMANENT_MAGIC_ITEMS if i['level'] <= lvl and can_equip_item(i, cls_key, str_mod, dex_mod, lvl)]
+            eligible_items = [i for i in PERMANENT_MAGIC_ITEMS if i["level"] <= lvl and can_equip_item(i, cls_key, str_mod, dex_mod, lvl)]
         chosen_items = random.sample(eligible_items, min(num_perm, len(eligible_items)))
         for item in chosen_items:
             gear.append(f"{item['name']} ({item['description']})")
-            budget_gp -= min(item["cost_gp"], budget_gp // 2)
 
-    # 4. Consumables Scaling by Level
     consumables: List[ConsumableItem] = []
-
     if cls_key == "alchemist":
-        bomb_tier = "moderate" if lvl >= 3 else "lesser"
-        tier_bombs = ALCHEMICAL_BOMBS[bomb_tier]
-        # Alchemist daily prepared bombs (Alchemist's Fire, Bottled Lightning, Acid Flask)
-        consumables.append(ConsumableItem(
-            name=tier_bombs[0]["name"],
-            quantity=3 if lvl >= 4 else 2,
-            bulk="L",
-            description=f"Deals {tier_bombs[0]['dice']} fire, {tier_bombs[0]['persistent']}, and {tier_bombs[0]['splash']}."
-        ))
-        consumables.append(ConsumableItem(
-            name=tier_bombs[1]["name"],
-            quantity=2,
-            bulk="L",
-            description=f"Deals {tier_bombs[1]['dice']} electricity, {tier_bombs[1]['splash']}, flat-footed on hit."
-        ))
-        consumables.append(ConsumableItem(
-            name=tier_bombs[2]["name"],
-            quantity=2,
-            bulk="L",
-            description=f"Deals {tier_bombs[2]['dice']} acid, {tier_bombs[2]['persistent']}, and {tier_bombs[2]['splash']}."
-        ))
-        # Add signature elixir
-        elixir_name = "Elixir of Life (Moderate)" if lvl >= 5 else ("Elixir of Life (Lesser)" if lvl >= 3 else "Minor Healing Potion")
-        elixir_desc = "Restores 3d6+6 HP and +1 bonus vs disease/poison." if "Lesser" in elixir_name else "Restores 1d8 HP."
-        consumables.append(ConsumableItem(name=elixir_name, quantity=2, bulk="L", description=elixir_desc))
+        bomb_tier = "greater" if lvl >= 11 else ("moderate" if lvl >= 3 else "lesser")
+        tier_bombs = ALCHEMICAL_BOMBS.get(bomb_tier, ALCHEMICAL_BOMBS["moderate"])
+        for idx, b_desc in enumerate([
+            f"Deals {tier_bombs[0]['dice']} fire, {tier_bombs[0]['persistent']}, and {tier_bombs[0]['splash']}.",
+            f"Deals {tier_bombs[1]['dice']} electricity, {tier_bombs[1]['splash']}, off-guard on hit.",
+            f"Deals {tier_bombs[2]['dice']} acid, {tier_bombs[2]['persistent']}, and {tier_bombs[2]['splash']}.",
+        ]):
+            consumables.append(ConsumableItem(
+                name=tier_bombs[idx]["name"],
+                quantity=3 if (idx == 0 and lvl >= 4) else 2,
+                bulk="L",
+                description=b_desc,
+            ))
+
     if lvl == 1:
         consumables.append(ConsumableItem(name="Minor Healing Potion", quantity=2, bulk="L", description="Restores 1d8 HP (1 Action)."))
-    elif lvl in [2, 3]:
+    elif lvl in (2, 3):
         consumables.append(ConsumableItem(name="Lesser Healing Potion", quantity=2, bulk="L", description="Restores 2d8+5 HP (1 Action)."))
         consumables.append(ConsumableItem(name="Silversheen", quantity=1, bulk="L", description="Grants weapon silver property for 1 hour."))
-    elif lvl == 6:
-        consumables.append(ConsumableItem(name="Moderate Healing Potion", quantity=2, bulk="L", description="Restores 3d8+10 HP (1 Action)."))
+    elif lvl in (4, 5):
+        consumables.append(ConsumableItem(name="Lesser Healing Potion", quantity=3, bulk="L", description="Restores 2d8+5 HP (1 Action)."))
         consumables.append(ConsumableItem(name="Elixir of Life (Lesser)", quantity=1, bulk="L", description="Restores 3d6+6 HP and +1 bonus vs disease/poison."))
-    else:
-        # Level 7 Loadout
+    elif lvl in (6, 7, 8, 9, 10, 11):
         consumables.append(ConsumableItem(name="Moderate Healing Potion", quantity=2, bulk="L", description="Restores 3d8+10 HP (1 Action)."))
-        consumables.append(ConsumableItem(name="Elixir of Life (Moderate)", quantity=1, bulk="L", description="Restores 3d6+6 HP and +1 bonus vs disease/poison."))
-        consumables.append(ConsumableItem(name="Mistform Elixir (Lesser)", quantity=1, bulk="L", description="Gain concealment (DC 5 flat check) for 3 rounds."))
-
-    # 5. Remaining Coin Purse (GP, SP, CP)
-    if lvl == 7:
-        remaining_gp = 45
-    elif lvl == 6:
-        remaining_gp = 25
+        consumables.append(ConsumableItem(name="Elixir of Life (Moderate)", quantity=1, bulk="L", description="Restores 5d6+12 HP and +2 item bonus vs disease/poison."))
+        consumables.append(ConsumableItem(name="Mistform Elixir (Moderate)", quantity=1, bulk="L", description="Gain concealment (DC 5 flat check) for 1 minute."))
+    elif lvl in (12, 13, 14, 15, 16, 17):
+        consumables.append(ConsumableItem(name="Greater Healing Potion", quantity=3, bulk="L", description="Restores 6d8+20 HP (1 Action)."))
+        consumables.append(ConsumableItem(name="Elixir of Life (Greater)", quantity=2, bulk="L", description="Restores 7d6+18 HP and +3 item bonus vs disease/poison."))
+        consumables.append(ConsumableItem(name="Mistform Elixir (Greater)", quantity=1, bulk="L", description="Gain concealment (DC 5 flat check) for 5 minutes."))
     else:
-        remaining_gp = max(3, budget_gp)
+        consumables.append(ConsumableItem(name="Major Healing Potion", quantity=3, bulk="L", description="Restores 8d8+30 HP (1 Action)."))
+        consumables.append(ConsumableItem(name="Elixir of Life (True)", quantity=2, bulk="L", description="Restores 10d6+27 HP and +4 item bonus vs disease/poison."))
+        consumables.append(ConsumableItem(name="Truesight Potion", quantity=1, bulk="L", description="Grants truesight for 1 hour."))
+
+    remaining_gp = max(5, int(wealth_cfg["lump_gp"] * 0.12))
     sp = random.randint(1, 9)
     cp = random.randint(1, 9)
     formatted_wealth = f"{remaining_gp} GP, {sp} SP, {cp} CP"

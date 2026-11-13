@@ -80,7 +80,7 @@ from app.engine.progression import (
     apply_remaster_level_boosts,
 )
 from app.engine.names import generate_ancestry_name
-from app.engine.equipment import resolve_equipment
+from app.engine.equipment import resolve_equipment, get_fundamental_rune_tiers
 from app.engine.skills import resolve_character_skills
 from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_weight, extract_gate_elements, is_kineticist_feat_allowed
 from app.engine.spells import resolve_spellcasting
@@ -1073,9 +1073,13 @@ class PF2eGenerator:
             level,
         )
 
+        resilient_bonus = get_fundamental_rune_tiers(level)["save_item_bonus"]
         fort_prof = self._calc_prof(fort_rank, level, mods["con"])
         ref_prof = self._calc_prof(ref_rank, level, mods["dex"])
         will_prof = self._calc_prof(will_rank, level, mods["wis"])
+        fort_prof.modifier += resilient_bonus
+        ref_prof.modifier += resilient_bonus
+        will_prof.modifier += resilient_bonus
         perception_prof = self._calc_prof(perception_rank, level, mods["wis"])
 
         sub_n = subclass_data["name"] if subclass_data else ""
@@ -1804,15 +1808,27 @@ class PF2eGenerator:
             target_level,
         )
 
+        resilient_bonus = get_fundamental_rune_tiers(target_level)["save_item_bonus"]
         fort_prof = self._calc_prof(fort_rank, target_level, mods["con"])
         ref_prof = self._calc_prof(ref_rank, target_level, mods["dex"])
         will_prof = self._calc_prof(will_rank, target_level, mods["wis"])
+        fort_prof.modifier += resilient_bonus
+        ref_prof.modifier += resilient_bonus
+        will_prof.modifier += resilient_bonus
         perception_prof = self._calc_prof(perception_rank, target_level, mods["wis"])
 
-        # 4. Equipment & Weapons Locking
+        # 4. Equipment & Weapons Locking (Scales Runes, Armor, Shields, Consumables & Wealth to target_level)
         current_sub = (current_char.get("subclass") or {}).get("name", "") if isinstance(current_char.get("subclass"), dict) else ""
         gate_elements = extract_gate_elements(current_sub) if cls_name_lower == "kineticist" else set()
         current_arch = current_char.get("archetype") or ""
+        raw_eq = current_char.get("equipment")
+        if isinstance(raw_eq, dict):
+            existing_weps = raw_eq.get("weapons") or raw_eq.get("strikes")
+        elif raw_eq is not None:
+            existing_weps = getattr(raw_eq, "weapons", None) or getattr(raw_eq, "strikes", None)
+        else:
+            existing_weps = None
+
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -1820,75 +1836,21 @@ class PF2eGenerator:
             level=target_level,
             ancestry_name=anc["name"],
             subclass_name=current_sub,
-            archetype_name=current_arch
+            archetype_name=current_arch,
+            existing_weapons=existing_weps,
         )
 
-        # Preserve and scale equipped strikes instead of re-rolling random weapons
-        raw_eq = current_char.get("equipment")
-        if isinstance(raw_eq, dict):
-            raw_strikes = raw_eq.get("strikes")
-        elif hasattr(raw_eq, "strikes"):
-            raw_strikes = raw_eq.strikes
-        else:
-            raw_strikes = current_char.get("strikes") or current_char.get("weapons")
-
-        if raw_strikes:
-            preserved_strikes = []
-            for s in raw_strikes:
-                s_dict = s if isinstance(s, dict) else (s.__dict__ if hasattr(s, "__dict__") else {})
-                name = s_dict.get("name", "")
-                if not name or name.startswith("Elemental Blast"):
-                    continue
-
-                is_ranged = "ranged" in name.lower() or "bow" in name.lower() or "crossbow" in name.lower()
-                ab_mod = mods.get("dex" if is_ranged else "str", 0)
-
-                base_prof_rank = 4 if cls["name"].lower() == "fighter" else 2
-                if target_level >= 5 and cls["name"].lower() in ["fighter", "gunslinger"]:
-                    base_prof_rank = 6
-
-                item_bonus = 1 if target_level >= 2 else 0
-                new_atk = base_prof_rank + target_level + ab_mod + item_bonus
-
-                # Strip existing rune prefixes to recover clean base weapon name
-                clean_name = re.sub(r"^(\+?\d+\s+)?(striking\s+)?", "", name, flags=re.I).strip()
-                if target_level >= 4:
-                    display_name = f"+1 Striking {clean_name}"
-                elif target_level >= 2:
-                    display_name = f"+1 {clean_name}"
-                else:
-                    display_name = clean_name
-
-                # Extract base die type (e.g. d6, d8, d10) and any modifier suffix
-                raw_dice = s_dict.get("damage_dice", "1d8")
-                # Remove previous weapon spec or extra spaces
-                raw_dice = re.sub(r"\s*\+\s*2", "", raw_dice).strip()
-                m_die = re.search(r"(\d*)d(\d+)(.*)", raw_dice)
-                if m_die:
-                    die_faces = m_die.group(2)
-                    tail = m_die.group(3).strip()
-                    dice_count = 2 if target_level >= 4 else 1
-                    base_str = f"{dice_count}d{die_faces}{(" " + tail) if tail else ""}"
-                else:
-                    base_str = raw_dice
-
-                if target_level >= 7:
-                    dmg_dice = f"{base_str} + 2"
-                else:
-                    dmg_dice = base_str
-
-                preserved_strikes.append(Strike(
-                    name=display_name,
-                    attack_bonus=new_atk,
-                    map_second=new_atk - (4 if "Agile" in s_dict.get("traits", []) else 5),
-                    map_third=new_atk - (8 if "Agile" in s_dict.get("traits", []) else 10),
-                    damage_dice=dmg_dice,
-                    damage_type=s_dict.get("damage_type", "Physical"),
-                    traits=s_dict.get("traits", [])
-                ))
-
-            if preserved_strikes:
-                equipment_loadout.strikes = preserved_strikes
+        extra_prof = get_weapon_prof_bonus_delta(cls["name"], target_level)
+        if extra_prof:
+            for strike in equipment_loadout.strikes:
+                strike.attack_bonus += extra_prof
+                strike.map_second += extra_prof
+                strike.map_third += extra_prof
+        spec_dmg = get_weapon_spec_bonus(cls["name"], target_level)
+        if spec_dmg:
+            for strike in equipment_loadout.strikes:
+                if f"+{spec_dmg}" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
+                    strike.damage_dice = f"{strike.damage_dice} + {spec_dmg}"
 
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
