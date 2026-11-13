@@ -515,6 +515,12 @@ BACKGROUND_CUSTOM_ACTIONS = {
         "action_cost": 1,
         "traits": ["Concentrate", "Exploration", "Secret"],
         "description": "You study the demeanor, iconography, or residual essence of a creature to determine if it is an agent or pawn of Treerazer. Attempt a Religion check against the creature's Deception DC. On a success, you learn whether the creature is allied with, dominated by, or in the service of Treerazer or his cult."
+    },
+    "stellar misfortune": {
+        "name": "Stellar Misfortune",
+        "action_cost": 1,
+        "traits": ["Concentrate", "Occult", "Prediction"],
+        "description": "You call upon the indifferent cold of the stars to curse an enemy's next step, imposing misdirection or misfortune on their rolls. Attempt an Occultism check or spell attack against the target."
     }
 }
 
@@ -1244,6 +1250,7 @@ class PF2eGenerator:
 
         cls_name_lower = cls["name"].lower()
         gate_elements = set()
+        extra_trained_skill: Optional[str] = None
         chosen_feats: List[FeatSummary] = []
         added_feat_names = set()
         
