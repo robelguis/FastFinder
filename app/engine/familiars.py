@@ -88,9 +88,12 @@ def resolve_familiar(
     class_name: str,
     level: int = 1,
     aquatic_only: bool = False,
-    is_pet: bool = False
+    is_pet: bool = False,
+    forced_species: Optional[str] = None
 ) -> PartnerCreatureData:
-    if aquatic_only:
+    if forced_species and forced_species in FAMILIAR_SPECIES:
+        pool = [forced_species]
+    elif aquatic_only:
         pool = [k for k, v in FAMILIAR_SPECIES.items() if v.get("aquatic")]
     else:
         pool = list(FAMILIAR_SPECIES.keys())

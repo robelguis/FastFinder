@@ -293,8 +293,8 @@ def sync_feat_partners(
         partners.append(resolve_construct_companion(master_int_mod=2, level=level))
         has_construct = True
 
-    # 3. Plant Companion / Leaf Order
-    if not has_plant and ("plant companion" in all_feat_str or (cls_lower == "druid" and "leaf" in all_feat_str)):
+    # 3. Plant Companion (only when Plant Companion feat is actually taken)
+    if not has_plant and "plant companion" in all_feat_str:
         partners.append(resolve_plant_companion(level=level))
         has_plant = True
 
@@ -315,8 +315,9 @@ def sync_feat_partners(
             partners.append(comp)
             has_animal = True
 
-    # 5. Familiars & Pets (Marine Ally, Familiar, Pet, Familiar Master, Leshy/Elemental/Shadow Familiar)
+    # 5. Familiars & Pets (Leaf Order Leshy Familiar, Marine Ally, Familiar, Pet, Familiar Master, etc.)
     has_marine_ally = "marine ally" in feat_names
+    is_leaf_leshy = ("leshy familiar" in all_feat_str) or (cls_lower == "druid" and "leaf" in all_feat_str)
     familiar_triggers = (
         "familiar",
         "marine ally",
@@ -330,7 +331,7 @@ def sync_feat_partners(
     has_pet_feat = "pet" in feat_names
 
     if not has_familiar and cls_lower != "witch":
-        if has_marine_ally or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
+        if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
             partners.append(
                 resolve_familiar(
                     master_ac=master_ac,
@@ -342,6 +343,7 @@ def sync_feat_partners(
                     level=level,
                     aquatic_only=has_marine_ally,
                     is_pet=False,
+                    forced_species="leshy" if is_leaf_leshy else None,
                 )
             )
             has_familiar = True
