@@ -1,60 +1,85 @@
-def generate_epic_backstory(self, char_data: dict) -> list:
+import os
+from google import genai
+from google.genai import types
+
+class PF2eGenerator:
+    # ... (keep all your existing initialization, methods, and 25k lines intact) ...
+
+    def generate_epic_backstory(self, char_data: dict) -> list:
+        """
+        Dynamically calls the Google Gemini API to generate a rich, non-formulaic,
+        fully customized backstory tailored to the character's exact mechanics and sheet data.
+        """
+        # Initialize the Gemini client (picks up GEMINI_API_KEY from environment variables)
+        client = genai.Client()
+
+        # Extract core character metrics to feed the LLM context
         name = char_data.get("name") or "The Hero"
         ancestry = char_data.get("ancestry") or "Human"
+        heritage = char_data.get("heritage", "")
         cls = char_data.get("character_class") or "Adventurer"
         lvl = int(char_data.get("level") or 1)
-        bg = char_data.get("background") or "unknown origins"
-        archetype = char_data.get("archetype")
-        companion = char_data.get("companion")
-        feats = char_data.get("feats", [])
-
-        # Extract a couple of notable feats if available
-        feat_names = []
-        for f in feats:
-            if isinstance(f, dict):
-                f_name = f.get("name")
-            else:
-                f_name = getattr(f, "name", None)
-            if f_name and "Dedication" not in f_name and "Weapon Specialization" not in f_name:
-                feat_names.append(f_name)
+        bg = char_data.get("background") or "Unknown"
+        archetype = char_data.get("archetype", "None")
         
-        notable_feat = random.choice(feat_names) if feat_names else "sharp resourcefulness"
+        feats = [f.get("name") for f in char_data.get("feats", []) if isinstance(f, dict)]
+        skills = [s.get("name") for s in char_data.get("all_skills", []) if isinstance(s, dict) and s.get("rank", 0) >= 2]
+        
+        equipment = char_data.get("equipment", {})
+        strikes = equipment.get("strikes", []) if isinstance(equipment, dict) else []
+        weapons = [w.get("name") for w in strikes if isinstance(w, dict)]
+        
+        companion = char_data.get("companion")
+        companion_info = f"{companion.get('name')} ({companion.get('creature_type')})" if companion and isinstance(companion, dict) else "None"
 
-        # Chapter I: Roots & Background integration
-        ch1 = (
-            f"Long before {name} ever stepped onto the path of destiny, their days were defined by the grueling, "
-            f"grounded realities of being a {bg}. Working through those early trials, they mastered practical skills like "
-            f"their signature knack for {notable_feat}, learning early on that survival belongs to the persistent."
-        )
+        # Construct a creative director prompt providing the full mechanical sheet
+        prompt = f"""
+        You are a master fantasy novelist and Pathfinder 2e lore master. Write a deeply immersive, rich, 
+        and evocative three-chapter backstory for the following character sheet. Avoid formulaic templates, 
+        cliché boilerplate openings, or robotic summaries. Weave their mechanical traits organically into the narrative.
 
-        # Chapter II: Ancestry, Class, & Dedication integration
-        arch_text = f" and later embracing the secretive teachings of the {archetype} archetype" if archetype else ""
-        ch2 = (
-            f"As a proud {ancestry} navigating a dangerous world, {name} found their true calling when they took up "
-            f"the mantle of a {cls}{arch_text}. Every grueling test of discipline transformed raw potential into hardened, "
-            f"focused expertise."
-        )
+        CHARACTER DATA:
+        - Name: {name}
+        - Ancestry & Heritage: {ancestry} ({heritage})
+        - Background: {bg}
+        - Class & Level: Level {lvl} {cls}
+        - Archetype: {archetype}
+        - Key Trained Skills: {', '.join(skills) if skills else 'General frontier skills'}
+        - Notable Feats & Abilities: {', '.join(feats[:5]) if feats else 'Standard training'}
+        - Signature Weapons / Gear: {', '.join(weapons) if weapons else 'Standard gear'}
+        - Animal Companion / Familiar / Partner: {companion_info}
 
-        # Chapter III: Level, Scale, & Companion/Familiar integration
-        companion_text = ""
-        if companion and isinstance(companion, dict):
-            comp_name = companion.get("name", "faithful companion")
-            comp_type = companion.get("creature_type", "companion")
-            companion_text = f" Side by side with their loyal {comp_type}, {comp_name},"
-        elif companion:
-            companion_text = f" Side by side with their trusted companion,"
-
-        if lvl <= 2:
-            ch3 = f"Now taking their first steps at Level {lvl},{companion_text} {name} stands ready to face whatever perils the frontier throws their way."
-        elif lvl <= 6:
-            ch3 = f"Having survived the brutal trials of the early road at Level {lvl},{companion_text} {name} has built a sharp, hard-earned reputation across the local territory."
-        elif lvl <= 14:
-            ch3 = f"Now a seasoned operative operating at Level {lvl},{companion_text} {name}'s exploits command genuine respect as regional powers begin to take notice."
-        else:
-            ch3 = f"Standing at the absolute zenith of mortal power at Level {lvl},{companion_text} {name} is a living legend whose ongoing saga echoes across empires."
-
-        return [
-            {"chapter": "Chapter I: Roots and Reality", "narrative": ch1},
-            {"chapter": "Chapter II: The Turning Point", "narrative": ch2},
-            {"chapter": "Chapter III: The Road Ahead", "narrative": ch3}
+        FORMAT REQUIREMENT:
+        Return the response strictly as a JSON list of objects with "chapter" and "narrative" keys matching this structure:
+        [
+            {{"chapter": "Chapter I: [Evocative Title]", "narrative": "[Prose text...]"}},
+            {{"chapter": "Chapter II: [Evocative Title]", "narrative": "[Prose text...]"}},
+            {{"chapter": "Chapter III: [Evocative Title]", "narrative": "[Prose text...]"}}
         ]
+        """
+
+        try:
+            # Call Gemini model
+            response = client.models.generate_content(
+                model='gemini-2.5-flash', # or 'gemini-3.8-flash'
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.85, # Slightly higher temperature for creative prose variety
+                ),
+            )
+            
+            # Parse the JSON response from the LLM
+            import json
+            chapters = json.loads(response.text)
+            return chapters
+
+        except Exception as e:
+            # Fallback in case of network/API hiccup
+            print(f"LLM Backstory Generation Error: {e}")
+            return [
+                {
+                    "chapter": f"The Chronicle of {name}",
+                    "narrative": f"A Level {lvl} {cls} hailing from a background as a {bg}, {name} carries the unique heritage of a {ancestry} forward into a dangerous world."
+                }
+            ]
