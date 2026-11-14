@@ -1,53 +1,60 @@
-# backstory_generator.py
-import random
+def generate_epic_backstory(self, char_data: dict) -> list:
+        name = char_data.get("name") or "The Hero"
+        ancestry = char_data.get("ancestry") or "Human"
+        cls = char_data.get("character_class") or "Adventurer"
+        lvl = int(char_data.get("level") or 1)
+        bg = char_data.get("background") or "unknown origins"
+        archetype = char_data.get("archetype")
+        companion = char_data.get("companion")
+        feats = char_data.get("feats", [])
 
-def generate_epic_backstory(char_data: dict) -> list:
-    name = char_data.get("name") or "The Hero"
-    ancestry = char_data.get("ancestry") or "Human"
-    cls = char_data.get("character_class") or "Adventurer"
-    lvl = int(char_data.get("level") or 1)
-    bg = char_data.get("background") or "unknown origins"
-    
-    # Completely independent phrasing pools for Chapter I
-    ch1_options = [
-        f"Before {name} ever touched a blade, their life was dictated by the grueling manual demands of a {bg}. Days bled together in an endless cycle of sweat and quiet labor, far away from any bard's ballad.",
-        f"Long before destiny came knocking, {name} spent their formative years navigating the harsh realities of a {bg}. It was an unglamorous, backbreaking education that forged their underlying toughness.",
-        f"The early chapters of {name}'s story were written in the dirt and routine of a {bg}. Without the safety nets of fortune, they learned how to outlast misfortune through sheer stubborn persistence.",
-        f"Every calloused hand and hardened look {name} carried was earned during their time as a {bg}. Those quiet, grueling days built an absolute foundation of self-reliance."
-    ]
+        # Extract a couple of notable feats if available
+        feat_names = []
+        for f in feats:
+            if isinstance(f, dict):
+                f_name = f.get("name")
+            else:
+                f_name = getattr(f, "name", None)
+            if f_name and "Dedication" not in f_name and "Weapon Specialization" not in f_name:
+                feat_names.append(f_name)
+        
+        notable_feat = random.choice(feat_names) if feat_names else "sharp resourcefulness"
 
-    # Completely independent phrasing pools for Chapter II
-    ch2_options = [
-        f"Bloodlines and ambition collided the day {name}, a resolute {ancestry}, decided to abandon the familiar. Stepping onto the perilous path of the {cls}, they began mastering disciplines that ordinary mortals fear.",
-        f"The traditions of a {ancestry} run deep, but {name}'s path fractured permanently when they embraced the mantle of a {cls}. Every trial since has turned raw, unrefined potential into razor-sharp focus.",
-        f"Though born to the proud heritage of a {ancestry}, {name} was never meant for a quiet life. Plunging headfirst into the rigorous training of a {cls}, they forged an entirely new identity from the chaos.",
-        f"An unexpected catalyst upended everything {name} thought they knew. Drawing deep strength from their {ancestry} roots, they swore themselves to the demanding lifestyle of a {cls}."
-    ]
+        # Chapter I: Roots & Background integration
+        ch1 = (
+            f"Long before {name} ever stepped onto the path of destiny, their days were defined by the grueling, "
+            f"grounded realities of being a {bg}. Working through those early trials, they mastered practical skills like "
+            f"their signature knack for {notable_feat}, learning early on that survival belongs to the persistent."
+        )
 
-    # Level-scaled independent phrasing pools for Chapter III
-    if lvl <= 2:
-        ch3_options = [
-            f"Now taking their very first cautious breaths as a Level {lvl} {cls}, {name} stands at the absolute threshold of a dangerous world, armed with little more than nerve and resolve.",
-            f"At Level {lvl}, {name} is a newcomer facing an unpredictable horizon, leaving the safety of the past behind as they test their mettle as a {cls}."
-        ]
-    elif lvl <= 6:
-        ch3_options = [
-            f"Having survived the brutal filtration of the early road, {name} now commands respect as a capable Level {lvl} {cls}, their early blunders replaced by a growing reputation.",
-            f"Standing tall at Level {lvl}, {name} has proven their worth as a {cls}, drawing the watchful eyes of frontier outposts and regional travelers alike."
-        ]
-    elif lvl <= 14:
-        ch3_options = [
-            f"Now a hardened veteran operating at Level {lvl}, {name}'s exploits as a {cls} send ripples across provincial borders, forcing regional powers to keep a close eye on their moves.",
-            f"Moving through the world as an established {cls} at Level {lvl}, {name} commands influence and shapes the local tides of danger and politics."
-        ]
-    else:
-        ch3_options = [
-            f"Standing at the absolute zenith of mortal power at Level {lvl}, {name} has transcended ordinary adventure to become a living legend, their ongoing saga bending the history of the realm.",
-            f"At Level {lvl}, {name} commands awe across empires, their epic feats as a {cls} echoing through the ages like a true force of nature."
-        ]
+        # Chapter II: Ancestry, Class, & Dedication integration
+        arch_text = f" and later embracing the secretive teachings of the {archetype} archetype" if archetype else ""
+        ch2 = (
+            f"As a proud {ancestry} navigating a dangerous world, {name} found their true calling when they took up "
+            f"the mantle of a {cls}{arch_text}. Every grueling test of discipline transformed raw potential into hardened, "
+            f"focused expertise."
+        )
 
-    return [
-        {"chapter": "Chapter I: Roots and Reality", "narrative": random.choice(ch1_options)},
-        {"chapter": "Chapter II: The Turning Point", "narrative": random.choice(ch2_options)},
-        {"chapter": "Chapter III: The Road Ahead", "narrative": random.choice(ch3_options)}
-    ]
+        # Chapter III: Level, Scale, & Companion/Familiar integration
+        companion_text = ""
+        if companion and isinstance(companion, dict):
+            comp_name = companion.get("name", "faithful companion")
+            comp_type = companion.get("creature_type", "companion")
+            companion_text = f" Side by side with their loyal {comp_type}, {comp_name},"
+        elif companion:
+            companion_text = f" Side by side with their trusted companion,"
+
+        if lvl <= 2:
+            ch3 = f"Now taking their first steps at Level {lvl},{companion_text} {name} stands ready to face whatever perils the frontier throws their way."
+        elif lvl <= 6:
+            ch3 = f"Having survived the brutal trials of the early road at Level {lvl},{companion_text} {name} has built a sharp, hard-earned reputation across the local territory."
+        elif lvl <= 14:
+            ch3 = f"Now a seasoned operative operating at Level {lvl},{companion_text} {name}'s exploits command genuine respect as regional powers begin to take notice."
+        else:
+            ch3 = f"Standing at the absolute zenith of mortal power at Level {lvl},{companion_text} {name} is a living legend whose ongoing saga echoes across empires."
+
+        return [
+            {"chapter": "Chapter I: Roots and Reality", "narrative": ch1},
+            {"chapter": "Chapter II: The Turning Point", "narrative": ch2},
+            {"chapter": "Chapter III: The Road Ahead", "narrative": ch3}
+        ]
