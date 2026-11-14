@@ -677,7 +677,7 @@ class PF2eGenerator:
             ]
             """
 
-           models_to_try = ['gemini-3.8-flash-lite', 'gemini-3.5-flash-lite']
+            models_to_try = ['gemini-3.8-flash-lite', 'gemini-3.5-flash-lite']
             response = None
             last_error = None
 
