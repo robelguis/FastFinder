@@ -1,3 +1,4 @@
+# backstory_generator.py
 import random
 
 def generate_epic_backstory(char_data: dict) -> list:
@@ -7,7 +8,7 @@ def generate_epic_backstory(char_data: dict) -> list:
     lvl = int(char_data.get("level") or 1)
     bg = char_data.get("background") or "unknown origins"
     
-    # Fully randomized sentence collections with zero shared phrasing templates
+    # Completely independent phrasing pools for Chapter I
     ch1_options = [
         f"Before {name} ever touched a blade, their life was dictated by the grueling manual demands of a {bg}. Days bled together in an endless cycle of sweat and quiet labor, far away from any bard's ballad.",
         f"Long before destiny came knocking, {name} spent their formative years navigating the harsh realities of a {bg}. It was an unglamorous, backbreaking education that forged their underlying toughness.",
@@ -15,6 +16,7 @@ def generate_epic_backstory(char_data: dict) -> list:
         f"Every calloused hand and hardened look {name} carried was earned during their time as a {bg}. Those quiet, grueling days built an absolute foundation of self-reliance."
     ]
 
+    # Completely independent phrasing pools for Chapter II
     ch2_options = [
         f"Bloodlines and ambition collided the day {name}, a resolute {ancestry}, decided to abandon the familiar. Stepping onto the perilous path of the {cls}, they began mastering disciplines that ordinary mortals fear.",
         f"The traditions of a {ancestry} run deep, but {name}'s path fractured permanently when they embraced the mantle of a {cls}. Every trial since has turned raw, unrefined potential into razor-sharp focus.",
@@ -22,6 +24,7 @@ def generate_epic_backstory(char_data: dict) -> list:
         f"An unexpected catalyst upended everything {name} thought they knew. Drawing deep strength from their {ancestry} roots, they swore themselves to the demanding lifestyle of a {cls}."
     ]
 
+    # Level-scaled independent phrasing pools for Chapter III
     if lvl <= 2:
         ch3_options = [
             f"Now taking their very first cautious breaths as a Level {lvl} {cls}, {name} stands at the absolute threshold of a dangerous world, armed with little more than nerve and resolve.",
@@ -30,7 +33,7 @@ def generate_epic_backstory(char_data: dict) -> list:
     elif lvl <= 6:
         ch3_options = [
             f"Having survived the brutal filtration of the early road, {name} now commands respect as a capable Level {lvl} {cls}, their early blunders replaced by a growing reputation.",
-            f"Standing tall at Level {lvl}[cite: 8], {name} has proven their worth as a {cls}, drawing the watchful eyes of frontier outposts and regional travelers alike."
+            f"Standing tall at Level {lvl}, {name} has proven their worth as a {cls}, drawing the watchful eyes of frontier outposts and regional travelers alike."
         ]
     elif lvl <= 14:
         ch3_options = [
