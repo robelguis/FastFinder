@@ -84,8 +84,12 @@ def generate_character(
 
 # Inside your FastAPI endpoint handler:
 @app.post("/api/epic-backstory")
-async def get_epic_backstory(char_data: dict):
-   return generator.generate_epic_backstory(char_data)
+async def epic_backstory(char_data: dict):
+    try:
+        result = generator.generate_epic_backstory(char_data)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/api/levelup")
