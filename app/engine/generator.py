@@ -631,71 +631,41 @@ class PF2eGenerator:
         bg = char_data.get("background") or "unknown origins"
         archetype = char_data.get("archetype")
         
-        # Extract dynamic elements from sheet data
         feats = char_data.get("feats", [])
         feat_names = [f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f)) for f in feats]
-        feat_sample = ", ".join(feat_names[:3]) if feat_names else "hard-earned talents"
+        feat_sample = random.choice(feat_names) if feat_names else "unusual instincts"
         
         skills = char_data.get("all_skills", [])
         trained_skills = [s.get("name") if isinstance(s, dict) else getattr(s, "name", str(s)) for s in skills if (s.get("rank", 0) if isinstance(s, dict) else getattr(s, "rank", 0)) >= 2]
-        skill_sample = ", ".join(trained_skills[:3]) if trained_skills else "survival and streetcraft"
+        skill_sample = trained_skills[0] if trained_skills else "survival"
 
         equipment = char_data.get("equipment", {})
         strikes = equipment.get("strikes", []) if isinstance(equipment, dict) else getattr(equipment, "strikes", [])
-        weapon_name = strikes[0].get("name", "trusted armament") if strikes and isinstance(strikes[0], dict) else "a favored blade"
+        weapon_name = strikes[0].get("name", "a trusty weapon") if strikes and isinstance(strikes[0], dict) else "a favored blade"
         
         companion = char_data.get("companion")
-        companion_text = f" Alongside a devoted companion, {companion.get('name', 'ally')}," if companion and isinstance(companion, dict) and companion.get("name") else ""
+        companion_name = companion.get('name', 'faithful companion') if companion and isinstance(companion, dict) and companion.get("name") else None
 
         ancestry_display = f"{ancestry} ({heritage})" if heritage else ancestry
+        comp_clause = f" accompanied by {companion_name}" if companion_name else ""
+        arch_clause = f", leaning heavily into the teachings of the {archetype} discipline," if archetype else ""
 
-        # Chapter I: Grounded Origins based on Background & Ancestry
-        ch1 = (
-            f"Long before the weight of destiny settled upon {name}'s shoulders, life was defined by the raw, unglamorous crucible of a {bg}. "
-            f"Rooted in the distinctive heritage of a {ancestry_display}, {name} learned early that survival in the wider world required more than simple heritage—it demanded "
-            f"an unyielding work ethic and a mastery of practical crafts. Whether through quiet labor or navigating the hazards of the frontier, "
-            f"those formative years forged a fierce self-reliance."
+        # Free-flowing, organic narrative generation
+        narrative_body = (
+            f"Born into the distinct heritage of a {ancestry_display}, {name} spent early formative days navigating "
+            f"the grueling realities of a {bg}. Without safety nets or fortune, survival demanded an unyielding work ethic, "
+            f"honing an innate proficiency in {skill_sample} long before any grand ambitions took root. "
+            f"When the call of the {cls} finally beckoned, {name} answered with absolute conviction{arch_clause}. "
+            f"Countless hours of grueling conditioning transformed raw potential into lethal, focused execution, "
+            f"marked by signature talents such as {feat_sample}. Now operating at Level {lvl} with {weapon_name} in hand{comp_clause}, "
+            f"{name} moves across the frontier not as a wanderer seeking fortune, but as an undeniable force shaping the world around them."
         )
-
-        # Chapter II: The Awakening & Specialized Training (Feats, Skills, Archetype)
-        arch_text = f" and the specialized teachings of the {archetype} archetype" if archetype else ""
-        ch2 = (
-            f"As the latent spark of the {cls} took hold, {name}'s path diverged sharply from ordinary mortals. "
-            f"Hours blurred into sleepless nights of intensive study and physical conditioning, culminating in profound breakthroughs across disciplines like {skill_sample}. "
-            f"Every scar and hard-won victory unlocked unique capabilities—manifesting signature talents such as {feat_sample}{arch_text}. "
-            f"The crude potential of youth was hammered into absolute, razor-sharp discipline."
-        )
-
-        # Chapter III: Epic Zenith scaled by Level & Inventory/Weapons
-        if lvl == 1:
-            ch3 = (
-                f"Now standing equipped with {weapon_name} and taking their first decisive steps as a Level 1 {cls}, {name} steps out "
-                f"from the shadows of their past into a vast, perilous realm.{companion_text} The saga has only just begun, "
-                f"yet the shadows already whisper of an emerging power."
-            )
-        elif lvl <= 5:
-            ch3 = (
-                f"Now operating as a hardened Level {lvl} {cls}, {name}'s early trials have forged a genuine reputation across the regional frontier. "
-                f"Wielding {weapon_name} with lethal precision{companion_text}, local factions and rival powers are beginning to realize "
-                f"that this rising force cannot be easily ignored."
-            )
-        elif lvl <= 15:
-            ch3 = (
-                f"Now a seasoned veteran at Level {lvl}, {name}'s exploits as a {cls} send shockwaves across provincial borders. "
-                f"Armed with masteries over obstacles that break lesser champions and wielding {weapon_name}{companion_text}, "
-                f"their name commands deep respect and caution from the courts and syndicates alike."
-            )
-        else:
-            ch3 = (
-                f"Standing at the absolute pinnacle of mortal power as a Level {lvl} {cls}, {name} is a living legend whose deeds echo through history. "
-                f"Equipped with legendary gear like {weapon_name}{companion_text} and backed by master-level execution of {feat_sample}, "
-                f"their presence alters the fate of nations and commands the awe of the cosmos."
-            )
 
         return [
-            {"chapter": f"Chapter I: Roots of the {bg.title()}", "narrative": ch1},
-            {"chapter": f"Chapter II: The Path of the {cls}", "narrative": ch2},
-            {"chapter": f"Chapter III: The Legend at Level {lvl}", "narrative": ch3}
+            {
+                "chapter": f"The Chronicle of {name}",
+                "narrative": narrative_body
+            }
         ]
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
         prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
