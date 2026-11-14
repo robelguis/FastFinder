@@ -62,6 +62,8 @@ import re
 import random
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Set
+from google import genai
+from google.genai import types
 
 from app.engine.models import (
     CharacterSheet,
@@ -622,61 +624,80 @@ class PF2eGenerator:
             and len(f.get("traits", [])) > 0
             and f.get("name") not in ["Speedrun Strats"]
         ]
-    def generate_epic_backstory(self, char_data: dict) -> list:
+   def generate_epic_backstory(self, char_data: dict) -> list:
+        """
+        Dynamically calls the Google Gemini API to generate a rich, non-formulaic,
+        fully customized backstory tailored to the character's exact mechanics and sheet data.
+        """
+        client = genai.Client()
+
+        # Extract core character metrics to feed the LLM context
         name = char_data.get("name") or "The Hero"
         ancestry = char_data.get("ancestry") or "Human"
-        heritage = char_data.get("heritage")
+        heritage = char_data.get("heritage", "")
         cls = char_data.get("character_class") or "Adventurer"
         lvl = int(char_data.get("level") or 1)
-        bg = char_data.get("background") or "unknown origins"
-        archetype = char_data.get("archetype")
+        bg = char_data.get("background") or "Unknown"
+        archetype = char_data.get("archetype", "None")
         
-        feats = char_data.get("feats", [])
-        feat_names = [f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f)) for f in feats]
-        feat_sample = random.choice(feat_names) if feat_names else "unusual instincts"
+        feats = [f.get("name") for f in char_data.get("feats", []) if isinstance(f, dict)]
+        skills = [s.get("name") for s in char_data.get("all_skills", []) if isinstance(s, dict) and s.get("rank", 0) >= 2]
         
-        skills = char_data.get("all_skills", [])
-        trained_skills = [s.get("name") if isinstance(s, dict) else getattr(s, "name", str(s)) for s in skills if (s.get("rank", 0) if isinstance(s, dict) else getattr(s, "rank", 0)) >= 2]
-        skill_sample = random.choice(trained_skills) if trained_skills else "survival"
-
         equipment = char_data.get("equipment", {})
-        strikes = equipment.get("strikes", []) if isinstance(equipment, dict) else getattr(equipment, "strikes", [])
-        weapon_name = strikes[0].get("name", "a trusted weapon") if strikes and isinstance(strikes[0], dict) else "a favored blade"
+        strikes = equipment.get("strikes", []) if isinstance(equipment, dict) else []
+        weapons = [w.get("name") for w in strikes if isinstance(w, dict)]
         
         companion = char_data.get("companion")
-        companion_name = companion.get('name') if companion and isinstance(companion, dict) else None
+        companion_info = f"{companion.get('name')} ({companion.get('creature_type')})" if companion and isinstance(companion, dict) else "None"
 
-        ancestry_desc = f"{ancestry} of the {heritage} heritage" if heritage else f"{ancestry}"
-        comp_str = f" alongside the ever-watchful {companion_name}" if companion_name else ""
-        arch_str = f" under the specialized teachings of the {archetype}" if archetype else ""
+        # Construct a creative director prompt providing the full mechanical sheet
+        prompt = f"""
+        You are a master fantasy novelist and Pathfinder 2e lore master. Write a deeply immersive, rich, 
+        and evocative three-chapter backstory for the following character sheet. Avoid formulaic templates, 
+        cliché boilerplate openings, or robotic summaries. Weave their mechanical traits organically into the narrative.
 
-        # Randomize paragraph structures entirely so the prose flows differently each time
-        archetypes_intro = [
-            f"Long before the world began taking notice of {name}, days were measured by the quiet, demanding toil of a {bg}. As a {ancestry_desc}, early life offered no shortcuts; every lesson was beaten out on the anvil of reality.",
-            f"The chronicles of {name} trace back to the unglamorous, grueling days spent as a {bg}. Born with the distinct bloodline of a {ancestry_desc}, survival required a sharp wit, steady hands, and an unyielding work ethic.",
-            f"There are few who truly understand the crucible of a {bg} until they have lived it. For {name}, a {ancestry_desc}, those formative years were defined by hard-earned endurance and the constant friction of frontier survival."
+        CHARACTER DATA:
+        - Name: {name}
+        - Ancestry & Heritage: {ancestry} ({heritage})
+        - Background: {bg}
+        - Class & Level: Level {lvl} {cls}
+        - Archetype: {archetype}
+        - Key Trained Skills: {', '.join(skills) if skills else 'General frontier skills'}
+        - Notable Feats & Abilities: {', '.join(feats[:5]) if feats else 'Standard training'}
+        - Signature Weapons / Gear: {', '.join(weapons) if weapons else 'Standard gear'}
+        - Animal Companion / Familiar / Partner: {companion_info}
+
+        FORMAT REQUIREMENT:
+        Return the response strictly as a JSON list of objects with "chapter" and "narrative" keys matching this structure:
+        [
+            {{"chapter": "Chapter I: [Evocative Title]", "narrative": "[Prose text...]"}},
+            {{"chapter": "Chapter II: [Evocative Title]", "narrative": "[Prose text...]"}},
+            {{"chapter": "Chapter III: [Evocative Title]", "narrative": "[Prose text...]"}}
         ]
+        """
 
-        middle_transitions = [
-            f"Yet, the quiet life could never truly contain someone of such ambition. Drawn inexorably toward the path of the {cls}{arch_str}, {name} poured every ounce of grit into mastering disciplines like {skill_sample}, eventually unlocking rare talents such as {feat_sample}.",
-            f"Routine, however, was never meant to last. Guided by an inner fire toward the vocation of the {cls}{arch_str}, {name} turned raw potential into disciplined mastery, sharpening expertise in {skill_sample} and manifesting signature capabilities like {feat_sample}.",
-            f"Destiny rarely knocks politely. When {name} answered the call of the {cls}{arch_str}, it sparked an intense transformation. Years of deep study and physical trial forged elite proficiencies in {skill_sample}, culminating in extraordinary breakthroughs like {feat_sample}."
-        ]
+        try:
+            # Call Gemini model
+            response = client.models.generate_content(
+                model='gemini-2.5-flash',
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    response_mime_type="application/json",
+                    temperature=0.85,
+                ),
+            )
+            
+            # Parse the JSON response from the LLM
+            return json.loads(response.text)
 
-        closing_notes = [
-            f"Now operating at Level {lvl} with {weapon_name} close at hand{comp_str}, {name} moves across the realm not as a wanderer seeking mere fortune, but as an undeniable force leaving permanent ripples in history.",
-            f"Today, standing as a formidable Level {lvl} figure equipped with {weapon_name}{comp_str}, {name} commands a presence that makes regional powers and local syndicates alike tread very carefully.",
-            f"Now at the height of a Level {lvl} journey, wielding {weapon_name}{comp_str} with lethal grace, {name} faces an open horizon where legendary deeds await."
-        ]
-
-        full_narrative = f"{random.choice(archetypes_intro)} {random.choice(middle_transitions)} {random.choice(closing_notes)}"
-
-        return [
-            {
-                "chapter": f"The Legend of {name}",
-                "narrative": full_narrative
-            }
-        ]
+        except Exception as e:
+            print(f"LLM Backstory Generation Error: {e}")
+            return [
+                {
+                    "chapter": f"The Chronicle of {name}",
+                    "narrative": f"A Level {lvl} {cls} hailing from a background as a {bg}, {name} carries the unique heritage of a {ancestry} forward into a dangerous world."
+                }
+            ]
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
         prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
         return Proficiency(rank=prof_bonus, rank_letter=letter, modifier=prof_bonus + level + attr_mod)
