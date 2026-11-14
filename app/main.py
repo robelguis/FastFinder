@@ -85,30 +85,7 @@ def generate_character(
 @app.post("/api/epic-backstory")
 def api_generate_backstory(character: dict):
     try:
-        # Checks if generator has the method, otherwise uses a robust built-in fallback
-        if hasattr(generator, "generate_epic_backstory"):
-            chapters = generator.generate_epic_backstory(character)
-        else:
-            name = character.get("name") or "The Hero"
-            ancestry = character.get("ancestry") or "Human"
-            cls = character.get("character_class") or "Adventurer"
-            lvl = character.get("level") or 1
-            bg = character.get("background") or "unknown origins"
-            
-            chapters = [
-                {
-                    "chapter": "Chapter I: Roots in the Dust",
-                    "narrative": f"Long before the weight of legendary arms rested upon {name}'s shoulders, there were quiet days spent as a {bg}. Raised amidst the rugged trials of the frontier, {name} learned early that survival is carved out of stubborn endurance rather than divine favor."
-                },
-                {
-                    "chapter": "Chapter II: The Awakening Spark",
-                    "narrative": f"As a {ancestry} navigating a world scarred by ancient powers, {name}'s path shifted when a latent calling took root. Stepping onto the path of the {cls}, every trial forged a sharper resolve, turning simple grit into legendary discipline."
-                },
-                {
-                    "chapter": "Chapter III: The Legend at Zenith",
-                    "narrative": f"Now standing at Level {lvl}, {name} is no longer merely a wanderer of the wilds. Bound to destiny and tested by insurmountable odds, their name echoes across the realm as a beacon of unyielding power and epic consequence."
-                }
-            ]
+        chapters = generator.generate_epic_backstory(character)
         return {"chapters": chapters}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
