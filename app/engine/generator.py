@@ -1,30 +1,4 @@
-            background_name=background,
-            archetype_name=clean_arch,
-            char_name=name,
-            level=level,
-            use_dedication=dedication or bool(clean_arch),
-        )
-        return sheet
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/api/epic-backstory")
-def api_generate_backstory(character: dict):
-    try:
-        chapters = generator.generate_epic_backstory(character)
-        return {"chapters": chapters}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/api/levelup")
-def level_up_endpoint(payload: LevelUpPayload):
-    char_data = payload.character
-    current_level = int(char_data.get("level", 1))
-    target = max(1, min(20, int(payload.target_level)))
-
-    if target == current_level:
 ANCESTRY_BG_MAP = {
     "dwarf": ["dwarf", "dwarven"],
     "elf": ["elf", "elven"],
