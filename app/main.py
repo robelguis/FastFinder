@@ -12,6 +12,7 @@ from app.engine.generator import PF2eGenerator
 from app.engine.subclasses import CLASS_SUBCLASSES
 from app.backstory_generator import PF2eGenerator
 
+from app.engine.generator import PF2eGenerator
 app = FastAPI(title="FastFinder PF2e Generator")
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -84,8 +85,7 @@ def generate_character(
 # Inside your FastAPI endpoint handler:
 @app.post("/api/epic-backstory")
 async def get_epic_backstory(char_data: dict):
-    backstory = generator.generate_epic_backstory(char_data)
-    return backstory
+   return generator.generate_epic_backstory(char_data)
 
 
 @app.post("/api/levelup")
