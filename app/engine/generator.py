@@ -624,7 +624,7 @@ class PF2eGenerator:
             and len(f.get("traits", [])) > 0
             and f.get("name") not in ["Speedrun Strats"]
         ]
-    def generate_epic_backstory(self, char_data: dict) -> list:
+    def generate_epic_backstory(self, char_data: dict) -> dict:
         """
         Dynamically calls the Google Gemini API to generate a rich, non-formulaic,
         fully customized backstory tailored to the character's exact mechanics and sheet data.
@@ -685,24 +685,27 @@ class PF2eGenerator:
                 ),
             )
             
-            # Clean up potential markdown code blocks if the model wrapped the JSON
             raw_text = response.text.strip()
             if raw_text.startswith("```json"):
                 raw_text = raw_text[7:]
             if raw_text.endswith("```"):
                 raw_text = raw_text[:-3]
 
-            return json.loads(raw_text.strip())
+            chapters = json.loads(raw_text.strip())
+            
+            # Wrap in a dictionary with the 'chapters' key expected by the frontend JS
+            return {"chapters": chapters}
 
         except Exception as e:
             print(f"CRITICAL LLM Backstory Generation Error: {str(e)}")
-            # Return a detailed error block so you can see it in the UI or logs instantly
-            return [
-                {
-                    "chapter": "Generation Error",
-                    "narrative": f"Could not generate backstory due to server error: {str(e)}"
-                }
-            ]
+            return {
+                "chapters": [
+                    {
+                        "chapter": "Generation Error",
+                        "narrative": f"Could not generate backstory due to server error: {str(e)}"
+                    }
+                ]
+            }
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
         prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
         return Proficiency(rank=prof_bonus, rank_letter=letter, modifier=prof_bonus + level + attr_mod)
