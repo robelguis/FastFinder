@@ -60,6 +60,7 @@ def is_background_compatible_with_ancestry(bg_data: dict, ancestry_name: str) ->
 import json
 import re
 import random
+import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Set
 from google import genai
