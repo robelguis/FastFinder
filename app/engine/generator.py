@@ -624,7 +624,7 @@ class PF2eGenerator:
             and len(f.get("traits", [])) > 0
             and f.get("name") not in ["Speedrun Strats"]
         ]
-   def generate_epic_backstory(self, char_data: dict) -> list:
+    def generate_epic_backstory(self, char_data: dict) -> list:
         """
         Dynamically calls the Google Gemini API to generate a rich, non-formulaic,
         fully customized backstory tailored to the character's exact mechanics and sheet data.
