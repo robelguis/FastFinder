@@ -613,6 +613,88 @@ def apply_wing_graft_investment(
 
 
 class PF2eGenerator:
+
+    def generate_character_from_concept(self, concept_text: str) -> dict:
+        """
+        Takes a natural language concept and parses it into a structured Pathfinder 2e 
+        Remastered character sheet JSON object.
+        """
+        try:
+            client = genai.Client(api_key=os.environ.get("GEMINI_API_KEY"))
+
+            prompt = f"""
+            You are an expert Pathfinder 2e Remastered rules lawyer and character builder. 
+            Parse the following user concept and generate a fully valid, mechanically sound Level 1 or Level 10 character sheet (default to Level 1 unless specified).
+            
+            USER CONCEPT: "{concept_text}"
+
+            FORMAT REQUIREMENT:
+            Return the response strictly as a JSON object with the following exact keys and structure:
+            {{
+                "name": "[Character Name]",
+                "ancestry": "[Valid PF2e Ancestry, e.g., Elf, Dwarf, Human, Anadi, Goblin]",
+                "heritage": "[Valid Heritage, e.g., Versatile, Cavern Elf]",
+                "character_class": "[Valid Class, e.g., Fighter, Wizard, Druid, Cleric]",
+                "level": 1,
+                "background": "[Valid Background]",
+                "archetype": "None",
+                "attributes": {{"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10}},
+                "feats": [{{"name": "[Feat Name]"}}],
+                "all_skills": [{{"name": "[Skill Name]", "rank": 2}}],
+                "equipment": {{
+                    "strikes": [
+                        {{"name": "[Weapon Name]", "damage": "[Dice + Modifier]"}}
+                    ]
+                }},
+                "companion": null
+            }}
+            Ensure all mechanical choices strictly adhere to Pathfinder 2e Remastered rules.
+            """
+
+            models_to_try = ['gemini-3.8-flash-lite', 'gemini-3.5-flash-lite']
+            response = None
+            last_error = None
+
+            for model_name in models_to_try:
+                for attempt in range(2):
+                    try:
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(
+                                response_mime_type="application/json",
+                                temperature=0.7,
+                            ),
+                        )
+                        if response and response.text:
+                            break
+                    except Exception as e:
+                        last_error = e
+                        import time
+                        time.sleep(1)
+                        continue
+                if response and response.text:
+                    break
+
+            if not response or not response.text:
+                raise Exception(f"All models busy or failed. Last error: {str(last_error)}")
+
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+
+            return json.loads(raw_text.strip())
+
+        except Exception as e:
+            print(f"CRITICAL Concept Parsing Error: {str(e)}")
+            return {
+                "error": str(e),
+                "name": "Concept Parse Failed",
+                "character_class": "Adventurer"
+            }
+            
     def __init__(self):
         self.ancestries = {a["name"].lower(): a for a in load_data("ancestries.json")}
         self.classes = {c["name"].lower(): c for c in load_data("classes.json")}
