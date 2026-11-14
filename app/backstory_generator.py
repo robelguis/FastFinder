@@ -1,19 +1,12 @@
 import os
 from google import genai
 from google.genai import types
+import json
+import random
 
 class PF2eGenerator:
-    # ... (keep all your existing initialization, methods, and 25k lines intact) ...
-
     def generate_epic_backstory(self, char_data: dict) -> list:
-        """
-        Dynamically calls the Google Gemini API to generate a rich, non-formulaic,
-        fully customized backstory tailored to the character's exact mechanics and sheet data.
-        """
-        # Initialize the Gemini client (picks up GEMINI_API_KEY from environment variables)
         client = genai.Client()
-
-        # Extract core character metrics to feed the LLM context
         name = char_data.get("name") or "The Hero"
         ancestry = char_data.get("ancestry") or "Human"
         heritage = char_data.get("heritage", "")
@@ -32,7 +25,6 @@ class PF2eGenerator:
         companion = char_data.get("companion")
         companion_info = f"{companion.get('name')} ({companion.get('creature_type')})" if companion and isinstance(companion, dict) else "None"
 
-        # Construct a creative director prompt providing the full mechanical sheet
         prompt = f"""
         You are a master fantasy novelist and Pathfinder 2e lore master. Write a deeply immersive, rich, 
         and evocative three-chapter backstory for the following character sheet. Avoid formulaic templates, 
@@ -59,23 +51,16 @@ class PF2eGenerator:
         """
 
         try:
-            # Call Gemini model
             response = client.models.generate_content(
-                model='gemini-2.5-flash', # or 'gemini-3.8-flash'
+                model='gemini-2.5-flash',
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
-                    temperature=0.85, # Slightly higher temperature for creative prose variety
+                    temperature=0.85,
                 ),
             )
-            
-            # Parse the JSON response from the LLM
-            import json
-            chapters = json.loads(response.text)
-            return chapters
-
+            return json.loads(response.text)
         except Exception as e:
-            # Fallback in case of network/API hiccup
             print(f"LLM Backstory Generation Error: {e}")
             return [
                 {
