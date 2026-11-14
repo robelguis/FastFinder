@@ -8,56 +8,52 @@ def generate_epic_backstory(char_data: dict) -> list:
     lvl = int(char_data.get("level") or 1)
     bg = char_data.get("background") or "unknown origins"
     
-    # Pick a completely random structural layout style (0, 1, or 2)
-    style_choice = random.randint(0, 2)
-    
-    if style_choice == 0:
-        # Style A: The Chronicle / Legend Log format
-        return [
-            {
-                "chapter": "I. The Formative Years",
-                "narrative": f"Long before {name} ever caught the eye of fate, they were simply surviving day-to-day as a {bg}. Those early hardships forged an unyielding core long before any grand ambitions took root."
-            },
-            {
-                "chapter": "II. The Turning Point",
-                "narrative": f"A sudden shift shattered the quiet life. Drawing upon the hidden strengths of a {ancestry}, {name} stepped unhesitatingly onto the path of the {cls}, leaving their old world behind in a blaze of resolve."
-            },
-            {
-                "chapter": "III. Current Standing",
-                "narrative": f"Now operating at Level {lvl}, {name}'s presence as a {cls} commands attention across the region, turning heads and altering the balance of power wherever their travels take them."
-            }
+    # Force complete randomization seed uniqueness
+    random.seed(f"{name}-{ancestry}-{cls}-{bg}-{lvl}")
+
+    # --- ENTIRELY UNIQUE CHAPTER I PHRASING ---
+    ch1_options = [
+        f"Before {name} ever touched a blade or cast a spell, their existence was measured by the grueling demands of a {bg}. Days bled together in a haze of sweat and quiet labor, far away from the songs of glory.",
+        f"Life for {name} began in the shadows of obscurity, shaped entirely by the rigorous daily grind of a {bg}. Those early years taught them how to endure hardship when comfort was nothing more than a distant dream.",
+        f"Long-winded tavern tales mean nothing compared to the reality {name} faced as a {bg}. Surviving those harsh, formative days required an iron stomach and a refusal to break under pressure.",
+        f"Every calloused hand and hardened glance {name} carried came from their time as a {bg}. It was an unglamorous, unforgiving beginning that quietly forged their underlying grit."
+    ]
+
+    # --- ENTIRELY UNIQUE CHAPTER II PHRASING ---
+    ch2_options = [
+        f"Bloodlines and destiny collided when {name}, a proud {ancestry}, felt the undeniable pull of a greater calling. Shedding their old life to walk the perilous road of the {cls}, they began mastering arts that terrify ordinary folk.",
+        f"The inherent traditions of a {ancestry} run deep, but {name}'s path fractured permanently the day they embraced the mantle of a {cls}. Every grueling trial since has turned raw, unrefined potential into razor-sharp discipline.",
+        f"Born into the vibrant heritage of a {ancestry}, {name} found themselves ill-fitted for a quiet existence. Stepping forward as a {cls}, they plunged headfirst into a life of calculated risks and supernatural hazards.",
+        f"An unexpected catalyst upended everything {name} thought they knew. Drawing strength from their {ancestry} roots, they swore themselves to the disciplined path of the {cls}, transforming their entire identity."
+    ]
+
+    # --- ENTIRELY UNIQUE CHAPTER III PHRASING ---
+    if lvl <= 2:
+        ch3_options = [
+            f"Now taking their very first tentative breaths as a Level {lvl} {cls}, {name} stands at the absolute beginning of a dangerous road, armed with little more than raw nerve and fierce determination.",
+            f"At Level {lvl}, {name} is a newcomer to the adventuring scene. The safety of the past is gone, replaced by the unpredictable dangers of a world that respects only the strong."
         ]
-        
-    elif style_choice == 1:
-        # Style B: Narrative Vignette format (More atmospheric, storytelling tone)
-        return [
-            {
-                "chapter": "The Dust of the Past",
-                "narrative": f"Ask anyone from the old days about {name}, and they will tell you stories of a weary traveler shaped entirely by the grueling lifestyle of a {bg}. Every scar and calloused hand told a story of endurance."
-            },
-            {
-                "chapter": "The Spark of Destiny",
-                "narrative": f"Bloodlines run deep, and for a {ancestry}, the call of something greater is never far away. When {name} embraced the mantle of a {cls}, the transition wasn't a choice—it was an awakening."
-            },
-            {
-                "chapter": "The Rising Tide",
-                "narrative": f"At Level {lvl}, the stakes are entirely different now. No longer a novice dodging shadows, {name} walks the realm as a seasoned {cls}, carving a path that history itself is beginning to notice."
-            }
+    elif lvl <= 6:
+        ch3_options = [
+            f"Having survived the brutal filtration of the early road, {name} now commands respect as a capable Level {lvl} {cls}. Their initial blunders are gone, replaced by a growing local reputation.",
+            f"Standing tall at Level {lvl}[cite: 8], {name} has proven their mettle as a {cls}. Frontier outposts and regional travelers now speak their name when discussing rising talent."
         ]
-        
+    elif lvl <= 14:
+        ch3_options = [
+            f"Now a hardened veteran operating at Level {lvl}, {name}'s exploits as a {cls} send ripples across provincial borders. Regional powers are finally starting to keep a close eye on their moves.",
+            f"With a formidable presence at Level {lvl}, {name} moves through the world as an established {cls} whose choices actively shift the tides of local politics and danger."
+        ]
     else:
-        # Style C: Mythic/Epic Tale format (Slightly more dramatic and grand)
-        return [
-            {
-                "chapter": "Act I: Humble Beginnings",
-                "narrative": f"History rarely remembers where legends are born. For {name}, those days were spent laboring quietly as a {bg}, learning the brutal lessons of the world through patience and grit."
-            },
-            {
-                "chapter": "Act II: The Forge of Purpose",
-                "narrative": f"Destiny found {name} not in grand halls, but in the crucible of trial. Merging the ancient heritage of a {ancestry} with the lethal discipline of a {cls}, a true champion was forged."
-            },
-            {
-                "chapter": "Act III: The Unfolding Saga",
-                "narrative": f"Now standing as a formidable Level {lvl} {cls}, {name} commands a presence that echoes through taverns, camps, and royal courts alike, proving that the past is only prologue."
-            }
+        ch3_options = [
+            f"Standing at the absolute zenith of mortal power at Level {lvl}, {name} has become a living legend. Their ongoing saga as a {cls} bends the history of the realm itself.",
+            f"At Level {lvl}, {name} commands awe across empires. Their epic feats echo through the ages, transforming them from a mere traveler into a force of nature."
         ]
+
+    # Clear seed so it doesn't lock global random states
+    random.seed(None)
+
+    return [
+        {"chapter": "Chapter I: Roots in the Dust", "narrative": random.choice(ch1_options)},
+        {"chapter": "Chapter II: The Awakening Spark", "narrative": random.choice(ch2_options)},
+        {"chapter": "Chapter III: The Legend Unfolds", "narrative": random.choice(ch3_options)}
+    ]
