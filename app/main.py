@@ -22,7 +22,17 @@ app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 generator = PF2eGenerator()
 
+class ConceptRequest(BaseModel):
+    concept: str
 
+@app.post("/api/generate-from-concept")
+async def generate_from_concept(req: ConceptRequest):
+    try:
+        sheet_data = generator.generate_character_from_concept(req.concept)
+        return sheet_data
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+        
 class LevelUpPayload(BaseModel):
     character: Dict[str, Any]
     target_level: int = Field(..., ge=1, le=20)
