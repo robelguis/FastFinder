@@ -10,7 +10,7 @@ from app.engine.archetypes import get_all_archetype_names
 from app.engine.foundry import export_to_foundry_actor
 from app.engine.generator import PF2eGenerator
 from app.engine.subclasses import CLASS_SUBCLASSES
-from .backstory_generator import generate_epic_backstory
+from app.backstory_generator import PF2eGenerator
 
 app = FastAPI(title="FastFinder PF2e Generator")
 
@@ -81,14 +81,11 @@ def generate_character(
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
+# Inside your FastAPI endpoint handler:
 @app.post("/api/epic-backstory")
-def api_generate_backstory(character: dict):
-    try:
-        chapters = generator.generate_epic_backstory(character)
-        return {"chapters": chapters}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+async def get_epic_backstory(char_data: dict):
+    backstory = generator.generate_epic_backstory(char_data)
+    return backstory
 
 
 @app.post("/api/levelup")
