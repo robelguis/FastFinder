@@ -628,46 +628,84 @@ class PF2eGenerator:
         cls = char_data.get("character_class") or "Adventurer"
         lvl = int(char_data.get("level") or 1)
         bg = char_data.get("background") or "unknown origins"
+        archetype = char_data.get("archetype")
+        companion = char_data.get("companion")
+        feats = char_data.get("feats", [])
+        skills = char_data.get("all_skills", [])
+
+        # Gather notable skills
+        trained_skills = [s.get("name") for s in skills if isinstance(s, dict) and s.get("rank", 0) >= 2]
+        skill_text = f" masteries in {', '.join(trained_skills[:3])}" if trained_skills else ""
+
+        # Gather notable feats
+        feat_names = []
+        for f in feats:
+            f_name = f.get("name") if isinstance(f, dict) else getattr(f, "name", None)
+            if f_name and "Dedication" not in f_name and "Weapon Specialization" not in f_name:
+                feat_names.append(f_name)
         
-        ch1_options = [
-            f"Before {name} ever touched a blade, their life was dictated by the grueling manual demands of a {bg}. Days bled together in an endless cycle of sweat and quiet labor, far away from any bard's ballad.",
-            f"Long before destiny came knocking, {name} spent their formative years navigating the harsh realities of a {bg}. It was an unglamorous, backbreaking education that forged their underlying toughness.",
-            f"The early chapters of {name}'s story were written in the dirt and routine of a {bg}. Without the safety nets of fortune, they learned how to outlast misfortune through sheer stubborn persistence.",
-            f"Every calloused hand and hardened look {name} carried was earned during their time as a {bg}. Those quiet, grueling days built an absolute foundation of self-reliance."
-        ]
+        feat_highlight = f"drawing heavily upon techniques like {feat_names[0]} and {feat_names[1]}" if len(feat_names) >= 2 else "relying on a unique repertoire of specialized combat and tactical talents"
 
-        ch2_options = [
-            f"Bloodlines and ambition collided the day {name}, a resolute {ancestry}, decided to abandon the familiar. Stepping onto the perilous path of the {cls}, they began mastering disciplines that ordinary mortals fear.",
-            f"The traditions of a {ancestry} run deep, but {name}'s path fractured permanently when they embraced the mantle of a {cls}. Every trial since has turned raw, unrefined potential into razor-sharp focus.",
-            f"Though born to the proud heritage of a {ancestry}, {name} was never meant for a quiet life. Plunging headfirst into the rigorous training of a {cls}, they forged an entirely new identity from the chaos.",
-            f"An unexpected catalyst upended everything {name} thought they knew. Drawing deep strength from their {ancestry} roots, they swore themselves to the demanding lifestyle of a {cls}."
-        ]
+        # Companion/Familiar detail
+        partner_desc = ""
+        if companion and isinstance(companion, dict):
+            p_name = companion.get("name", "faithful ally")
+            p_type = companion.get("creature_type", "companion")
+            partner_desc = f" Throughout these trials, they were never truly alone; their trusted {p_type.lower()}, {p_name}, remained a constant anchor through every brush with mortality."
 
+        # Archetype detail
+        arch_desc = f" Seeking to broaden their mastery, they delved into the specialized discipline of the {archetype} archetype, blending disparate arts into a seamless combat style." if archetype else ""
+
+        # Chapter I: Comprehensive Origins & Background
+        ch1 = (
+            f"Long before the weight of history rested upon {name}'s shoulders, there were grueling, unglamorous days "
+            f"spent navigating the responsibilities of a {bg}. Far from the luxuries of civilization, those formative years "
+            f"were defined by relentless hard work, quiet endurance, and the hard lessons taught by the frontier.\n\n"
+            f"It was during this period that the foundation for their future trials was laid. Without safety nets or "
+            f"favorable intervention, {name} cultivated a fierce self-reliance, mastering early insights and practical "
+            f"crafts that would eventually separate them from ordinary mortals."
+        )
+
+        # Chapter II: Deep Awakening, Class, Ancestry, & Training
+        ch2 = (
+            f"As a {ancestry} whose heritage carries ancient cultural echoes, {name} always felt an underlying pull toward "
+            f"something far greater than routine survival. That latent spark ignited when they fully committed to the rigorous, "
+            f"unforgiving path of the {cls}.\n\n"
+            f"The transformation was neither quick nor gentle. Days blurred into sleepless nights of intense study and physical "
+            f"conditioning. {arch_desc} By {feat_highlight}, every scar and successful breakthrough turned raw, unrefined potential "
+            f"into absolute, razor-sharp discipline."
+        )
+
+        # Chapter III: Scaling, Level, & Ongoing Legend
         if lvl <= 2:
-            ch3_options = [
-                f"Now taking their very first cautious breaths as a Level {lvl} {cls}, {name} stands at the absolute threshold of a dangerous world, armed with little more than nerve and resolve.",
-                f"At Level {lvl}, {name} is a newcomer facing an unpredictable horizon, leaving the safety of the past behind as they test their mettle as a {cls}."
-            ]
-        elif lvl <= 6:
-            ch3_options = [
-                f"Having survived the brutal filtration of the early road, {name} now commands respect as a capable Level {lvl} {cls}, their early blunders replaced by a growing reputation.",
-                f"Standing tall at Level {lvl}, {name} has proven their worth as a {cls}, drawing the watchful eyes of frontier outposts and regional travelers alike."
-            ]
-        elif lvl <= 14:
-            ch3_options = [
-                f"Now a hardened veteran operating at Level {lvl}, {name}'s exploits as a {cls} send ripples across provincial borders, forcing regional powers to keep a close eye on their moves.",
-                f"Moving through the world as an established {cls} at Level {lvl}, {name} commands influence and shapes the local tides of danger and politics."
-            ]
+            ch3 = (
+                f"Now stepping forward as a Level {lvl} {cls} equipped with{skill_text}, {name} stands at the absolute "
+                f"threshold of a much larger, more dangerous world. Armed with conviction and sharp instincts, their true saga "
+                f"is only just beginning.{partner_desc}"
+            )
+        elif lvl <= 8:
+            ch3 = (
+                f"Having survived the brutal filtration of the early road, {name} now commands hard-earned respect as a "
+                f"capable Level {lvl} {cls}. Backed by{skill_text}, their early blunders have faded, replaced by a growing "
+                f"reputation that echoes through regional outposts and local guild halls.{partner_desc}"
+            )
+        elif lvl <= 15:
+            ch3 = (
+                f"Now a hardened veteran operating at the height of regional prominence as a Level {lvl} {cls}, {name}'s "
+                f"exploits send powerful ripples across provincial borders. Armed with advanced expertise and{skill_text}, "
+                f"rival factions and political powers are finally forced to keep a careful eye on their movements.{partner_desc}"
+            )
         else:
-            ch3_options = [
-                f"Standing at the absolute zenith of mortal power at Level {lvl}, {name} has transcended ordinary adventure to become a living legend, their ongoing saga bending the history of the realm.",
-                f"At Level {lvl}, {name} commands awe across empires, their epic feats as a {cls} echoing through the ages like a true force of nature."
-            ]
+            ch3 = (
+                f"Standing at the absolute zenith of mortal power as a Level {lvl} {cls}, {name} has transcended ordinary "
+                f"adventure to become a living legend. Backed by mastery over their craft and unmatched historical presence, "
+                f"their ongoing saga bends the very history of the realm, cementing their name into the eternal annals of power.{partner_desc}"
+            )
 
         return [
-            {"chapter": "Chapter I: Roots and Reality", "narrative": random.choice(ch1_options)},
-            {"chapter": "Chapter II: The Turning Point", "narrative": random.choice(ch2_options)},
-            {"chapter": "Chapter III: The Road Ahead", "narrative": random.choice(ch3_options)}
+            {"chapter": "Chapter I: Roots and Reality", "narrative": ch1},
+            {"chapter": "Chapter II: The Turning Point", "narrative": ch2},
+            {"chapter": "Chapter III: The Legend at Zenith", "narrative": ch3}
         ]
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
         prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
