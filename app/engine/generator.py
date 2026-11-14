@@ -625,87 +625,77 @@ class PF2eGenerator:
     def generate_epic_backstory(self, char_data: dict) -> list:
         name = char_data.get("name") or "The Hero"
         ancestry = char_data.get("ancestry") or "Human"
+        heritage = char_data.get("heritage")
         cls = char_data.get("character_class") or "Adventurer"
         lvl = int(char_data.get("level") or 1)
         bg = char_data.get("background") or "unknown origins"
         archetype = char_data.get("archetype")
-        companion = char_data.get("companion")
-        feats = char_data.get("feats", [])
-        skills = char_data.get("all_skills", [])
-
-        # Gather notable skills
-        trained_skills = [s.get("name") for s in skills if isinstance(s, dict) and s.get("rank", 0) >= 2]
-        skill_text = f" masteries in {', '.join(trained_skills[:3])}" if trained_skills else ""
-
-        # Gather notable feats
-        feat_names = []
-        for f in feats:
-            f_name = f.get("name") if isinstance(f, dict) else getattr(f, "name", None)
-            if f_name and "Dedication" not in f_name and "Weapon Specialization" not in f_name:
-                feat_names.append(f_name)
         
-        feat_highlight = f"drawing heavily upon techniques like {feat_names[0]} and {feat_names[1]}" if len(feat_names) >= 2 else "relying on a unique repertoire of specialized combat and tactical talents"
+        # Extract dynamic elements from sheet data
+        feats = char_data.get("feats", [])
+        feat_names = [f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f)) for f in feats]
+        feat_sample = ", ".join(feat_names[:3]) if feat_names else "hard-earned talents"
+        
+        skills = char_data.get("all_skills", [])
+        trained_skills = [s.get("name") if isinstance(s, dict) else getattr(s, "name", str(s)) for s in skills if (s.get("rank", 0) if isinstance(s, dict) else getattr(s, "rank", 0)) >= 2]
+        skill_sample = ", ".join(trained_skills[:3]) if trained_skills else "survival and streetcraft"
 
-        # Companion/Familiar detail
-        partner_desc = ""
-        if companion and isinstance(companion, dict):
-            p_name = companion.get("name", "faithful ally")
-            p_type = companion.get("creature_type", "companion")
-            partner_desc = f" Throughout these trials, they were never truly alone; their trusted {p_type.lower()}, {p_name}, remained a constant anchor through every brush with mortality."
+        equipment = char_data.get("equipment", {})
+        strikes = equipment.get("strikes", []) if isinstance(equipment, dict) else getattr(equipment, "strikes", [])
+        weapon_name = strikes[0].get("name", "trusted armament") if strikes and isinstance(strikes[0], dict) else "a favored blade"
+        
+        companion = char_data.get("companion")
+        companion_text = f" Alongside a devoted companion, {companion.get('name', 'ally')}," if companion and isinstance(companion, dict) and companion.get("name") else ""
 
-        # Archetype detail
-        arch_desc = f" Seeking to broaden their mastery, they delved into the specialized discipline of the {archetype} archetype, blending disparate arts into a seamless combat style." if archetype else ""
+        ancestry_display = f"{ancestry} ({heritage})" if heritage else ancestry
 
-        # Chapter I: Comprehensive Origins & Background
+        # Chapter I: Grounded Origins based on Background & Ancestry
         ch1 = (
-            f"Long before the weight of history rested upon {name}'s shoulders, there were grueling, unglamorous days "
-            f"spent navigating the responsibilities of a {bg}. Far from the luxuries of civilization, those formative years "
-            f"were defined by relentless hard work, quiet endurance, and the hard lessons taught by the frontier.\n\n"
-            f"It was during this period that the foundation for their future trials was laid. Without safety nets or "
-            f"favorable intervention, {name} cultivated a fierce self-reliance, mastering early insights and practical "
-            f"crafts that would eventually separate them from ordinary mortals."
+            f"Long before the weight of destiny settled upon {name}'s shoulders, life was defined by the raw, unglamorous crucible of a {bg}. "
+            f"Rooted in the distinctive heritage of a {ancestry_display}, {name} learned early that survival in the wider world required more than simple heritage—it demanded "
+            f"an unyielding work ethic and a mastery of practical crafts. Whether through quiet labor or navigating the hazards of the frontier, "
+            f"those formative years forged a fierce self-reliance."
         )
 
-        # Chapter II: Deep Awakening, Class, Ancestry, & Training
+        # Chapter II: The Awakening & Specialized Training (Feats, Skills, Archetype)
+        arch_text = f" and the specialized teachings of the {archetype} archetype" if archetype else ""
         ch2 = (
-            f"As a {ancestry} whose heritage carries ancient cultural echoes, {name} always felt an underlying pull toward "
-            f"something far greater than routine survival. That latent spark ignited when they fully committed to the rigorous, "
-            f"unforgiving path of the {cls}.\n\n"
-            f"The transformation was neither quick nor gentle. Days blurred into sleepless nights of intense study and physical "
-            f"conditioning. {arch_desc} By {feat_highlight}, every scar and successful breakthrough turned raw, unrefined potential "
-            f"into absolute, razor-sharp discipline."
+            f"As the latent spark of the {cls} took hold, {name}'s path diverged sharply from ordinary mortals. "
+            f"Hours blurred into sleepless nights of intensive study and physical conditioning, culminating in profound breakthroughs across disciplines like {skill_sample}. "
+            f"Every scar and hard-won victory unlocked unique capabilities—manifesting signature talents such as {feat_sample}{arch_text}. "
+            f"The crude potential of youth was hammered into absolute, razor-sharp discipline."
         )
 
-        # Chapter III: Scaling, Level, & Ongoing Legend
-        if lvl <= 2:
+        # Chapter III: Epic Zenith scaled by Level & Inventory/Weapons
+        if lvl == 1:
             ch3 = (
-                f"Now stepping forward as a Level {lvl} {cls} equipped with{skill_text}, {name} stands at the absolute "
-                f"threshold of a much larger, more dangerous world. Armed with conviction and sharp instincts, their true saga "
-                f"is only just beginning.{partner_desc}"
+                f"Now standing equipped with {weapon_name} and taking their first decisive steps as a Level 1 {cls}, {name} steps out "
+                f"from the shadows of their past into a vast, perilous realm.{companion_text} The saga has only just begun, "
+                f"yet the shadows already whisper of an emerging power."
             )
-        elif lvl <= 8:
+        elif lvl <= 5:
             ch3 = (
-                f"Having survived the brutal filtration of the early road, {name} now commands hard-earned respect as a "
-                f"capable Level {lvl} {cls}. Backed by{skill_text}, their early blunders have faded, replaced by a growing "
-                f"reputation that echoes through regional outposts and local guild halls.{partner_desc}"
+                f"Now operating as a hardened Level {lvl} {cls}, {name}'s early trials have forged a genuine reputation across the regional frontier. "
+                f"Wielding {weapon_name} with lethal precision{companion_text}, local factions and rival powers are beginning to realize "
+                f"that this rising force cannot be easily ignored."
             )
         elif lvl <= 15:
             ch3 = (
-                f"Now a hardened veteran operating at the height of regional prominence as a Level {lvl} {cls}, {name}'s "
-                f"exploits send powerful ripples across provincial borders. Armed with advanced expertise and{skill_text}, "
-                f"rival factions and political powers are finally forced to keep a careful eye on their movements.{partner_desc}"
+                f"Now a seasoned veteran at Level {lvl}, {name}'s exploits as a {cls} send shockwaves across provincial borders. "
+                f"Armed with masteries over obstacles that break lesser champions and wielding {weapon_name}{companion_text}, "
+                f"their name commands deep respect and caution from the courts and syndicates alike."
             )
         else:
             ch3 = (
-                f"Standing at the absolute zenith of mortal power as a Level {lvl} {cls}, {name} has transcended ordinary "
-                f"adventure to become a living legend. Backed by mastery over their craft and unmatched historical presence, "
-                f"their ongoing saga bends the very history of the realm, cementing their name into the eternal annals of power.{partner_desc}"
+                f"Standing at the absolute pinnacle of mortal power as a Level {lvl} {cls}, {name} is a living legend whose deeds echo through history. "
+                f"Equipped with legendary gear like {weapon_name}{companion_text} and backed by master-level execution of {feat_sample}, "
+                f"their presence alters the fate of nations and commands the awe of the cosmos."
             )
 
         return [
-            {"chapter": "Chapter I: Roots and Reality", "narrative": ch1},
-            {"chapter": "Chapter II: The Turning Point", "narrative": ch2},
-            {"chapter": "Chapter III: The Legend at Zenith", "narrative": ch3}
+            {"chapter": f"Chapter I: Roots of the {bg.title()}", "narrative": ch1},
+            {"chapter": f"Chapter II: The Path of the {cls}", "narrative": ch2},
+            {"chapter": f"Chapter III: The Legend at Level {lvl}", "narrative": ch3}
         ]
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
         prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
