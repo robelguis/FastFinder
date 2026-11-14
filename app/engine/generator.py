@@ -633,38 +633,58 @@ class PF2eGenerator:
         
         feats = char_data.get("feats", [])
         feat_names = [f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f)) for f in feats]
-        feat_sample = random.choice(feat_names) if feat_names else "unusual instincts"
         
         skills = char_data.get("all_skills", [])
         trained_skills = [s.get("name") if isinstance(s, dict) else getattr(s, "name", str(s)) for s in skills if (s.get("rank", 0) if isinstance(s, dict) else getattr(s, "rank", 0)) >= 2]
-        skill_sample = trained_skills[0] if trained_skills else "survival"
 
         equipment = char_data.get("equipment", {})
         strikes = equipment.get("strikes", []) if isinstance(equipment, dict) else getattr(equipment, "strikes", [])
         weapon_name = strikes[0].get("name", "a trusty weapon") if strikes and isinstance(strikes[0], dict) else "a favored blade"
         
         companion = char_data.get("companion")
-        companion_name = companion.get('name', 'faithful companion') if companion and isinstance(companion, dict) and companion.get("name") else None
+        companion_name = companion.get('name') if companion and isinstance(companion, dict) else None
 
-        ancestry_display = f"{ancestry} ({heritage})" if heritage else ancestry
-        comp_clause = f" accompanied by {companion_name}" if companion_name else ""
-        arch_clause = f", leaning heavily into the teachings of the {archetype} discipline," if archetype else ""
+        ancestry_str = f"{ancestry} with a {heritage} heritage" if heritage else f"{ancestry}"
 
-        # Free-flowing, organic narrative generation
-        narrative_body = (
-            f"Born into the distinct heritage of a {ancestry_display}, {name} spent early formative days navigating "
-            f"the grueling realities of a {bg}. Without safety nets or fortune, survival demanded an unyielding work ethic, "
-            f"honing an innate proficiency in {skill_sample} long before any grand ambitions took root. "
-            f"When the call of the {cls} finally beckoned, {name} answered with absolute conviction{arch_clause}. "
-            f"Countless hours of grueling conditioning transformed raw potential into lethal, focused execution, "
-            f"marked by signature talents such as {feat_sample}. Now operating at Level {lvl} with {weapon_name} in hand{comp_clause}, "
-            f"{name} moves across the frontier not as a wanderer seeking fortune, but as an undeniable force shaping the world around them."
-        )
+        # Dynamically building sentences without canned paragraphs
+        sentences = []
+        
+        # Origin sentence based on ancestry & background
+        origin_verb = random.choice(["Hailing from", "Rooted in", "Shaped by", "Coming of age amid"])
+        sentences.append(f"{origin_verb} the life of a {bg}, {name} was recognized early as a {ancestry_str}.")
+
+        # Skill/Training sentence
+        if trained_skills:
+            skill_focus = random.choice(trained_skills)
+            sentences.append(f"Hardship demanded a practical mastery over {skill_focus.lower()}, turning daily survival into an exercise of sharp wit and relentless discipline.")
+        else:
+            sentences.append(f"The unforgiving demands of the frontier taught {name} how to outlast adversity through sheer endurance.")
+
+        # Class & Archetype sentence
+        class_action = random.choice(["embraced the rigorous calling of", "stepped onto the path of", "dedicated a lifetime to mastering", "was drawn inexorably toward"])
+        arch_str = f" under the specialized tutelage of the {archetype} discipline" if archetype else ""
+        sentences.append(f"Eventually, {name} {class_action} the {cls}{arch_str}.")
+
+        # Feats sentence
+        if feat_names:
+            feat_pick = random.choice(feat_names)
+            sentences.append(f"Countless hours of trial forged unique talents, most notably manifesting in abilities such as {feat_pick}.")
+
+        # Level, Companion & Equipment sentence
+        comp_str = f" alongside the trusted companion {companion_name}" if companion_name else ""
+        if lvl == 1:
+            sentences.append(f"Now stepping into the wider world at Level 1 wielding {weapon_name}{comp_str}, {name} faces an unpredictable horizon with quiet resolve.")
+        elif lvl <= 10:
+            sentences.append(f"Operating now as a hardened Level {lvl} operative equipped with {weapon_name}{comp_str}, {name} leaves a distinct, undeniable mark across the frontier.")
+        else:
+            sentences.append(f"Standing at the absolute zenith of power as a Level {lvl} legend armed with {weapon_name}{comp_str}, {name} commands a presence that alters the course of history.")
+
+        full_narrative = " ".join(sentences)
 
         return [
             {
                 "chapter": f"The Chronicle of {name}",
-                "narrative": narrative_body
+                "narrative": full_narrative
             }
         ]
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
