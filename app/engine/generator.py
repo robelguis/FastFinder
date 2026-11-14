@@ -1,4 +1,30 @@
+            background_name=background,
+            archetype_name=clean_arch,
+            char_name=name,
+            level=level,
+            use_dedication=dedication or bool(clean_arch),
+        )
+        return sheet
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
+
+@app.post("/api/epic-backstory")
+def api_generate_backstory(character: dict):
+    try:
+        chapters = generator.generate_epic_backstory(character)
+        return {"chapters": chapters}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/levelup")
+def level_up_endpoint(payload: LevelUpPayload):
+    char_data = payload.character
+    current_level = int(char_data.get("level", 1))
+    target = max(1, min(20, int(payload.target_level)))
+
+    if target == current_level:
 ANCESTRY_BG_MAP = {
     "dwarf": ["dwarf", "dwarven"],
     "elf": ["elf", "elven"],
@@ -629,29 +655,45 @@ class PF2eGenerator:
         lvl = int(char_data.get("level") or 1)
         bg = char_data.get("background") or "unknown origins"
         
-        # Scale narrative tone dynamically based on level
-        if lvl == 1:
-            zenith_narrative = f"Now taking their first steps at Level {lvl} as a {cls}, {name} leaves the safety of life as a {bg} behind, stepping out into a vast and dangerous world with little more than raw determination."
-        elif lvl <= 5:
-            zenith_narrative = f"Having grown accustomed to the perils of the road at Level {lvl}, {name}'s early trials as a {cls} have begun to forge a genuine reputation across the local frontier."
-        elif lvl <= 15:
-            zenith_narrative = f"Now a seasoned adventurer at Level {lvl}, {name}'s exploits as a {cls} are spoken of with growing respect as regional powers take notice of their rising influence."
+        ch1_options = [
+            f"Before {name} ever touched a blade, their life was dictated by the grueling manual demands of a {bg}. Days bled together in an endless cycle of sweat and quiet labor, far away from any bard's ballad.",
+            f"Long before destiny came knocking, {name} spent their formative years navigating the harsh realities of a {bg}. It was an unglamorous, backbreaking education that forged their underlying toughness.",
+            f"The early chapters of {name}'s story were written in the dirt and routine of a {bg}. Without the safety nets of fortune, they learned how to outlast misfortune through sheer stubborn persistence.",
+            f"Every calloused hand and hardened look {name} carried was earned during their time as a {bg}. Those quiet, grueling days built an absolute foundation of self-reliance."
+        ]
+
+        ch2_options = [
+            f"Bloodlines and ambition collided the day {name}, a resolute {ancestry}, decided to abandon the familiar. Stepping onto the perilous path of the {cls}, they began mastering disciplines that ordinary mortals fear.",
+            f"The traditions of a {ancestry} run deep, but {name}'s path fractured permanently when they embraced the mantle of a {cls}. Every trial since has turned raw, unrefined potential into razor-sharp focus.",
+            f"Though born to the proud heritage of a {ancestry}, {name} was never meant for a quiet life. Plunging headfirst into the rigorous training of a {cls}, they forged an entirely new identity from the chaos.",
+            f"An unexpected catalyst upended everything {name} thought they knew. Drawing deep strength from their {ancestry} roots, they swore themselves to the demanding lifestyle of a {cls}."
+        ]
+
+        if lvl <= 2:
+            ch3_options = [
+                f"Now taking their very first cautious breaths as a Level {lvl} {cls}, {name} stands at the absolute threshold of a dangerous world, armed with little more than nerve and resolve.",
+                f"At Level {lvl}, {name} is a newcomer facing an unpredictable horizon, leaving the safety of the past behind as they test their mettle as a {cls}."
+            ]
+        elif lvl <= 6:
+            ch3_options = [
+                f"Having survived the brutal filtration of the early road, {name} now commands respect as a capable Level {lvl} {cls}, their early blunders replaced by a growing reputation.",
+                f"Standing tall at Level {lvl}, {name} has proven their worth as a {cls}, drawing the watchful eyes of frontier outposts and regional travelers alike."
+            ]
+        elif lvl <= 14:
+            ch3_options = [
+                f"Now a hardened veteran operating at Level {lvl}, {name}'s exploits as a {cls} send ripples across provincial borders, forcing regional powers to keep a close eye on their moves.",
+                f"Moving through the world as an established {cls} at Level {lvl}, {name} commands influence and shapes the local tides of danger and politics."
+            ]
         else:
-            zenith_narrative = f"Standing at the absolute zenith of power as a Level {lvl} {cls}, {name} commands a legendary presence across the realm, their epic feats echoing through history like a force of nature."
+            ch3_options = [
+                f"Standing at the absolute zenith of mortal power at Level {lvl}, {name} has transcended ordinary adventure to become a living legend, their ongoing saga bending the history of the realm.",
+                f"At Level {lvl}, {name} commands awe across empires, their epic feats as a {cls} echoing through the ages like a true force of nature."
+            ]
 
         return [
-            {
-                "chapter": "Chapter I: Roots in the Dust",
-                "narrative": f"Long before the weight of legendary arms rested upon {name}'s shoulders, there were quiet days spent as a {bg}. Raised amidst the rugged trials of the frontier, {name} learned early that survival is carved out of stubborn endurance rather than divine favor."
-            },
-            {
-                "chapter": "Chapter II: The Awakening Spark",
-                "narrative": f"As a {ancestry} navigating a world scarred by ancient powers, {name}'s path shifted when a latent calling took root. Stepping onto the path of the {cls}, every trial forged a sharper resolve, turning simple grit into disciplined power."
-            },
-            {
-                "chapter": "Chapter III: The Legend Unfolds",
-                "narrative": zenith_narrative
-            }
+            {"chapter": "Chapter I: Roots and Reality", "narrative": random.choice(ch1_options)},
+            {"chapter": "Chapter II: The Turning Point", "narrative": random.choice(ch2_options)},
+            {"chapter": "Chapter III: The Road Ahead", "narrative": random.choice(ch3_options)}
         ]
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
         prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
