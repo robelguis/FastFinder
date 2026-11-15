@@ -1333,7 +1333,7 @@
       modal.style.display = 'flex';
     }
 
-    document.addEventListener('DOMContentLoaded', () => {
+   document.addEventListener('DOMContentLoaded', () => {
       const backstoryBtn = document.getElementById('backstoryBtn');
       if (backstoryBtn) {
         backstoryBtn.addEventListener('click', async () => {
@@ -1361,6 +1361,56 @@
             }
           } catch (err) {
             alert("Error generating backstory: " + err.message);
+          }
+        });
+      }
+    });
+
+    // Concept-to-Sheet Generator Handler
+    document.addEventListener('DOMContentLoaded', () => {
+      const conceptBtn = document.getElementById('generate-concept-btn');
+      if (conceptBtn) {
+        conceptBtn.addEventListener('click', async () => {
+          const conceptText = document.getElementById('concept-input').value.trim();
+          if (!conceptText) {
+            alert("Please enter a character concept first!");
+            return;
+          }
+
+          const btn = document.getElementById('generate-concept-btn');
+          const originalText = btn.textContent;
+          btn.textContent = "Parsing Concept...";
+          btn.disabled = true;
+
+          try {
+            const response = await fetch('/api/generate-from-concept', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ concept: conceptText })
+            });
+
+            if (!response.ok) {
+              const err = await response.json().catch(() => ({}));
+              throw new Error(err.detail || "Failed to parse concept from server.");
+            }
+
+            const sheetData = await response.json();
+            
+            if (sheetData.error) {
+              alert("Error: " + sheetData.error);
+              return;
+            }
+
+            // Automatically render the parsed sheet onto your UI
+            renderSheet(sheetData);
+            alert("Character sheet generated successfully from concept!");
+
+          } catch (err) {
+            console.error("Concept generation error:", err);
+            alert("An error occurred while generating the character sheet: " + err.message);
+          } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
           }
         });
       }
