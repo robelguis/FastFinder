@@ -18,6 +18,19 @@ WING_GRAFT_ITEM = {
     "grants_wings": True,
 }
 
+OSTILLI_GRAFT_ITEM = {
+    "name": "Ostilli Symbiote (Graft)",
+    "type": "equipment",
+    "level": 2,
+    "traits": ["Graft", "Magical", "Symbiote"],
+    "price": "0 gp",
+    "invested": False,
+    "description": (
+        "Tiny amorphous plant-animal symbiote bonded to your body. Has no separate HP or Speed "
+        "and cannot be targeted separately. Grants Repel Ambient Magic [1A] and Spit Ambient Magic [1A]."
+    ),
+}
+
 # --- FEAT POOLS ---
 CHAMPION_FEATS_POOL = [
     {
@@ -224,6 +237,12 @@ ARCHETYPES_CATALOG: Dict[str, Dict[str, Any]] = {
                 "description": "You can Squeeze through tight areas at full speed and gain a +2 circumstance bonus to Escape against Grab."
             }
         ]
+    },
+    "ostilli-host": {
+        "req_any_skill": [{"Arcana": 2}, {"Nature": 2}],
+        "req_attrs": {},
+        "grants_skill": "Ostilli Lore",
+        "grants_rank": 2
     },
     "winged-warrior": {
         "name": "Winged Warrior",
@@ -450,7 +469,7 @@ def get_all_archetype_names() -> List[str]:
     names = set()
     # Add hardcoded catalog names first
     for arch in ARCHETYPES_CATALOG.values():
-        names.add(arch["name"])
+        if "name" in arch: names.add(arch["name"])
     
     if feats_file.exists():
         with open(feats_file, "r", encoding="utf-8") as f:
@@ -472,7 +491,7 @@ def resolve_dynamic_archetype(archetype_name: str, feats_list: List[Dict[str, An
     target = archetype_name.strip().lower()
     # Check curated catalog first
     for k, v in ARCHETYPES_CATALOG.items():
-        if k.lower() == target or v["name"].lower() == target:
+        if k.lower() == target or v.get("name", "").lower() == target:
             return v
 
     # Find the Dedication feat

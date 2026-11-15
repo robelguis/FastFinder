@@ -42,6 +42,12 @@ ANCESTRY_HERITAGES: Dict[str, List[Dict[str, str]]] = {
         {"name": "Hold-Scarred Orc", "description": "You gain 12 Hit Points from your ancestry instead of 10, and Diehard feat."},
         {"name": "Rainfall Orc", "description": "You gain a +2 circumstance bonus to Athletics checks to Swim."}
     ],
+    "surki": [
+        {"name": "Breaker Surki", "description": "You gain a 1d4 slashing claw unarmed attack (agile, finesse, versatile B). At 9th level, Grand Metamorphosis unlocks Digging Wedge (1d6 razing/force claws) or Grounding Spikes."},
+        {"name": "Elytron Surki", "description": "You take no damage from falling regardless of distance. At 9th level, Grand Metamorphosis unlocks Glowing Wings (1/day innate fly) or Stridulating Song."},
+        {"name": "Hardshell Surki", "description": "You can etch armor runes directly onto your natural carapace (+4 item AC medium armor). At 9th level, Grand Metamorphosis unlocks Reinforcing Network or Dampening Harmonics."},
+        {"name": "Lantern Surki", "description": "You can Interact (1A) to shed 20-ft bright / 20-ft dim magical light from your abdomen. At 9th level, Grand Metamorphosis unlocks Lantern Beam or Lantern Strobe."}
+    ],
     "leshy": [
         {"name": "Leaf Leshy", "description": "You take no damage from falling no matter the distance."},
         {"name": "Gourd Leshy", "description": "You can store up to 1 Bulk of objects inside your hollow head."},
@@ -295,7 +301,7 @@ CLASS_SUBCLASSES: Dict[str, Dict[str, Any]] = {
 }
 
 def resolve_heritage(ancestry_name: str) -> Dict[str, str]:
-    anc_key = ancestry_name.lower()
+    anc_key = ancestry_name.lower().replace("sukri", "surki")
     if "awakened animal" in anc_key:
         spec = random.choice(AWAKENED_ANIMAL_SPECIES)
         return {

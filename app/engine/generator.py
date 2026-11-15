@@ -89,7 +89,7 @@ from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_wei
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
 from app.engine.subclasses import resolve_heritage, resolve_subclass, BARBARIAN_ANIMAL_CHOICES
-from app.engine.archetypes import pick_archetype, ARCHETYPES_CATALOG, resolve_dynamic_archetype
+from app.engine.archetypes import pick_archetype, ARCHETYPES_CATALOG, resolve_dynamic_archetype, OSTILLI_GRAFT_ITEM
 from app.engine.companions import resolve_companion
 from app.engine.eidolons import resolve_eidolon
 from app.engine.familiars import resolve_familiar
@@ -1235,6 +1235,7 @@ class PF2eGenerator:
     ) -> CharacterSheet:
         level = max(1, min(20, int(level)))
 
+        ancestry_name = ancestry_name.replace("Sukri", "Surki").replace("sukri", "surki") if ancestry_name else ancestry_name
         if ancestry_name and ancestry_name.lower() in self.ancestries:
             anc = self.ancestries[ancestry_name.lower()]
         else:
@@ -1587,6 +1588,42 @@ class PF2eGenerator:
                         traits=["archetype", "concentrate", "rage"],
                         description="Requirements: Your last action was a successful melee Strike that dealt slashing or piercing damage to a living creature with blood. You drink or absorb the spilled blood to gain temporary HP equal to half your level and empower your bloodrager spells."
                     ))
+
+                # --- HOOK: Ostilli Host Symbiote & Granted Actions ---
+                if "ostilli host" in archetype_data["name"].lower():
+                    feat_names = {f.name.lower() for f in chosen_feats}
+                    if "ostilli symbiote graft" not in feat_names:
+                        chosen_feats.append(FeatSummary(
+                            id="graft-ostilli-symbiote",
+                            name="Ostilli Symbiote Graft",
+                            category="Graft Modification",
+                            action_cost=None,
+                            traits=["Graft", "Magical", "Symbiote"],
+                            description=f"{OSTILLI_GRAFT_ITEM['name']}: {OSTILLI_GRAFT_ITEM['description']}"
+                        ))
+                    if hasattr(equipment_loadout, "items") and isinstance(equipment_loadout.items, list):
+                        if not any("Ostilli Symbiote" in (i if isinstance(i, str) else i.get("name", "")) for i in equipment_loadout.items):
+                            equipment_loadout.items.append(OSTILLI_GRAFT_ITEM["name"])
+                    if "repel ambient magic" not in feat_names:
+                        chosen_feats.append(FeatSummary(
+                            id="ostilli-repel-ambient-magic",
+                            name="Repel Ambient Magic",
+                            category="Archetype Action (Ostilli Host)",
+                            action_cost="1",
+                            traits=["archetype", "concentrate"],
+                            description="Your ostilli expels stored magic to shield you, granting a +1 circumstance bonus to AC and saving throws against the next spell, focus spell, or magical attack targeting you until your next turn (+2 at 12th level)."
+                        ))
+                    if "spit ambient magic" not in feat_names:
+                        spit_dice = 1 + max(0, (level - 2) // 4)
+                        chosen_feats.append(FeatSummary(
+                            id="ostilli-spit-ambient-magic",
+                            name="Spit Ambient Magic",
+                            category="Archetype Action (Ostilli Host)",
+                            action_cost="1",
+                            traits=["archetype", "concentrate", "magical"],
+                            description=f"Frequency: once per round. Your ostilli fires a magical dart up to 30 feet dealing {spit_dice}d6 piercing damage (basic Reflex save against the higher of your Class DC or Spell DC)."
+                        ))
+                # ----------------------------------------------------
 
                 # --- HOOK: Winged Warrior Graft Investment ---
                 if "winged warrior" in archetype_data["name"].lower():
