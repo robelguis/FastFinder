@@ -633,22 +633,50 @@ class PF2eGenerator:
             {{
                 "name": "[Character Name]",
                 "ancestry": "[Valid PF2e Ancestry, e.g., Elf, Dwarf, Human, Anadi, Goblin]",
-                "heritage": "[Valid Heritage, e.g., Versatile, Cavern Elf]",
-                "character_class": "[Valid Class, e.g., Fighter, Wizard, Druid, Cleric]",
+                "heritage": "[Valid Heritage, e.g., Versatile, Cavern Elf, Strong-Blood]",
+                "character_class": "[Valid Class, e.g., Fighter, Wizard, Druid, Monk]",
                 "level": 1,
                 "background": "[Valid Background]",
                 "archetype": "None",
-                "attributes": {{"str": 10, "dex": 10, "con": 10, "int": 10, "wis": 10, "cha": 10}},
-                "feats": [{{"name": "[Feat Name]"}}],
-                "all_skills": [{{"name": "[Skill Name]", "rank": 2}}],
+                "attributes": {{"str": 3, "dex": 2, "con": 2, "int": 0, "wis": 2, "cha": -1}},
+                "defenses": {{
+                    "hp": 20, 
+                    "ac": 16, 
+                    "fortitude": {{"modifier": 5, "rank_letter": "T"}}, 
+                    "reflex": {{"modifier": 5, "rank_letter": "T"}}, 
+                    "will": {{"modifier": 5, "rank_letter": "T"}}
+                }},
+                "feats": [
+                    {{"name": "[Feat Name]", "category": "Ancestry/Class", "action_cost": "1", "description": "[Description]"}}
+                ],
+                "all_skills": [
+                    {{"name": "[Skill Name]", "modifier": 5, "rank_letter": "T"}}
+                ],
                 "equipment": {{
                     "strikes": [
-                        {{"name": "[Weapon Name]", "damage": "[Dice + Modifier]"}}
+                        {{"name": "[Weapon Name]", "attack_bonus": 7, "damage_dice": "1d8+3", "damage_type": "Bludgeoning", "traits": ["Finesse"]}}
                     ]
                 }},
-                "companion": null
+                "companion": {{
+                    "name": "[Companion Name, e.g., Billy]",
+                    "creature_type": "Animal Companion",
+                    "species": "[Species, e.g., Goat / Mount]",
+                    "size": "Medium",
+                    "speed": "30 ft",
+                    "perception": 5,
+                    "ac": 16,
+                    "hp": 20,
+                    "fortitude": 5,
+                    "reflex": 5,
+                    "will": 3,
+                    "attributes": {{"STR": 2, "DEX": 2, "CON": 2, "INT": -4, "WIS": 1, "CHA": -4}},
+                    "strikes": [
+                        {{"name": "Headbutt", "attack_bonus": 6, "map_second": 1, "map_third": -4, "damage_dice": "1d8+2", "damage_type": "Bludgeoning", "traits": ["Brutal"]}}
+                    ],
+                    "support_benefit": "[Support Benefit description]"
+                }}
             }}
-            Ensure all mechanical choices strictly adhere to Pathfinder 2e Remastered rules.
+            If the concept mentions a pet, mount, familiar, or companion, you MUST fully populate the "companion" object. If none, set "companion": null. Ensure all choices strictly adhere to Pathfinder 2e Remastered rules.
             """
 
             models_to_try = ['gemini-3.8-flash-lite', 'gemini-3.5-flash-lite']
