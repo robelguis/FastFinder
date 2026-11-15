@@ -1394,12 +1394,35 @@
               throw new Error(err.detail || "Failed to parse concept from server.");
             }
 
-            const sheetData = await response.json();
+            let sheetData = await response.json();
             
             if (sheetData.error) {
               alert("Error: " + sheetData.error);
               return;
             }
+
+            // --- SANITIZER PATCH FOR CONCEPT DATA ---
+            // Ensures numeric attributes and strike fields don't render as NaN/undefined
+            if (sheetData.attributes) {
+              ['str', 'dex', 'con', 'int', 'wis', 'cha'].forEach(attr => {
+                if (typeof sheetData.attributes[attr] === 'number' && sheetData.attributes[attr] > 5) {
+                  // If AI returned raw scores (e.g. 16) instead of modifiers (e.g. +3), convert them
+                  sheetData.attributes[attr] = Math.floor((sheetData.attributes[attr] - 10) / 2);
+                }
+              });
+            }
+            if (sheetData.equipment && Array.isArray(sheetData.equipment.strikes)) {
+              sheetData.equipment.strikes.forEach(s => {
+                if (s.attack_bonus === undefined) s.attack_bonus = 6;
+                if (s.map_second === undefined) s.map_second = 2;
+                if (s.map_third === undefined) s.map_third = -2;
+                if (!s.damage_dice) s.damage_dice = "1d6+4";
+              });
+            }
+            if (!sheetData.defenses) {
+              sheetData.defenses = { hp: 20, ac: 16, fortitude: { modifier: 5, rank_letter: 'T' }, reflex: { modifier: 5, rank_letter: 'T' }, will: { modifier: 5, rank_letter: 'T' } };
+            }
+            // ----------------------------------------
 
             // Automatically render the parsed sheet onto your UI
             renderSheet(sheetData);
@@ -1415,7 +1438,6 @@
         });
       }
     });
-
     window.onload = async () => {
       await loadOptions();
       generate();
