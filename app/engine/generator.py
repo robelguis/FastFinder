@@ -612,6 +612,60 @@ def apply_wing_graft_investment(
             equipment_loadout.worn.append(WING_GRAFT_ITEM["name"])
 
 
+def apply_ostilli_host_graft(
+    chosen_feats: List[FeatSummary],
+    equipment_loadout: Any,
+    level: int
+):
+    """
+    Injects the Ostilli Symbiote graft and its two 1-action abilities
+    (Repel Ambient Magic and level-scaled Spit Ambient Magic) for Ostilli Hosts,
+    and refreshes Spit Ambient Magic scaling dice when leveling up.
+    """
+    spit_dice = 1 + max(0, (level - 2) // 4)
+    spit_desc = (
+        f"Frequency: once per round. Your ostilli fires a magical dart up to 30 feet "
+        f"dealing {spit_dice}d6 piercing damage (basic Reflex save against the higher of your Class DC or Spell DC)."
+    )
+
+    feat_map = {f.name.lower(): f for f in chosen_feats}
+    if "ostilli symbiote graft" not in feat_map:
+        chosen_feats.append(FeatSummary(
+            id="graft-ostilli-symbiote",
+            name="Ostilli Symbiote Graft",
+            category="Graft Modification",
+            action_cost=None,
+            traits=["Graft", "Magical", "Symbiote"],
+            description=f"{OSTILLI_GRAFT_ITEM['name']}: {OSTILLI_GRAFT_ITEM['description']}"
+        ))
+
+    if hasattr(equipment_loadout, "gear") and isinstance(equipment_loadout.gear, list):
+        if not any("Ostilli Symbiote" in g for g in equipment_loadout.gear):
+            equipment_loadout.gear.append(f"{OSTILLI_GRAFT_ITEM['name']} (Tiny Symbiote Graft)")
+
+    if "repel ambient magic" not in feat_map:
+        chosen_feats.append(FeatSummary(
+            id="ostilli-repel-ambient-magic",
+            name="Repel Ambient Magic",
+            category="Archetype Action (Ostilli Host)",
+            action_cost="1",
+            traits=["archetype", "concentrate"],
+            description="Your ostilli expels stored magic to shield you, granting a +1 circumstance bonus to AC and saving throws against the next spell, focus spell, or magical attack targeting you until your next turn (+2 at 12th level)."
+        ))
+
+    if "spit ambient magic" not in feat_map:
+        chosen_feats.append(FeatSummary(
+            id="ostilli-spit-ambient-magic",
+            name="Spit Ambient Magic",
+            category="Archetype Action (Ostilli Host)",
+            action_cost="1",
+            traits=["archetype", "concentrate", "magical"],
+            description=spit_desc
+        ))
+    else:
+        feat_map["spit ambient magic"].description = spit_desc
+
+
 class PF2eGenerator:
 
     def generate_character_from_concept(self, concept_text: str) -> dict:
@@ -1169,6 +1223,13 @@ class PF2eGenerator:
                 assigned_langs.append(chosen_bonus)
                 assigned_lower.add(chosen_bonus.lower())
 
+        # Refresh Ostilli Host symbiote & Spit Ambient Magic scaling if present
+        if (
+            (archetype_name and "ostilli host" in archetype_name.lower())
+            or any("ostilli host" in f.name.lower() or "ostilli symbiote" in f.name.lower() for f in chosen_feats)
+        ):
+            apply_ostilli_host_graft(chosen_feats, equipment_loadout, level)
+
         # Refresh & annotate Sneak Attack damage dice
         for f in chosen_feats:
             if f.name.lower() == "sneak attack":
@@ -1412,6 +1473,7 @@ class PF2eGenerator:
             dex_mod=mods["dex"],
             level=level,
             ancestry_name=anc["name"],
+            heritage_name=heritage_data["name"],
             subclass_name=sub_n,
             archetype_name=arch_n,
         )
@@ -1600,38 +1662,7 @@ class PF2eGenerator:
 
                 # --- HOOK: Ostilli Host Symbiote & Granted Actions ---
                 if "ostilli host" in archetype_data["name"].lower():
-                    feat_names = {f.name.lower() for f in chosen_feats}
-                    if "ostilli symbiote graft" not in feat_names:
-                        chosen_feats.append(FeatSummary(
-                            id="graft-ostilli-symbiote",
-                            name="Ostilli Symbiote Graft",
-                            category="Graft Modification",
-                            action_cost=None,
-                            traits=["Graft", "Magical", "Symbiote"],
-                            description=f"{OSTILLI_GRAFT_ITEM['name']}: {OSTILLI_GRAFT_ITEM['description']}"
-                        ))
-                    if hasattr(equipment_loadout, "items") and isinstance(equipment_loadout.items, list):
-                        if not any("Ostilli Symbiote" in (i if isinstance(i, str) else i.get("name", "")) for i in equipment_loadout.items):
-                            equipment_loadout.items.append(OSTILLI_GRAFT_ITEM["name"])
-                    if "repel ambient magic" not in feat_names:
-                        chosen_feats.append(FeatSummary(
-                            id="ostilli-repel-ambient-magic",
-                            name="Repel Ambient Magic",
-                            category="Archetype Action (Ostilli Host)",
-                            action_cost="1",
-                            traits=["archetype", "concentrate"],
-                            description="Your ostilli expels stored magic to shield you, granting a +1 circumstance bonus to AC and saving throws against the next spell, focus spell, or magical attack targeting you until your next turn (+2 at 12th level)."
-                        ))
-                    if "spit ambient magic" not in feat_names:
-                        spit_dice = 1 + max(0, (level - 2) // 4)
-                        chosen_feats.append(FeatSummary(
-                            id="ostilli-spit-ambient-magic",
-                            name="Spit Ambient Magic",
-                            category="Archetype Action (Ostilli Host)",
-                            action_cost="1",
-                            traits=["archetype", "concentrate", "magical"],
-                            description=f"Frequency: once per round. Your ostilli fires a magical dart up to 30 feet dealing {spit_dice}d6 piercing damage (basic Reflex save against the higher of your Class DC or Spell DC)."
-                        ))
+                    apply_ostilli_host_graft(chosen_feats, equipment_loadout, level)
                 # ----------------------------------------------------
 
                 # --- HOOK: Winged Warrior Graft Investment ---
@@ -2163,6 +2194,7 @@ class PF2eGenerator:
             dex_mod=mods["dex"],
             level=target_level,
             ancestry_name=anc["name"],
+            heritage_name=current_char.get("heritage", ""),
             subclass_name=current_sub,
             archetype_name=current_arch,
             existing_weapons=existing_weps,
@@ -2306,6 +2338,10 @@ class PF2eGenerator:
                             equipment_loadout=equipment_loadout
                         )
                     # --------------------------------------------------------
+                    # --- HOOK: Ostilli Host Symbiote & Granted Actions on Level Up ---
+                    if "ostilli host" in archetype_data["name"].lower():
+                        apply_ostilli_host_graft(chosen_feats, equipment_loadout, target_level)
+                    # ---------------------------------------------------------------
                 else:
                     lvl2_feats = [
                         f for f in self.feats

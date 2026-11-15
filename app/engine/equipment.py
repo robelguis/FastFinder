@@ -447,6 +447,7 @@ def resolve_equipment(
     dex_mod: int,
     level: int = 1,
     ancestry_name: str = "",
+    heritage_name: str = "",
     subclass_name: str = "",
     archetype_name: str = "",
     existing_weapons: Optional[List[Any]] = None
@@ -545,6 +546,11 @@ def resolve_equipment(
         calculated_ac = 10 + 2 + min(dex_mod, 2) + (2 + lvl) + armor_pot
         shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
         shield_bonus = 2
+
+    if "hardshell" in (heritage_name or "").lower() and (ancestry_name or "").lower() in ("surki", "sukri"):
+        armor_name = format_runed_armor_name("Hardshell Surki Carapace", lvl)
+        armor_item = Item(name=armor_name, bulk="0", cost_sp=0)
+        calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + armor_pot
 
     gear: List[str] = ["Adventurer's Pack (Backpack, Bedroll, Rations, Torches, Waterskin, Rope)"]
     num_perm = wealth_cfg.get("permanent_count", 0)
