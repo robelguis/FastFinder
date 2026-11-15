@@ -1,4 +1,59 @@
+prompt = f"""
+            You are an expert Pathfinder 2e Remastered rules lawyer and character builder. 
+            Parse the following user concept and generate a fully valid, mechanically sound Level 1 or Level 10 character sheet (default to Level 1 unless specified).
+            
+            USER CONCEPT: "{concept_text}"
 
+            RULES & INSTRUCTIONS FOR HERITAGE:
+            - Analyze the user's concept to choose the appropriate Ancestry (e.g., Dwarf, Elf, Human).
+            - Dynamically select the most fitting official Pathfinder 2e Remastered Heritage for that ancestry (e.g., if it's a mountain dwarf concept, choose "Mountain Dwarf"; if a strong-blood, choose "Strong-Blood Dwarf"). Do not merge ancestry and heritage into one field; keep them distinct ("ancestry": "Dwarf", "heritage": "Mountain Dwarf").
+            
+            FORMAT REQUIREMENT:
+            Return the response strictly as a JSON object with the following exact keys and structure:
+            {{
+                "name": "[Character Name]",
+                "ancestry": "[Selected Ancestry]",
+                "heritage": "[Selected Heritage]",
+                "character_class": "[Valid Class, e.g., Monk, Fighter]",
+                "level": 1,
+                "background": "[Valid Background]",
+                "archetype": "None",
+                "attributes": {{"str": 3, "dex": 2, "con": 2, "int": 0, "wis": 2, "cha": -1}},
+                "defenses": {{
+                    "hp": 20, 
+                    "ac": 16, 
+                    "fortitude": {{"modifier": 5, "rank_letter": "T"}}, 
+                    "reflex": {{"modifier": 5, "rank_letter": "T"}}, 
+                    "will": {{"modifier": 5, "rank_letter": "T"}}
+                }},
+                "feats": [
+                    {{"name": "[Feat Name]", "category": "Ancestry/Class", "action_cost": "1", "description": "[Description]"}}
+                ],
+                "all_skills": [
+                    {{"name": "Acrobatics", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Athletics", "modifier": 5, "rank_letter": "T"}},
+                    {{"name": "Crafting", "modifier": 0, "rank_letter": "U"}},
+                    {{"name": "Diplomacy", "modifier": -1, "rank_letter": "U"}},
+                    {{"name": "Intimidation", "modifier": -1, "rank_letter": "U"}},
+                    {{"name": "Medicine", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Nature", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Occultism", "modifier": 0, "rank_letter": "U"}},
+                    {{"name": "Performance", "modifier": -1, "rank_letter": "U"}},
+                    {{"name": "Religion", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Society", "modifier": 0, "rank_letter": "U"}},
+                    {{"name": "Stealth", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Survival", "modifier": 5, "rank_letter": "T"}},
+                    {{"name": "Thievery", "modifier": 2, "rank_letter": "U"}}
+                ],
+                "equipment": {{
+                    "strikes": [
+                        {{"name": "[Weapon/Strike Name]", "attack_bonus": 6, "damage_dice": "1d6+3", "damage_type": "Bludgeoning", "traits": ["Agile"]}}
+                    ]
+                }},
+                "companion": null
+            }}
+            Ensure all choices strictly adhere to Pathfinder 2e Remastered rules.
+            """
 ANCESTRY_BG_MAP = {
     "dwarf": ["dwarf", "dwarven"],
     "elf": ["elf", "elven"],
@@ -628,13 +683,17 @@ class PF2eGenerator:
             
             USER CONCEPT: "{concept_text}"
 
+            RULES & INSTRUCTIONS FOR HERITAGE:
+            - Analyze the user's concept to choose the appropriate Ancestry (e.g., Dwarf, Elf, Human).
+            - Dynamically select the most fitting official Pathfinder 2e Remastered Heritage for that ancestry (e.g., if it's a mountain dwarf concept, choose "Mountain Dwarf"; if a strong-blood, choose "Strong-Blood Dwarf"). Do not merge ancestry and heritage into one field; keep them distinct ("ancestry": "Dwarf", "heritage": "Mountain Dwarf").
+            
             FORMAT REQUIREMENT:
             Return the response strictly as a JSON object with the following exact keys and structure:
             {{
                 "name": "[Character Name]",
-                "ancestry": "[Valid PF2e Ancestry, e.g., Elf, Dwarf, Human, Anadi, Goblin]",
-                "heritage": "[Valid Heritage, e.g., Versatile, Cavern Elf, Strong-Blood]",
-                "character_class": "[Valid Class, e.g., Fighter, Wizard, Druid, Monk]",
+                "ancestry": "[Selected Ancestry]",
+                "heritage": "[Selected Heritage]",
+                "character_class": "[Valid Class, e.g., Monk, Fighter]",
                 "level": 1,
                 "background": "[Valid Background]",
                 "archetype": "None",
@@ -650,33 +709,29 @@ class PF2eGenerator:
                     {{"name": "[Feat Name]", "category": "Ancestry/Class", "action_cost": "1", "description": "[Description]"}}
                 ],
                 "all_skills": [
-                    {{"name": "[Skill Name]", "modifier": 5, "rank_letter": "T"}}
+                    {{"name": "Acrobatics", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Athletics", "modifier": 5, "rank_letter": "T"}},
+                    {{"name": "Crafting", "modifier": 0, "rank_letter": "U"}},
+                    {{"name": "Diplomacy", "modifier": -1, "rank_letter": "U"}},
+                    {{"name": "Intimidation", "modifier": -1, "rank_letter": "U"}},
+                    {{"name": "Medicine", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Nature", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Occultism", "modifier": 0, "rank_letter": "U"}},
+                    {{"name": "Performance", "modifier": -1, "rank_letter": "U"}},
+                    {{"name": "Religion", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Society", "modifier": 0, "rank_letter": "U"}},
+                    {{"name": "Stealth", "modifier": 2, "rank_letter": "U"}},
+                    {{"name": "Survival", "modifier": 5, "rank_letter": "T"}},
+                    {{"name": "Thievery", "modifier": 2, "rank_letter": "U"}}
                 ],
                 "equipment": {{
                     "strikes": [
-                        {{"name": "[Weapon Name]", "attack_bonus": 7, "damage_dice": "1d8+3", "damage_type": "Bludgeoning", "traits": ["Finesse"]}}
+                        {{"name": "[Weapon/Strike Name]", "attack_bonus": 6, "damage_dice": "1d6+3", "damage_type": "Bludgeoning", "traits": ["Agile"]}}
                     ]
                 }},
-                "companion": {{
-                    "name": "[Companion Name, e.g., Billy]",
-                    "creature_type": "Animal Companion",
-                    "species": "[Species, e.g., Goat / Mount]",
-                    "size": "Medium",
-                    "speed": "30 ft",
-                    "perception": 5,
-                    "ac": 16,
-                    "hp": 20,
-                    "fortitude": 5,
-                    "reflex": 5,
-                    "will": 3,
-                    "attributes": {{"STR": 2, "DEX": 2, "CON": 2, "INT": -4, "WIS": 1, "CHA": -4}},
-                    "strikes": [
-                        {{"name": "Headbutt", "attack_bonus": 6, "map_second": 1, "map_third": -4, "damage_dice": "1d8+2", "damage_type": "Bludgeoning", "traits": ["Brutal"]}}
-                    ],
-                    "support_benefit": "[Support Benefit description]"
-                }}
+                "companion": null
             }}
-            If the concept mentions a pet, mount, familiar, or companion, you MUST fully populate the "companion" object. If none, set "companion": null. Ensure all choices strictly adhere to Pathfinder 2e Remastered rules.
+            Ensure all choices strictly adhere to Pathfinder 2e Remastered rules.
             """
 
             models_to_try = ['gemini-3.8-flash-lite', 'gemini-3.5-flash-lite']
