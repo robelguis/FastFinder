@@ -88,7 +88,7 @@ from app.engine.skills import resolve_character_skills
 from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_weight, extract_gate_elements, is_kineticist_feat_allowed
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
-from app.engine.subclasses import resolve_heritage, resolve_subclass, BARBARIAN_ANIMAL_CHOICES
+from app.engine.subclasses import resolve_heritage, resolve_subclass, BARBARIAN_ANIMAL_CHOICES, ANCESTRY_HERITAGES
 from app.engine.archetypes import pick_archetype, ARCHETYPES_CATALOG, resolve_dynamic_archetype, OSTILLI_GRAFT_ITEM
 from app.engine.companions import resolve_companion
 from app.engine.eidolons import resolve_eidolon
@@ -1259,8 +1259,17 @@ class PF2eGenerator:
             ]
             bg = random.choice(eligible_bgs) if eligible_bgs else random.choice(list(self.backgrounds.values()))
 
-        if heritage_name and str(heritage_name).strip() and str(heritage_name).strip().lower() not in ["none", ""]:
-            heritage_data = {"name": str(heritage_name).strip(), "description": ""}
+        surki_heritages = {
+            h["name"].lower(): h for h in ANCESTRY_HERITAGES.get("surki", [])
+        }
+        clean_her = str(heritage_name).strip() if heritage_name else ""
+        if clean_her and clean_her.lower() not in ["none", ""]:
+            if clean_her.lower() in surki_heritages and anc["name"].lower() != "surki":
+                heritage_data = resolve_heritage(anc["name"])
+            elif clean_her.lower() in surki_heritages:
+                heritage_data = dict(surki_heritages[clean_her.lower()])
+            else:
+                heritage_data = {"name": clean_her, "description": ""}
         else:
             heritage_data = resolve_heritage(anc["name"])
 
