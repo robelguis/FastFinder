@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, field_validator
 from typing import List, Optional, Dict, Any, Union
 
 class AttributeModifiers(BaseModel):
@@ -34,15 +34,18 @@ class SkillEntry(BaseModel):
 
 class Strike(BaseModel):
     name: str
-    attack_bonus: str
-    map_second: str
-    map_third: str
-    damage_dice: str
-    damage_type: str
-    languages: List[str] = ["Common"]
-    traits: List[str] = []
+    attack_bonus: Union[str, int]
+    damage: str
+    traits: Optional[List[str]] = []
+    map_second: Union[str, int] = ""
+    map_third: Union[str, int] = ""
 
-StrikeOption = Strike
+    @field_validator('attack_bonus', 'map_second', 'map_third', mode='before')
+    @classmethod
+    def coerce_to_str(cls, v):
+        if v is not None:
+            return str(v)
+        return "
 
 class Item(BaseModel):
     name: str
