@@ -91,7 +91,7 @@ ANCESTRY_HERITAGES: Dict[str, List[Dict[str, str]]] = {
     "lizardfolk": [
         {"name": "Cliffscale Lizardfolk", "description": "Your toes and claws possess adhesive pads, granting a climb speed."},
         {"name": "Ridgeback Lizardfolk", "description": "Spiny dermal ridges protect your back and grant a tail slap unarmed attack."},
-        {"name": "_${Wading Lizardfolk}_", "description": "You possess webbed feet, granting a swim speed and aquatic proficiency."},
+        {"name": "Wading Lizardfolk", "description": "You possess webbed feet, granting a swim speed and aquatic proficiency."},
         {"name": "Wading Lizardfolk", "description": "You possess webbed feet, granting a swim speed and aquatic proficiency."}
     ],
     "ratfolk": [
