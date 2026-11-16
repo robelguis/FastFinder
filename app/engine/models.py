@@ -34,13 +34,13 @@ class SkillEntry(BaseModel):
 
 class Strike(BaseModel):
     name: str
-    attack_bonus: Union[str, int]
-    damage: str
+    attack_bonus: Union[str, int] = ""
+    damage: str = ""
     traits: Optional[List[str]] = []
     map_second: Union[str, int] = ""
     map_third: Union[str, int] = ""
 
-    @field_validator('attack_bonus', 'map_second', 'map_third', mode='before')
+    @field_validator('attack_bonus', 'damage', 'map_second', 'map_third', mode='before')
     @classmethod
     def coerce_to_str(cls, v):
         if v is not None:
