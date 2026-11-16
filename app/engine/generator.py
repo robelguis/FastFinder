@@ -82,7 +82,7 @@ from app.engine.progression import (
     get_weapon_spec_bonus,
     apply_remaster_level_boosts,
 )
-from app.engine.names import generate_ancestry_name
+from app.engine.names import generate_golarion_name
 from app.engine.equipment import resolve_equipment, get_fundamental_rune_tiers
 from app.engine.skills import resolve_character_skills
 from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_weight, extract_gate_elements, is_kineticist_feat_allowed
