@@ -123,6 +123,7 @@ def resolve_character_skills(
         "wizard": ["Arcana"],
         "witch": ["Occultism"],
         "psychic": ["Occultism"],
+        "thaumaturge": ["Arcana", "Nature", "Occultism", "Religion"],
     }
     class_req_skills = set(CLASS_MANDATORY_SKILLS.get(cls_name.lower(), []))
     feat_names_lower = {
@@ -238,6 +239,10 @@ def resolve_character_skills(
             skill_ranks[pick] = 4
             remaining -= 1
 
+    # Archetype-granted skill rank minimums (e.g. Knight Vigilant Dedication -> Expert in Religion)
+    if any("knight vigilant dedication" in fn for fn in feat_names_lower):
+        skill_ranks["Religion"] = max(skill_ranks.get("Religion", 0), 4)
+
     # 5. Build SkillEntry objects
     result_skills: List[SkillEntry] = []
     for sk_name in ALL_PF2E_SKILLS:
@@ -284,6 +289,21 @@ def resolve_character_skills(
             attribute="INT"
         )
     )
+
+    # 6a. Add Thaumaturge Esoteric Lore (CHA-based, scales automatically at 3/7/15)
+    if cls_name.lower() == "thaumaturge" or any("thaumaturge dedication" in fn for fn in feat_names_lower):
+        if not any(s.name.lower() == "esoteric lore" for s in result_skills):
+            es_rank = 2
+            if cls_name.lower() == "thaumaturge":
+                es_rank = 8 if target_lvl >= 15 else (6 if target_lvl >= 7 else (4 if target_lvl >= 3 else 2))
+            es_rank = max(es_rank, existing_map.get("Esoteric Lore", 2))
+            result_skills.append(SkillEntry(
+                name="Esoteric Lore",
+                rank=es_rank,
+                rank_letter=RANK_LETTER_MAP.get(es_rank, "T"),
+                modifier=(es_rank + target_lvl) + norm_mods.get("cha", 0),
+                attribute="CHA",
+            ))
 
     # 6b. Add Archetype / Ancestry Feat-Granted Lore (Harrower Dedication, Surki Lore)
     if any("harrower dedication" in fn for fn in feat_names_lower):

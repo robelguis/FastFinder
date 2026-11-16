@@ -549,7 +549,8 @@ def resolve_equipment(
     else:
         armor_name = format_runed_armor_name("Hide Armor", lvl)
         armor_item = Item(name=armor_name, bulk="2", cost_sp=20)
-        calculated_ac = 10 + 2 + min(dex_mod, 2) + (2 + lvl) + armor_pot
+        arm_prof = (4 + lvl) if (cls_key == "thaumaturge" and lvl >= 11) else (2 + lvl)
+        calculated_ac = 10 + 3 + min(dex_mod, 2) + arm_prof + armor_pot
         shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
         shield_bonus = 2
 

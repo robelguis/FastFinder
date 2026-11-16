@@ -163,7 +163,8 @@ CLASS_FEATURES_LVL5 = {
     "druid": {"name": "Alertness", "description": "Your proficiency rank for Perception increases to Expert (+4)."},
     "sorcerer": {"name": "Alertness", "description": "Your proficiency rank for Perception increases to Expert (+4)."},
     "witch": {"name": "Reflex Expertise", "description": "Your proficiency rank for Reflex saves increases to Expert (+4)."},
-    "bard": {"name": "Lightning Reflexes", "description": "Your proficiency rank for Reflex saves increases to Expert (+4)."}
+    "bard": {"name": "Lightning Reflexes", "description": "Your proficiency rank for Reflex saves increases to Expert (+4)."},
+    "thaumaturge": {"name": "Second Implement", "description": "You gain a second implement and its initiate benefit. While holding either implement, you can use its benefits."}
 }
 
 ARCHETYPE_GRANTED_FEATURES = {
@@ -1637,7 +1638,7 @@ class PF2eGenerator:
             if f.get("category") == "class"
             and f.get("level") == 1
             and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-            and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
+            and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
         ]
         if lvl1_feats:
             f1 = pick_weighted_feat(lvl1_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 1) or random.choice(lvl1_feats)
@@ -1693,7 +1694,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") == 2
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                 ]
                 if lvl2_feats:
                     f2 = pick_weighted_feat(lvl2_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 2) or random.choice(lvl2_feats)
@@ -1785,7 +1786,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") in [1, 2, 4]
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                     and f["name"] not in [cf.name for cf in chosen_feats]
                 ]
                 if lvl4_feats:
@@ -1866,7 +1867,7 @@ class PF2eGenerator:
                 if f.get("category") == "class"
                 and f.get("level") in (4, 6)
                 and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
+                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
             ]
             if lvl6_class_feats:
                 cf6 = pick_weighted_feat(lvl6_class_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 6) or random.choice(lvl6_class_feats)
@@ -1912,6 +1913,32 @@ class PF2eGenerator:
                     description=clean_pf2e_text(gf7["description"])
                 ))
                 owned_names.add(gf7["name"])
+
+            if cls_name_lower == "thaumaturge":
+                for tid, tname, taction, tdesc in [
+                    ("class-feat-exploit-vulnerability", "Exploit Vulnerability", 1, "Attempt an Esoteric Lore check against a creature's standard DC to identify its highest weakness (Mortal Weakness) or create a custom weakness equal to 2 + half your level (Personal Antithesis)."),
+                    ("class-feat-implements-empowerment", "Implement's Empowerment", None, "When you Strike with a one-handed weapon while holding an implement in your other hand (and no non-implement items), you deal 2 additional damage per weapon damage die."),
+                ]:
+                    if tname not in owned_names:
+                        chosen_feats.append(FeatSummary(
+                            id=tid,
+                            name=tname,
+                            category="Class Feature (Level 1)",
+                            action_cost=taction,
+                            traits=["thaumaturge"],
+                            description=tdesc,
+                        ))
+                        owned_names.add(tname)
+                if level >= 9 and "Intensify Vulnerability" not in owned_names:
+                    chosen_feats.append(FeatSummary(
+                        id="class-feat-intensify-vulnerability",
+                        name="Intensify Vulnerability",
+                        category="Class Feature (Level 9)",
+                        action_cost=1,
+                        traits=["thaumaturge"],
+                        description="Activate the special intensify vulnerability benefit of one of your implements against the target of your Exploit Vulnerability.",
+                    ))
+                    owned_names.add("Intensify Vulnerability")
 
             chosen_feats.append(FeatSummary(
                 id="class-feat-weapon-specialization",
@@ -2361,7 +2388,7 @@ class PF2eGenerator:
                         if f.get("category") == "class"
                         and f.get("level") == 2
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                         and f["name"] not in existing_feat_names
                     ]
                     if lvl2_feats:
@@ -2442,7 +2469,7 @@ class PF2eGenerator:
                         if f.get("category") == "class"
                         and f.get("level") in [1, 2, 4]
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                         and f["name"] not in existing_feat_names
                     ]
                     if lvl4_feats:
@@ -2590,7 +2617,7 @@ class PF2eGenerator:
                         if f.get("category") == "class"
                         and f.get("level") in (8, 10)
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                        and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
+                        and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                         and f["name"] not in existing_feat_names
                     ]
                     if lvl10_class_feats:
@@ -2704,7 +2731,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") in (4, 6)
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
+                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                     and f["name"] not in existing_feat_names
                 ]
                 if lvl6_class_feats:
