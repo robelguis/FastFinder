@@ -536,7 +536,7 @@ def resolve_equipment(
         calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + armor_pot
         shield_item = Item(name=format_scaled_shield_name("Steel Shield", lvl), bulk="1", cost_sp=20)
         shield_bonus = 2
-    elif cls_key in ["rogue", "ranger", "bard", "swashbuckler", "investigator", "gunslinger"]:
+    elif cls_key in ["rogue", "ranger", "bard", "swashbuckler", "investigator", "gunslinger", "alchemist", "animist"]:
         armor_name = format_runed_armor_name("Leather Armor", lvl)
         armor_item = Item(name=armor_name, bulk="1", cost_sp=20)
         calculated_ac = 10 + 1 + min(dex_mod, 4) + (2 + lvl) + armor_pot

@@ -124,6 +124,7 @@ def resolve_character_skills(
         "witch": ["Occultism"],
         "psychic": ["Occultism"],
         "bard": ["Occultism"],
+        "inventor": ["Crafting"],
         "thaumaturge": ["Arcana", "Nature", "Occultism", "Religion"],
     }
     class_req_skills = set(CLASS_MANDATORY_SKILLS.get(cls_name.lower(), []))
@@ -239,6 +240,11 @@ def resolve_character_skills(
             pick = random.choice(eligible)
             skill_ranks[pick] = 4
             remaining -= 1
+
+    # Class auto-scaling skills (Inventor Crafting: Expert at 3, Master at 7, Legendary at 15)
+    if cls_name.lower() == "inventor":
+        inv_craft = 8 if target_lvl >= 15 else (6 if target_lvl >= 7 else (4 if target_lvl >= 3 else 2))
+        skill_ranks["Crafting"] = max(skill_ranks.get("Crafting", 0), inv_craft)
 
     # Archetype-granted skill rank minimums (e.g. Knight Vigilant Dedication -> Expert in Religion)
     if any("knight vigilant dedication" in fn for fn in feat_names_lower):

@@ -1121,7 +1121,7 @@ class PF2eGenerator:
                         e_type = getattr(eidolon_partner, "stage", "Eidolon")
                     subclass_obj = SubclassSummary(name=e_type, title="Eidolon", description=f"{e_type} tactical partner")
                     sub_name = e_type
-            elif cls_name_lower == "inventor":
+            elif cls_name_lower == "inventor" and "construct" in (sub_name or "").lower():
                 collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
             elif cls_name_lower == "witch":
                 if level >= 4 and random.random() < 0.5:
