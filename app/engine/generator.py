@@ -384,8 +384,11 @@ def scale_existing_companion(companion_data: dict, old_level: int, target_level:
 
     creature_type = (comp.get("creature_type") or "").lower()
 
+    c_stage = (comp.get("stage") or "").lower()
     if "eidolon" in creature_type:
         comp["hp"] = master_hp
+    elif any(k in creature_type or k in c_stage for k in ("familiar", "pet")):
+        comp["hp"] = 5 * target_level
     else:
         comp["hp"] = comp.get("hp", 20) + (level_delta * 8)
 
@@ -1108,6 +1111,13 @@ class PF2eGenerator:
             if isinstance(subclass_data, dict)
             else (subclass_obj.name if subclass_obj else None)
         )
+        if cls_name_lower != "necromancer" and "reanimator" not in (archetype_name or "").lower():
+            chosen_feats = [f for f in chosen_feats if f.name.lower() != "sepulchral sublimation"]
+        if cls_name_lower == "inventor" and "construct" not in (sub_name or "").lower() and "clockwork reanimator" not in (archetype_name or "").lower():
+            chosen_feats = [
+                f for f in chosen_feats
+                if not any(k in f.name.lower() for k in ("prototype companion", "construct companion", "advanced construct", "incredible construct", "paragon construct"))
+            ]
 
         # Partners: seed class-innate partners on fresh generation, or preserve existing on level-up
         if existing_partners is None:
@@ -2048,7 +2058,8 @@ class PF2eGenerator:
             attribute_mods=mods,
             level=level,
             feats=chosen_feats,
-            planned_archetype=planned_arch
+            planned_archetype=planned_arch,
+            subclass_name=sub_n_val,
         )
 
         if extra_trained_skill:
@@ -2810,7 +2821,8 @@ class PF2eGenerator:
             level=target_level,
             feats=chosen_feats,
             existing_skills=existing_skills_data,
-            existing_lore=existing_lore_name
+            existing_lore=existing_lore_name,
+                    subclass_name=(current_char.get("subclass") or {}).get("name"),
         )
 
         raw_sub = current_char.get("subclass")

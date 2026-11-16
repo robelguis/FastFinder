@@ -340,7 +340,19 @@ def select_class_weapons(
     eligible_secondary: List[Dict[str, Any]] = []
 
     # 3. Filter by Class Weapon Proficiency
-    if is_full_martial:
+    ranged_martial_pool = list(MARTIAL_RANGED + SIMPLE_RANGED)
+    if cls_key == "ranger":
+        finesse_melee = [
+            w for w in (MARTIAL_FINESSE + SIMPLE_MELEE + anc_weapons)
+            if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
+        ]
+        if dex_mod > str_mod:
+            eligible_primary = list(MARTIAL_RANGED) if MARTIAL_RANGED else ranged_martial_pool
+            eligible_secondary = finesse_melee if finesse_melee else list(SIMPLE_MELEE)
+        else:
+            eligible_primary = [w for w in (martial_pool + simple_pool + anc_weapons) if w not in ranged_martial_pool]
+            eligible_secondary = list(MARTIAL_RANGED) if MARTIAL_RANGED else ranged_martial_pool
+    elif is_full_martial:
         eligible_primary = martial_pool + simple_pool + anc_weapons
         eligible_secondary = martial_pool + simple_pool + anc_weapons
     elif cls_key == "gunslinger":
@@ -392,10 +404,10 @@ def select_class_weapons(
         eligible_secondary = caster_ranged if caster_ranged else simple_pool
 
     # 4. Ability Score Priority Filtering
-    if dex_mod > str_mod and dex_mod >= 2:
+    if dex_mod > str_mod and dex_mod >= 2 and cls_key != "ranger":
         finesse_primary = [
             w for w in eligible_primary 
-            if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile", "ranged"])
+            if w in ranged_martial_pool or any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile", "ranged"])
         ]
         if finesse_primary:
             eligible_primary = finesse_primary
@@ -492,7 +504,7 @@ def resolve_equipment(
         total_atk = base_prof + lvl + atk_stat + potency_bonus
 
         dice_str = f"{dice_count}{w['dice'][1:]}"
-        dmg_str = f"{dice_str}+{str_mod}" if not is_ranged else dice_str
+        dmg_str = f"{dice_str}{str_mod:+d}" if not is_ranged else dice_str
 
         is_agile = "Agile" in w.get("traits", [])
         strikes.append(Strike(
@@ -541,10 +553,14 @@ def resolve_equipment(
         armor_item = Item(name=armor_name, bulk="1", cost_sp=20)
         calculated_ac = 10 + 1 + min(dex_mod, 4) + (2 + lvl) + armor_pot
         shield_item = None
-    elif cls_key in ["wizard", "witch", "sorcerer", "oracle", "psychic", "necromancer"]:
+    elif cls_key in ["wizard", "witch", "sorcerer", "oracle", "psychic", "necromancer", "monk"]:
         armor_name = format_runed_armor_name("Explorer's Clothing", lvl)
         armor_item = Item(name=armor_name, bulk="L", cost_sp=1)
-        calculated_ac = 10 + 0 + min(dex_mod, 5) + (2 + lvl) + armor_pot
+        if cls_key == "monk":
+            unarm_prof = (8 + lvl) if lvl >= 17 else ((6 + lvl) if lvl >= 13 else (4 + lvl))
+        else:
+            unarm_prof = (2 + lvl)
+        calculated_ac = 10 + 0 + min(dex_mod, 5) + unarm_prof + armor_pot
         shield_item = None
     else:
         armor_name = format_runed_armor_name("Hide Armor", lvl)
