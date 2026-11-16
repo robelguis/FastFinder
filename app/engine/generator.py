@@ -1122,7 +1122,7 @@ class PF2eGenerator:
             elif cls_name_lower == "inventor" and "construct" in (sub_name or "").lower():
                 collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
             elif cls_name_lower == "druid" and "animal order" in (sub_name or "").lower():
-                comp = resolve_companion(class_name=cls["name"], feats=[], level=level)
+                comp = resolve_companion(class_name=cls["name"], feats=[], archetype=None, level=level)
                 if comp:
                     collected_partners.append(comp)
             elif cls_name_lower == "champion" and level >= 1:
