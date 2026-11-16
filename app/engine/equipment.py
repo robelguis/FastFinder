@@ -319,7 +319,8 @@ def select_class_weapons(
     dex_mod: int,
     ancestry_name: str = "",
     subclass_name: str = "",
-    archetype_name: str = ""
+    archetype_name: str = "",
+    feats: Optional[List[Any]] = None,
 ) -> List[Dict[str, Any]]:
     """Select appropriate primary and backup weapons based on class proficiencies, ancestry, and attributes."""
     
@@ -422,6 +423,41 @@ def select_class_weapons(
     if not eligible_secondary:
         eligible_secondary = list(SIMPLE_RANGED)
 
+    feat_str = " ".join(
+        (f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))).lower()
+        for f in (feats or [])
+    )
+    dual_wield_triggers = (
+        "twin takedown", "second sting", "impossible flurry", "twin parry",
+        "twin riposte", "double slice", "two-weapon flurry", "twin feint", "dual-weapon"
+    )
+    is_dual_wielder = any(t in feat_str for t in dual_wield_triggers)
+
+    if is_dual_wielder and cls_key in {
+        "ranger", "fighter", "rogue", "barbarian", "swashbuckler", "champion", "guardian", "commander"
+    }:
+        one_hand_melee = [
+            w for w in (MARTIAL_ONE_HANDED + MARTIAL_FINESSE + SIMPLE_MELEE + anc_weapons)
+            if w.get("hands", 1) == 1 and w not in ranged_martial_pool
+        ]
+        if dex_mod > str_mod:
+            finesse_1h = [
+                w for w in one_hand_melee
+                if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
+            ]
+            if finesse_1h:
+                one_hand_melee = finesse_1h
+        agile_1h = [
+            w for w in one_hand_melee
+            if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["agile", "finesse"])
+        ]
+        main_hand = random.choice(one_hand_melee) if one_hand_melee else random.choice(SIMPLE_MELEE)
+        off_pool = [w for w in (agile_1h or one_hand_melee) if w.get("name") != main_hand.get("name")]
+        off_hand = random.choice(off_pool) if off_pool else dict(main_hand)
+        ranged_pool = list(MARTIAL_RANGED) if (is_full_martial and MARTIAL_RANGED) else list(SIMPLE_RANGED)
+        ranged_backup = random.choice(ranged_pool)
+        return [main_hand, off_hand, ranged_backup]
+
     primary_wep = random.choice(eligible_primary)
     backup_candidates = [w for w in eligible_secondary if w.get("name") != primary_wep.get("name")]
     secondary_wep = random.choice(backup_candidates) if backup_candidates else random.choice(eligible_secondary)
@@ -462,7 +498,8 @@ def resolve_equipment(
     heritage_name: str = "",
     subclass_name: str = "",
     archetype_name: str = "",
-    existing_weapons: Optional[List[Any]] = None
+    existing_weapons: Optional[List[Any]] = None,
+    feats: Optional[List[Any]] = None,
 ) -> Tuple[EquipmentLoadout, int, int]:
     cls_key = class_name.lower()
     lvl = max(1, min(20, int(level)))
@@ -484,6 +521,7 @@ def resolve_equipment(
             ancestry_name=ancestry_name,
             subclass_name=subclass_name,
             archetype_name=archetype_name,
+            feats=feats,
         )
 
     weapons: List[Item] = []

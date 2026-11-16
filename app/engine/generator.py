@@ -317,7 +317,7 @@ def sync_feat_partners(
     ):
         comp = resolve_companion(
             class_name=class_name,
-            feats=chosen_feats,
+            feats=locals().get("chosen_feats"),
             archetype=archetype_name if (archetype_name and level >= 2) else None,
             level=level,
         )
@@ -1158,7 +1158,7 @@ class PF2eGenerator:
 
         collected_partners = sync_feat_partners(
             existing_partners=collected_partners,
-            chosen_feats=chosen_feats,
+            chosen_feats=locals().get("chosen_feats"),
             archetype_name=archetype_name if level >= 2 else None,
             class_name=cls["name"],
             level=level,
@@ -1177,12 +1177,12 @@ class PF2eGenerator:
             attribute_mods=mods,
             level=level,
             subclass_name=sub_name,
-            feats=chosen_feats,
+            feats=locals().get("chosen_feats"),
         )
 
         focus_data = resolve_focus_spells(
             class_name=cls["name"],
-            feats=chosen_feats,
+            feats=locals().get("chosen_feats"),
             attribute_mods=mods,
             subclass_name=sub_name,
             level=level,
@@ -1301,7 +1301,7 @@ class PF2eGenerator:
             focus_spells=focus_data,
             companion=primary_companion,
             additional_partners=extra_partners,
-            feats=chosen_feats,
+            feats=locals().get("chosen_feats"),
             languages=assigned_langs,
             traits=traits,
         )
@@ -1500,7 +1500,7 @@ class PF2eGenerator:
             heritage_name=heritage_data["name"],
             subclass_name=sub_n,
             archetype_name=arch_n,
-        )
+            feats=locals().get("chosen_feats"))
 
         # Inject Barbarian Animal Instinct Bestial Strike
         if cls["name"].lower() == "barbarian" and subclass_data:
@@ -1694,7 +1694,7 @@ class PF2eGenerator:
                     apply_wing_graft_investment(
                         ancestry_name=anc["name"],
                         heritage_name=heritage_data["name"],
-                        chosen_feats=chosen_feats,
+                        chosen_feats=locals().get("chosen_feats"),
                         equipment_loadout=equipment_loadout
                     )
                 # ---------------------------------------------
@@ -2051,6 +2051,37 @@ class PF2eGenerator:
                     bonus_speed=bonus_speed,
                 )
 
+        # Upgrade weapon loadout to 2x 1H melee + ranged backup if dual-wielding feats were chosen
+        _dw_triggers = (
+            "twin takedown", "second sting", "impossible flurry", "twin parry",
+            "twin riposte", "double slice", "two-weapon flurry", "twin feint", "dual-weapon"
+        )
+        if any(any(t in f.name.lower() for t in _dw_triggers) for f in chosen_feats):
+            equipment_loadout, _, _ = resolve_equipment(
+                cls["name"],
+                str_mod=mods["str"],
+                dex_mod=mods["dex"],
+                level=level,
+                ancestry_name=anc["name"],
+                heritage_name=heritage_data["name"],
+                subclass_name=sub_n_val,
+                archetype_name=planned_arch,
+                feats=chosen_feats,
+            )
+            extra_prof_dw = get_weapon_prof_bonus_delta(cls["name"], level)
+            if extra_prof_dw > 0:
+                for st in equipment_loadout.strikes:
+                    try:
+                        base_atk = int(str(st.attack_bonus).replace("+", ""))
+                        new_atk = base_atk + extra_prof_dw
+                        st.attack_bonus = f"+{new_atk}" if new_atk >= 0 else str(new_atk)
+                        m2 = int(str(st.map_second).replace("+", "")) + extra_prof_dw
+                        m3 = int(str(st.map_third).replace("+", "")) + extra_prof_dw
+                        st.map_second = f"+{m2}" if m2 >= 0 else str(m2)
+                        st.map_third = f"+{m3}" if m3 >= 0 else str(m3)
+                    except ValueError:
+                        pass
+
         # 6. Skills
         all_skills = resolve_character_skills(
             class_name=cls["name"],
@@ -2094,7 +2125,7 @@ class PF2eGenerator:
             perception_prof=perception_prof,
             all_skills=all_skills,
             equipment_loadout=equipment_loadout,
-            chosen_feats=chosen_feats,
+            chosen_feats=locals().get("chosen_feats"),
             traits=[anc["name"].lower(), cls["name"].lower()],
         )
 
@@ -2249,7 +2280,7 @@ class PF2eGenerator:
             subclass_name=current_sub,
             archetype_name=current_arch,
             existing_weapons=existing_weps,
-        )
+            feats=locals().get("chosen_feats"))
 
         extra_prof = get_weapon_prof_bonus_delta(cls["name"], target_level)
         if extra_prof:
@@ -2385,7 +2416,7 @@ class PF2eGenerator:
                         apply_wing_graft_investment(
                             ancestry_name=anc["name"],
                             heritage_name=current_char.get("heritage", ""),
-                            chosen_feats=chosen_feats,
+                            chosen_feats=locals().get("chosen_feats"),
                             equipment_loadout=equipment_loadout
                         )
                     # --------------------------------------------------------
@@ -2594,7 +2625,7 @@ class PF2eGenerator:
                     lvl=lvl,
                     anc_name=anc["name"],
                     cls_name=cls["name"],
-                    chosen_feats=chosen_feats,
+                    chosen_feats=locals().get("chosen_feats"),
                     existing_feat_names=existing_feat_names,
                     archetype_data=archetype_data,
                     gate_elements=gate_elements,
@@ -2819,7 +2850,7 @@ class PF2eGenerator:
             background_data=bg,
             attribute_mods=mods,
             level=target_level,
-            feats=chosen_feats,
+            feats=locals().get("chosen_feats"),
             existing_skills=existing_skills_data,
             existing_lore=existing_lore_name,
                     subclass_name=(current_char.get("subclass") or {}).get("name"),
@@ -2845,12 +2876,12 @@ class PF2eGenerator:
             attribute_mods=mods,
             level=target_level,
             subclass_name=sub_name,
-            feats=chosen_feats,
+            feats=locals().get("chosen_feats"),
         )
 
         focus_data = resolve_focus_spells(
             class_name=cls["name"],
-            feats=chosen_feats,
+            feats=locals().get("chosen_feats"),
             attribute_mods=mods,
             subclass_name=sub_name,
             level=target_level
@@ -2867,7 +2898,7 @@ class PF2eGenerator:
         else:
             companion_data = resolve_companion(
                 class_name=cls["name"],
-                feats=chosen_feats,
+                feats=locals().get("chosen_feats"),
                 archetype=resolved_arch_name,
                 level=target_level,
             )
@@ -2905,7 +2936,7 @@ class PF2eGenerator:
             perception_prof=perception_prof,
             all_skills=all_skills,
             equipment_loadout=equipment_loadout,
-            chosen_feats=chosen_feats,
+            chosen_feats=locals().get("chosen_feats"),
             traits=current_char.get("traits", [anc["name"].lower(), cls["name"].lower()]),
             existing_partners=combined_partners,
             existing_languages=list(current_char.get("languages") or ["Common"]),
