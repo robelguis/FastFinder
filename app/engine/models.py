@@ -33,9 +33,12 @@ class SkillEntry(BaseModel):
     modifier: int
 
 class Strike(BaseModel):
+class Strike(BaseModel):
     name: str
     attack_bonus: Union[str, int] = ""
     damage: str = "1d6"
+    damage_dice: str = "1d6"
+    damage_type: str = "slashing"
     traits: Optional[List[str]] = []
     map_second: Union[str, int] = ""
     map_third: Union[str, int] = ""
@@ -46,6 +49,13 @@ class Strike(BaseModel):
         if v is not None:
             return str(v)
         return ""
+
+    @field_validator('damage', 'damage_dice', 'damage_type', mode='before')
+    @classmethod
+    def coerce_damage_fields(cls, v):
+        if v is not None and str(v).strip() != "":
+            return str(v)
+        return "1d6"
 
     @field_validator('damage', mode='before')
     @classmethod
