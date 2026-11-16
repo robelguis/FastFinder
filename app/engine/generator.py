@@ -1126,7 +1126,7 @@ class PF2eGenerator:
                 if comp:
                     collected_partners.append(comp)
             elif cls_name_lower == "champion" and level >= 1:
-                comp = resolve_companion(class_name="Ranger", feats=[], level=level)
+                comp = resolve_companion(class_name="Ranger", feats=[], archetype=None, level=level)
                 if comp:
                     comp.name = "Faithful Steed"
                     comp.creature_type = "Animal Companion"
