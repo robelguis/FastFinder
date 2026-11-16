@@ -287,6 +287,7 @@ def sync_feat_partners(
 
     existing_types = {(p.creature_type or "").lower() for p in partners}
     existing_subs = {(p.sub_type or "").lower() for p in partners}
+    existing_names = {(p.name or "").lower() for p in partners}
 
     has_familiar = any("familiar" in t or "familiar" in s for t, s in zip(existing_types, existing_subs))
     has_animal = any("animal" in t or "companion" in t for t in existing_types)
@@ -296,90 +297,86 @@ def sync_feat_partners(
 
     # 1. Undead Companion / Undead Master
     if not has_undead and ("undead master" in arch_str or "undead companion" in all_feat_str):
-        partners.append(resolve_undead_companion(level=level))
-        has_undead = True
+        p = resolve_undead_companion(level=level)
+        if p and p.name.lower() not in existing_names:
+            partners.append(p)
+            existing_names.add(p.name.lower())
 
-    # 2. Construct Companion / Clockwork Reanimator
-    if not has_construct and ("clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str):
-        partners.append(resolve_construct_companion(master_int_mod=2, level=level))
-        has_construct = True
+    # 2. Construct Companion / Clockwork Reanimator / Inventor Dedication
+    is_inventor_construct = cls_lower == "inventor" or "inventor" in arch_str or "clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str
+    if not has_construct and is_inventor_construct:
+        p = resolve_construct_companion(master_int_mod=2, level=level)
+        if p and p.name.lower() not in existing_names:
+            partners.append(p)
+            existing_names.add(p.name.lower())
 
-    # 3. Plant Companion (only when Plant Companion feat is actually taken)
+    # 3. Plant Companion
     if not has_plant and "plant companion" in all_feat_str:
-        partners.append(resolve_plant_companion(level=level))
-        has_plant = True
+        p = resolve_plant_companion(level=level)
+        if p and p.name.lower() not in existing_names:
+            partners.append(p)
+            existing_names.add(p.name.lower())
 
-    # 4. Animal Companion / Mounts (Beastmaster, Cavalier, Mammoth Lord, Animal Companion, Faithful Steed)
+    # 4. Animal Companion / Mounts / Animal Order Druid / Faithful Steed
+    is_animal_order_druid = cls_lower == "druid" and any("animal order" in sub or "animal" in sub for sub in existing_subs)
     animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal", "faithful steed")
     animal_arch_triggers = ("beastmaster", "cavalier", "mammoth lord")
-    has_steed_feat = any("faithful steed" in getattr(f, "name", "").lower() for f in chosen_feats) or any("faithful steed" in f.get("name", "").lower() for f in chosen_feats if isinstance(f, dict))
+    has_steed_feat = any("faithful steed" in f for f in feat_names)
     is_champion_steed = (cls_lower == "champion" and level >= 1) or has_steed_feat
 
-    if not has_animal and (
-        any(tr in all_feat_str for tr in animal_triggers)
-        or is_champion_steed
-        or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
-        or cls_lower in ("ranger", "druid")
-    ):
+    should_get_animal = (
+        not has_animal
+        and (
+            any(tr in all_feat_str for tr in animal_triggers)
+            or is_champion_steed
+            or is_animal_order_druid
+            or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
+        )
+    )
+
+    if should_get_animal:
         comp = resolve_companion(
             class_name=class_name,
-            feats=locals().get("chosen_feats"),
+            feats=chosen_feats,
             archetype=archetype_name if (archetype_name and level >= 2) else None,
             level=level,
         )
         if comp:
             if is_champion_steed:
                 comp.name = "Faithful Steed"
-            partners.append(comp)
-            has_animal = True
+            if comp.name.lower() not in existing_names:
+                partners.append(comp)
+                existing_names.add(comp.name.lower())
 
-    # 5. Familiars & Pets (Leaf Order Leshy Familiar, Marine Ally, Familiar, Pet, Familiar Master, etc.)
+    # 5. Familiars & Pets
     has_marine_ally = "marine ally" in feat_names
     is_leaf_leshy = ("leshy familiar" in all_feat_str) or (cls_lower == "druid" and "leaf" in all_feat_str)
     familiar_triggers = (
-        "familiar",
-        "marine ally",
-        "leshy familiar",
-        "elemental familiar",
-        "shadow familiar",
-        "spirit guide",
-        "glyph familiar",
-        "call wizardly tools",
+        "familiar", "marine ally", "leshy familiar", "elemental familiar",
+        "shadow familiar", "spirit guide", "glyph familiar", "call wizardly tools",
     )
     has_pet_feat = "pet" in feat_names
 
     if not has_familiar and cls_lower != "witch":
         if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
-            partners.append(
-                resolve_familiar(
-                    master_ac=master_ac,
-                    master_fort=master_fort,
-                    master_ref=master_ref,
-                    master_will=master_will,
-                    master_perception=master_perception,
-                    class_name=class_name,
-                    level=level,
-                    aquatic_only=has_marine_ally,
-                    is_pet=False,
-                    forced_species="leshy" if is_leaf_leshy else None,
-                )
+            fam = resolve_familiar(
+                master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
+                master_will=master_will, master_perception=master_perception,
+                class_name=class_name, level=level, aquatic_only=has_marine_ally,
+                is_pet=False, forced_species="leshy" if is_leaf_leshy else None,
             )
-            has_familiar = True
+            if fam and fam.name.lower() not in existing_names:
+                partners.append(fam)
+                existing_names.add(fam.name.lower())
         elif has_pet_feat:
-            partners.append(
-                resolve_familiar(
-                    master_ac=master_ac,
-                    master_fort=master_fort,
-                    master_ref=master_ref,
-                    master_will=master_will,
-                    master_perception=3 + level,
-                    class_name=class_name,
-                    level=level,
-                    aquatic_only=False,
-                    is_pet=True,
-                )
+            fam = resolve_familiar(
+                master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
+                master_will=master_will, master_perception=3 + level,
+                class_name=class_name, level=level, aquatic_only=False, is_pet=True,
             )
-            has_familiar = True
+            if fam and fam.name.lower() not in existing_names:
+                partners.append(fam)
+                existing_names.add(fam.name.lower())
 
     return partners
 
