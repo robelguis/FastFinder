@@ -309,28 +309,21 @@ def sync_feat_partners(
         partners.append(resolve_plant_companion(level=level))
         has_plant = True
 
-    # 4. Animal Companion / Mounts / Faithful Steed (Beastmaster, Cavalier, Mammoth Lord, Animal Companion, Faithful Steed)
-    has_steed_feat = any("faithful steed" in getattr(f, "name", "").lower() for f in chosen_feats) or any("faithful steed" in f.get("name", "").lower() for f in chosen_feats if isinstance(f, dict))
-    is_champion_steed = (cls_lower == "champion" and level >= 1) or has_steed_feat
-    
+    # 4. Animal Companion / Mounts (Beastmaster, Cavalier, Mammoth Lord, Animal Companion, Faithful Steed)
     animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal", "faithful steed")
     animal_arch_triggers = ("beastmaster", "cavalier", "mammoth lord")
-    
     if not has_animal and (
         any(tr in all_feat_str for tr in animal_triggers)
-        or is_champion_steed
         or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
     ):
-        steed_comp = resolve_companion(
-            class_name=class_name if cls_lower != "champion" else "Ranger",
+        comp = resolve_companion(
+            class_name=class_name,
             feats=locals().get("chosen_feats"),
             archetype=archetype_name if (archetype_name and level >= 2) else None,
             level=level,
         )
-        if steed_comp:
-            if is_champion_steed:
-                steed_comp.name = "Faithful Steed"
-            partners.append(steed_comp)
+        if comp:
+            partners.append(comp)
             has_animal = True
 
     # 5. Familiars & Pets (Leaf Order Leshy Familiar, Marine Ally, Familiar, Pet, Familiar Master, etc.)
@@ -380,37 +373,6 @@ def sync_feat_partners(
                 )
             )
             has_familiar = True
-
-
-   # --- Automatically inject Faithful Steed / Champion Mount companion block ---
-    has_steed_feat = any("faithful steed" in getattr(f, "name", "").lower() for f in chosen_feats) or any("faithful steed" in f.get("name", "").lower() for f in chosen_feats if isinstance(f, dict))
-    is_champion_steed = (class_name.lower() == "champion" and level >= 1) or has_steed_feat
-
-    if (has_steed_feat or is_champion_steed) and not any("companion" in (p.creature_type or "").lower() or "mount" in (p.creature_type or "").lower() for p in partners if hasattr(p, "creature_type")):
-        steed_comp = resolve_companion(
-            class_name=class_name,
-            feats=chosen_feats,
-            archetype=archetype_name if (archetype_name and level >= 2) else None,
-            level=level,
-        )
-        if steed_comp:
-            steed_comp.name = "Faithful Steed"
-            steed_comp.support_benefit = "Your steed positions itself to block attacks or strikes out when you maneuver enemies."
-            partners.insert(0, steed_comp)
-        else:
-            # Fallback calling resolve_companion with a standard riding horse config so Pydantic validation passes fully
-            fallback_steed = resolve_companion(
-                class_name="Ranger",
-                feats=chosen_feats,
-                archetype=None,
-                level=level,
-            )
-            if fallback_steed:
-                fallback_steed.name = "Faithful Steed"
-                fallback_steed.creature_type = "Animal Companion"
-                fallback_steed.support_benefit = "Your steed positions itself to block attacks or strikes out when you maneuver enemies."
-                partners.insert(0, fallback_steed)
-    # --------------------------------------------------------------------------
 
     return partners
 
