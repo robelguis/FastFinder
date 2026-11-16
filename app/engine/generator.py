@@ -285,68 +285,51 @@ def sync_feat_partners(
     arch_str = (archetype_name or "").lower()
     cls_lower = class_name.lower()
 
-    existing_types = {(p.creature_type or "").lower() for p in partners}
-    existing_subs = {(p.sub_type or "").lower() for p in partners}
     existing_names = {(p.name or "").lower() for p in partners}
 
-    has_familiar = any("familiar" in t or "familiar" in s for t, s in zip(existing_types, existing_subs))
-    has_animal = any("animal" in t or "companion" in t for t in existing_types)
-    has_undead = any("undead" in t for t in existing_types)
-    has_plant = any("plant" in t for t in existing_types)
-    has_construct = any("construct" in t for t in existing_types)
-
     # 1. Undead Companion / Undead Master
-    if not has_undead and ("undead master" in arch_str or "undead companion" in all_feat_str):
+    if ("undead master" in arch_str or "undead companion" in all_feat_str):
         p = resolve_undead_companion(level=level)
         if p and p.name.lower() not in existing_names:
             partners.append(p)
             existing_names.add(p.name.lower())
 
     # 2. Construct Companion / Clockwork Reanimator / Inventor Dedication
-    is_inventor_construct = cls_lower == "inventor" or "inventor" in arch_str or "clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str
-    if not has_construct and is_inventor_construct:
-        p = resolve_construct_companion(master_int_mod=2, level=level)
-        if p and p.name.lower() not in existing_names:
-            partners.append(p)
-            existing_names.add(p.name.lower())
+    if ("clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str or "inventor dedication" in arch_str):
+        if not any("construct" in (p.creature_type or "").lower() for p in partners):
+            p = resolve_construct_companion(master_int_mod=2, level=level)
+            if p and p.name.lower() not in existing_names:
+                partners.append(p)
+                existing_names.add(p.name.lower())
 
     # 3. Plant Companion
-    if not has_plant and "plant companion" in all_feat_str:
-        p = resolve_plant_companion(level=level)
-        if p and p.name.lower() not in existing_names:
-            partners.append(p)
-            existing_names.add(p.name.lower())
+    if "plant companion" in all_feat_str:
+        if not any("plant" in (p.creature_type or "").lower() for p in partners):
+            p = resolve_plant_companion(level=level)
+            if p and p.name.lower() not in existing_names:
+                partners.append(p)
+                existing_names.add(p.name.lower())
 
-    # 4. Animal Companion / Mounts / Animal Order Druid / Faithful Steed
-    is_animal_order_druid = cls_lower == "druid" and any("animal order" in sub or "animal" in sub for sub in existing_subs)
+    # 4. Animal Companion / Mounts / Faithful Steed / Beastmaster / Cavalier
     animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal", "faithful steed")
     animal_arch_triggers = ("beastmaster", "cavalier", "mammoth lord")
-    has_steed_feat = any("faithful steed" in f for f in feat_names)
-    is_champion_steed = (cls_lower == "champion" and level >= 1) or has_steed_feat
-
-    should_get_animal = (
-        not has_animal
-        and (
-            any(tr in all_feat_str for tr in animal_triggers)
-            or is_champion_steed
-            or is_animal_order_druid
-            or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
-        )
-    )
-
-    if should_get_animal:
-        comp = resolve_companion(
-            class_name=class_name,
-            feats=chosen_feats,
-            archetype=archetype_name if (archetype_name and level >= 2) else None,
-            level=level,
-        )
-        if comp:
-            if is_champion_steed:
-                comp.name = "Faithful Steed"
-            if comp.name.lower() not in existing_names:
-                partners.append(comp)
-                existing_names.add(comp.name.lower())
+    if (
+        any(tr in all_feat_str for tr in animal_triggers)
+        or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
+    ):
+        if not any("animal" in (p.creature_type or "").lower() or "mount" in (p.creature_type or "").lower() for p in partners):
+            comp = resolve_companion(
+                class_name=class_name,
+                feats=chosen_feats,
+                archetype=archetype_name if (archetype_name and level >= 2) else None,
+                level=level,
+            )
+            if comp:
+                if any("faithful steed" in tr for tr in animal_triggers) or cls_lower == "champion":
+                    comp.name = "Faithful Steed"
+                if comp.name.lower() not in existing_names:
+                    partners.append(comp)
+                    existing_names.add(comp.name.lower())
 
     # 5. Familiars & Pets
     has_marine_ally = "marine ally" in feat_names
@@ -357,7 +340,7 @@ def sync_feat_partners(
     )
     has_pet_feat = "pet" in feat_names
 
-    if not has_familiar and cls_lower != "witch":
+    if cls_lower != "witch" and not any("familiar" in (p.creature_type or "").lower() for p in partners):
         if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
             fam = resolve_familiar(
                 master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
@@ -1124,7 +1107,7 @@ class PF2eGenerator:
                 if not any(k in f.name.lower() for k in ("prototype companion", "construct companion", "advanced construct", "incredible construct", "paragon construct"))
             ]
 
-        # Partners: seed class-innate partners on fresh generation, or preserve existing on level-up
+       # Partners: seed class-innate partners on fresh generation, or preserve existing on level-up
         if existing_partners is None:
             collected_partners: List[PartnerCreatureData] = []
             if cls_name_lower == "summoner":
@@ -1138,6 +1121,16 @@ class PF2eGenerator:
                     sub_name = e_type
             elif cls_name_lower == "inventor" and "construct" in (sub_name or "").lower():
                 collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
+            elif cls_name_lower == "druid" and "animal order" in (sub_name or "").lower():
+                comp = resolve_companion(class_name=cls["name"], feats=[], level=level)
+                if comp:
+                    collected_partners.append(comp)
+            elif cls_name_lower == "champion" and level >= 1:
+                comp = resolve_companion(class_name="Ranger", feats=[], level=level)
+                if comp:
+                    comp.name = "Faithful Steed"
+                    comp.creature_type = "Animal Companion"
+                    collected_partners.append(comp)
             elif cls_name_lower == "witch":
                 if level >= 4 and random.random() < 0.5:
                     collected_partners.append(resolve_specific_familiar(
