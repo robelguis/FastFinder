@@ -32,7 +32,7 @@ class SkillEntry(BaseModel):
     rank_letter: str
     modifier: int
 
-class Strike(BaseModel):
+
 class Strike(BaseModel):
     name: str
     attack_bonus: Union[str, int] = ""
