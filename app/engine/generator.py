@@ -1369,13 +1369,24 @@ class PF2eGenerator:
         gate_elements = extract_gate_elements(sub_n_val) if cls_name_lower == "kineticist" else set()
         
 
-        resolved_name = char_name.strip() if char_name and char_name.strip() else generate_ancestry_name(anc["name"])
+        # Safe name resolution fallback
+        try:
+            from app.engine.names import generate_ancestry_name
+            fallback_name = generate_ancestry_name(anc["name"])
+        except (ImportError, NameError):
+            try:
+                from app.engine.names import generate_golarion_name
+                fallback_name = generate_golarion_name(anc["name"])
+            except Exception:
+                fallback_name = f"Hero of {anc['name'].capitalize()}"
+
+        resolved_name = char_name.strip() if char_name and char_name.strip() else fallback_name
+        
         raw_arch = archetype_name.strip() if archetype_name and archetype_name.strip() else ""
         if raw_arch.lower() in ["", "any", "any archetype", "none", "random"]:
             clean_arch_input = None
         else:
             clean_arch_input = raw_arch
-
         archetype_data = None
         if clean_arch_input:
             archetype_data = resolve_dynamic_archetype(clean_arch_input, self.feats)
