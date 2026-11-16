@@ -1,16 +1,20 @@
 # app/engine/names.py
 # Expanded Golarion-Specific Naming Tables by Ancestry and Region
 
+import random
+
 ANCESTRY_NAMES = {
     "surki": {
         "first": [
             "Krix", "Vexis", "Zurl", "Chitter", "Skree", "Miri", "Nesk", "Trixa", 
             "Vrak", "Ziv", "Crixus", "Vesper", "Scurry", "Nix", "Tessk", "Voss", 
-            "Zarek", "Kurn", "Moxie", "Xylar", "Vrix", "Kall", "Zinn", "Tarek"
+            "Zarek", "Kurn", "Moxie", "Xylar", "Vrix", "Kall", "Zinn", "Tarek",
+            "Pox", "Glint", "Vot", "Zix", "Krall", "Slink", "Tss", "Wrix"
         ],
         "surnames": [
             "of the Deep Tunnel", "Chitter-Clack", "Resonant", "Vibration-Seeker", 
-            "Shard-Bearer", "Gleam-Finder", "Sub-Slayer", "Vault-Walker", "Echo-Listener"
+            "Shard-Bearer", "Gleam-Finder", "Sub-Slayer", "Vault-Walker", "Echo-Listener",
+            "Tunneler", "Stone-Whisperer", "Core-Scuttler", "Rumble-Guard", "Pebble-Toes"
         ]
     },
     "elf": {
@@ -95,7 +99,7 @@ ANCESTRY_NAMES = {
             "Zola", "Bao", "Fela", "Kwame", "Zuri", "Tariq", "Imani", "Jabari"
         ],
         "surnames": [
-            "Mumin HP", "Zenith", "Banda", "Kinte", "Diop", "Cissoko", 
+            "Mumin", "Zenith", "Banda", "Kinte", "Diop", "Cissoko", 
             "Okafor", "Eze", "Mensah", "Diallo"
         ]
     },
@@ -121,16 +125,20 @@ DEFAULT_NAMES = {
     ]
 }
 
-def generate_golarion_name(ancestry: str = "", ethnicity: str = "") -> str:
-    import random
+def generate_golarion_name(ancestry: str = "") -> str:
     anc = (ancestry or "").lower().strip()
-    
     pool = DEFAULT_NAMES
+    
     if anc in ANCESTRY_NAMES:
         pool = ANCESTRY_NAMES[anc]
-    elif "human" in anc or "taldor" in anc:
-        pool = random.choice([ANCESTRY_NAMES["human_taldor"], ANCESTRY_NAMES["human_varisia"], ANCESTRY_NAMES["human_mwangi"]])
-    
+    elif "human" in anc:
+        pool = random.choice([
+            ANCESTRY_NAMES["human_taldor"], 
+            ANCESTRY_NAMES["human_varisia"], 
+            ANCESTRY_NAMES["human_mwangi"],
+            ANCESTRY_NAMES["human_tian"]
+        ])
+        
     first = random.choice(pool["first"])
     last = random.choice(pool["surnames"])
     return f"{first} {last}"
