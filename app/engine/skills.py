@@ -123,6 +123,7 @@ def resolve_character_skills(
         "wizard": ["Arcana"],
         "witch": ["Occultism"],
         "psychic": ["Occultism"],
+        "bard": ["Occultism"],
         "thaumaturge": ["Arcana", "Nature", "Occultism", "Religion"],
     }
     class_req_skills = set(CLASS_MANDATORY_SKILLS.get(cls_name.lower(), []))
@@ -289,6 +290,18 @@ def resolve_character_skills(
             attribute="INT"
         )
     )
+
+    # 6a0. Add Enigma Bard Bardic Lore (INT-based)
+    if cls_name.lower() == "bard" and any("enigma" in str(v).lower() for v in kwargs.values()):
+        if not any(s.name.lower() == "bardic lore" for s in result_skills):
+            bl_rank = 8 if (target_lvl >= 15 and skill_ranks.get("Occultism", 0) >= 8) else (4 if (target_lvl >= 7 and skill_ranks.get("Occultism", 0) >= 6) else 2)
+            result_skills.append(SkillEntry(
+                name="Bardic Lore",
+                rank=bl_rank,
+                rank_letter=RANK_LETTER_MAP.get(bl_rank, "T"),
+                modifier=(bl_rank + target_lvl) + norm_mods.get("int", 0),
+                attribute="INT",
+            ))
 
     # 6a. Add Thaumaturge Esoteric Lore (CHA-based, scales automatically at 3/7/15)
     if cls_name.lower() == "thaumaturge" or any("thaumaturge dedication" in fn for fn in feat_names_lower):
