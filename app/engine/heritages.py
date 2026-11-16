@@ -1,5 +1,5 @@
 # app/engine/heritages.py
-# Complete Official Pathfinder 2e Ancestry Heritages Matrix (All 51+ Compendium Ancestries)
+# Complete Official Pathfinder 2e Ancestry Heritages Matrix
 
 import random
 from typing import Dict, Any, List, Optional
@@ -95,7 +95,7 @@ ANCESTRY_HERITAGES: Dict[str, List[Dict[str, str]]] = {
     ],
     "android": [
         {"name": "Constellation Android", "description": "Your internal processors are calibrated to stellar navigational telemetry."},
-        {"name": " Artisan Android", "description": "Your synthetic hands and optical arrays are optimized for precision crafting."}
+        {"name": "Artisan Android", "description": "Your synthetic hands and optical arrays are optimized for precision crafting."}
     ],
     "automaton": [
         {"name": "Aethelman", "description": "Your core is infused with raw astral magic, granting mystical resistance."},
