@@ -1,144 +1,149 @@
-# app/engine/names.py
-# Expanded Golarion-Specific Naming Tables by Ancestry and Region
-
 import random
 
-ANCESTRY_NAMES = {
-    "surki": {
-        "first": [
-            "Krix", "Vexis", "Zurl", "Chitter", "Skree", "Miri", "Nesk", "Trixa", 
-            "Vrak", "Ziv", "Crixus", "Vesper", "Scurry", "Nix", "Tessk", "Voss", 
-            "Zarek", "Kurn", "Moxie", "Xylar", "Vrix", "Kall", "Zinn", "Tarek",
-            "Pox", "Glint", "Vot", "Zix", "Krall", "Slink", "Tss", "Wrix"
-        ],
-        "surnames": [
-            "of the Deep Tunnel", "Chitter-Clack", "Resonant", "Vibration-Seeker", 
-            "Shard-Bearer", "Gleam-Finder", "Sub-Slayer", "Vault-Walker", "Echo-Listener",
-            "Tunneler", "Stone-Whisperer", "Core-Scuttler", "Rumble-Guard", "Pebble-Toes"
-        ]
-    },
-    "elf": {
-        "first": [
-            "Aelorin", "Caelen", "Elenia", "Faelar", "Ilivana", "Larethian", "Melian", 
-            "Naerys", "Saelthorn", "Teleri", "Aerdeth", "Valanthe", "Theren", "Queth",
-            "Mialee", "Galinndan", "Himo", "Sariel", "Keyleth", "Amras", "Erevan"
-        ],
-        "surnames": [
-            "Silverfrond", "Moonwhisper", "Star-Glance", "Amastacia", "Galanodel", 
-            "Holimion", "Liadon", "Meliamne", "Nailo", "Siannodel", "Xiloscient"
-        ]
+# Linguistic family mapping for every official Pathfinder 2e Ancestry & Versatile Heritage
+ANC_LINGUISTIC_FAMILIES = {
+    # Humanoid / Common
+    "human": "human", "halfling": "halfling", "dwarf": "dwarf", "elf": "elf",
+    # Goblins & Small Folk
+    "goblin": "goblin", "gnome": "gnome", "kobold": "kobold", "shoony": "shoony", "grippli": "grippli",
+    # Orcs & Brutal/Martial
+    "orc": "orc", "hobgoblin": "orc", "lesh": "leshy", "leshy": "leshy",
+    # Beastkin & Animal Folk
+    "catfolk": "beast", "lizardfolk": "beast", "ratfolk": "beast", "tengu": "beast",
+    "anadi": "beast", "kashrishi": "beast", "vanara": "beast", "centaur": "beast",
+    # Aquatic
+    "azarketi": "aquatic", "undine": "aquatic", "sylph": "elemental", "iftit": "elemental", "oread": "elemental",
+    # Exotic / Magical / Construct
+    "automaton": "construct", "conrasu": "construct", "poppet": "construct", "skeleton": "undead",
+    "fleshwarp": "fleshwarp", "fetchling": "shadow", "shisk": "underground", "strix": "avian",
+    "surki": "exotic", "goloma": "exotic", "vishkanya": "exotic", "nagaji": "draconic",
+    "kitsune": "fae", "sprite": "fae", "nephilim": "celestial", "aasimar": "celestial", "tiefling": "fiendish"
+}
+
+LINGUISTIC_BANKS = {
+    "human": {
+        "prefixes": ["Kat", "Thal", "Zan", "Olg", "Cyr", "Row", "Mar", "Vand", "Dor", "Elena", "Marcus", "Valen"],
+        "medials": ["er", "and", "in", "ist", "or", "ur", "al"],
+        "suffixes": ["a", "en", "us", "ia", "os", "is", "an", "er"],
+        "surnames": ["Vancaskerkin", "Cold-Broker", "Ashen-Gale", "Swift-River", "Ironwood", "Markov", "Brightwood"]
     },
     "dwarf": {
-        "first": [
-            "Dagnar", "Thorgar", "Helga", "Bragor", "Korgan", "Morgran", "Thura", 
-            "Vondal", "Barendd", "Brogar", "Eberk", "Fargrim", "Harsk", "Orsik", 
-            "Rangrim", "Torunn", "Kathra", "Morgryn", "Artor", "Grimnir"
-        ],
-        "surnames": [
-            "Ironfoot", "Stonehammer", "Copper-Eye", "Anvil-Bane", "Deep-Miners",
-            "Boulder-Shield", "Silverbeard", "Gold-Grip", "Battlehammer", "Lodestone"
-        ]
+        "prefixes": ["Thor", "Bal", "Dorg", "Thrain", "Mor", "Dol", "Krag", "Dar", "Tor", "Gar", "Hjal", "Bryn"],
+        "medials": ["grim", "gar", "mun", "dur", "fin", "kan", "dor", "bek"],
+        "suffixes": ["ar", "in", "um", "ok", "ir", "ak", "gran", "heim"],
+        "surnames": ["Lodestone", "Anvil-Bane", "Iron-Foot", "Copper-Beard", "Stone-Hearth", "Shield-Breaker", "Coppervein"]
+    },
+    "elf": {
+        "prefixes": ["Ael", "Fael", "Syl", "Elar", "Tari", "Cyr", "Gal", "Val", "Naer", "Lyr", "Thia"],
+        "medials": ["on", "en", "ath", "and", "or", "ist", "ael"],
+        "suffixes": ["in", "a", "ion", "iss", "eth", "el", "ian", "as"],
+        "surnames": ["Meliamne", "Silver-Frond", "Moon-Whisper", "Starlight", "Glow-Brook", "Wind-Runner", "Silvermist"]
     },
     "goblin": {
-        "first": [
-            "Skrap", "Zazz", "Chibs", "Grix", "Nibble", "Snag", "Trix", "Vrak", 
-            "Zog", "Mug", "Grib", "Bazz", "Snik", "Pluck", "Gnash", "Wriggle",
-            "Sprocket", "Fizz", "Boggle", "Krunk", "Zazzle", "Skitch"
-        ],
-        "surnames": [
-            "Muck-Raker", "Dog-Biter", "Trash-Heap", "Fire-Maker", "Tooth-Puller",
-            "Gutter-Scum", "Bone-Gnawer", "Sewer-Rat", "Gobbler", "Rust-Collector"
-        ]
+        "prefixes": ["Zaz", "Muck", "Snag", "Grix", "Krag", "Boil", "Rot", "Wart", "Zap", "Skum", "Snot"],
+        "medials": ["ble", "gie", "ik", "og", "rat", "snit", "gut"],
+        "suffixes": ["zle", "toot", "snag", "gut", "face", "tooth", "pox"],
+        "surnames": ["Muck-Raker", "Trash-Finder", "Bone-Gnawer", "Swamp-Stalker", "Gutter-Snipe", "Mudlicker"]
     },
-    "gnome": {
-        "first": [
-            "Bimble", "Fizzle", "Glimmer", "Pip", "Quill", "Trixie", "Zazzle", 
-            "Wiggle", "Pimpernel", "Zook", "Dimble", "Fibble", "Garpdbib", 
-            "Namfoodle", "Roondar", "Seebo", "Sindri", "Warryn", "Bixby"
-        ],
-        "surnames": [
-            "Tinkertop", "Nockturne", "Glimmershine", "Clock-Winder", "Spark-Spitter",
-            "Color-Splash", "Bogglebell", "Whistle-Brake", "Fidget-Gear"
-        ]
+    "halfling": {
+        "prefixes": ["Milo", "Finn", "Rosie", "Pippin", "Daisy", "Miri", "Corin", "Tansy", "Jasper", "Bramble"],
+        "medials": ["dob", "will", "per", "cot", "lock", "tans"],
+        "suffixes": ["y", "o", "a", "er", "en", "ip", "ie"],
+        "surnames": ["Brightwood", "Apple-Orchard", "Hill-Topper", "Tea-Kettle", "Bramble-Foot", "Brambletoes"]
     },
     "orc": {
-        "first": [
-            "Brak", "Grush", "Kark", "Mog", "Throm", "Uruk", "Zog", "Garl", 
-            "Durn", "Thraka", "Karg", "Gorm", "Vrog", "Bazrak", "Hrogath", "Morg"
-        ],
-        "surnames": [
-            "Blood-Eye", "Skull-Splitter", "Iron-Tusk", "Bone-Crusher", "Flesh-Rend",
-            "Ash-Maker", "Storm-Bringer", "Savage-Heart"
-        ]
+        "prefixes": ["Brak", "Grom", "Thar", "Urz", "Karg", "Mog", "DUR", "Zurg", "Kull", "Rath", "Thokk"],
+        "medials": ["gar", "rok", "ash", "lok", "nak"],
+        "suffixes": ["ok", "ash", "ar", "ul", "az", "grom"],
+        "surnames": ["Blood-Eye", "Skull-Splitter", "Iron-Hide", "Tusk-Biter", "Storm-Caller", "Doomhammer"]
     },
-    "human_taldor": {
-        "first": [
-            "Aurelius", "Cassian", "Drusilla", "Evander", "Flavia", "Gideon", 
-            "Horatio", "Julian", "Lucian", "Maxima", "Octavia", "Valerius", 
-            "Antonia", "Darius", "Livia", "Tiberius", "Vistra", "Cornelius"
-        ],
-        "surnames": [
-            "Glorio", "Vane", "Corvosa", "Priscus", "Aquila", "Seneca", 
-            "Aloro", "Balder", "D'Orlov", "Vendicci", "Marcella"
-        ]
+    "gnome": {
+        "prefixes": ["Wizzle", "Fiz", "Bix", "Nim", "Pimble", "Zook", "Bimble"],
+        "medials": ["wig", "pop", "tick", "bam"],
+        "suffixes": ["snap", "spark", "wink", "dle"],
+        "surnames": ["Clock-Winder", "Glimmer-Spark", "Tumble-Down", "Pebble-Pouch"]
     },
-    "human_varisia": {
-        "first": [
-            "Balthazar", "Corina", "Dmitri", "Elsa", "Garret", "Katerina", 
-            "Nikolai", "Radu", "Stefan", "Vanya", "Milos", "Svetlana", 
-            "Anya", "Boris", "Yuri", "Natasha", "Olgierd"
-        ],
-        "surnames": [
-            "Vancaskerkin", "Patrus", "Sczarni", "Kadavros", "Shvetto", 
-            "Glavius", "Zandro", "Orlov", "Markov", "Zelensky"
-        ]
+    "kobold": {
+        "prefixes": ["Zix", "Krix", "Vex", "Ska", "Miri", "Trix", "Rix", "Zor", "Vrix", "Kess"],
+        "medials": ["iss", "kiz", "vaz", "rix"],
+        "suffixes": ["ax", "ix", "us", "os", "rix", "en"],
+        "surnames": ["Ashen-Gale", "Scale-Singer", "Dragon-Worship", "Tail-Lash", "Cave-Crawler", "Coldscale"]
     },
-    "human_mwangi": {
-        "first": [
-            "Ayo", "Chidi", "Efia", "Jengo", "Kofi", "Nia", "Osei", "Sefu", 
-            "Zola", "Bao", "Fela", "Kwame", "Zuri", "Tariq", "Imani", "Jabari"
-        ],
-        "surnames": [
-            "Mumin", "Zenith", "Banda", "Kinte", "Diop", "Cissoko", 
-            "Okafor", "Eze", "Mensah", "Diallo"
-        ]
+    "leshy": {
+        "prefixes": ["Bramble", "Spore", "Moss", "Fern", "Root", "Seed", "Petal", "Bark", "Leaf", "Juniper"],
+        "medials": ["heart", "weaver", "stride", "bloom", "glen"],
+        "suffixes": ["ling", "ton", "ish", "keeper", "walker"],
+        "surnames": ["Green-Thumb", "Sun-Seeker", "Dew-Drinker", "Canopy-Runner", "Brambleheart"]
     },
-    "human_tian": {
-        "first": [
-            "Bayar", "Chen", "Daichi", "Fen", "Geng", "Huang", "Jian", 
-            "Mei", "Ren", "Sora", "Tao", "Yin", "Bo", "Hao", "Li", "Qing"
-        ],
-        "surnames": [
-            "Sung", "Lin", "Fang", "Shen", "Tan", "Huang", "Chou", "Liu", "Bai"
-        ]
+    "beast": {
+        "prefixes": ["Rem", "Sula", "Tari", "Kha", "Zul", "Hiss", "Ske", "Voh", "Thok", "Nix", "Karas"],
+        "medials": ["ash", "esh", "irr", "uss", "ick", "su"],
+        "suffixes": ["a", "en", "us", "ar", "ok", "iss"],
+        "surnames": ["Wave-Crest", "Sun-Prowler", "Shadow-Stalker", "Swamp-Stalker", "Scale-Keeper", "Feather-Step"]
+    },
+    "aquatic": {
+        "prefixes": ["Tid", "Mar", "Cor", "Nere", "Pel", "Sal", "Ebb"],
+        "medials": ["ath", "or", "un", "iss"],
+        "suffixes": ["us", "a", "ia", "os"],
+        "surnames": ["Deep-Watcher", "Tide-Singer", "Coral-Gazer", "Abyssal-Born", "Wave-Treader"]
+    },
+    "construct": {
+        "prefixes": ["Aegis", "Cog", "Piston", "Brass", "Iron", "Unit", "Vessel", "Remnant"],
+        "medials": ["-01", "-99", "-X", "-Beta", "-Prime"],
+        "suffixes": ["Core", "Sentinel", "Guardian", "Construct"],
+        "surnames": ["Clockwork Vanguard", "Gilded Sentinel", "Cogheart", "Ironclad", "Awakened Core"]
+    },
+    "undead": {
+        "prefixes": ["Grim", "Rattle", "Sepulcher", "Dusk", "Harrow", "Marrow", "Vesper", "Crypt"],
+        "medials": ["or", "ath", "ul", "un"],
+        "suffixes": ["ix", "us", "is", "or"],
+        "surnames": ["Bone-Collector", "Soul-Binder", "Grave-Walker", "Tomb-Guard", "Ashen-Wraith"]
+    },
+    "fae": {
+        "prefixes": ["Puck", "Titania", "Bramble", "Gossamer", "Briar", "Oakheart", "Verdant"],
+        "medials": ["ael", "ith", "yn", "or"],
+        "suffixes": ["ia", "is", "eth", "en"],
+        "surnames": ["Glade-Walker", "Wild-Heart", "Moon-Dancer", "Twilight-Seeker"]
+    },
+    "exotic": {
+        "prefixes": ["Xan", "Voh", "Kry", "Ssz", "Qor", "Zul", "Thra"],
+        "medials": ["iss", "vaz", "th", "rr"],
+        "suffixes": ["us", "is", "ar", "ix"],
+        "surnames": ["Star-Touched", "Rift-Walker", "Void-Gazer", "Fate-Weaver", "Primeval-Seeker"]
     }
 }
 
-DEFAULT_NAMES = {
-    "first": [
-        "Aiden", "Lyra", "Cyrus", "Thalia", "Varis", "Selene", "Orion", "Vesper",
-        "Dorian", "Kaelen", "Rowan", "Tariq", "Mira", "Zane", "Sariel"
-    ],
-    "surnames": [
-        "Brightwood", "Stormrider", "Nightshade", "Ironwood", "Sun-Seeker",
-        "Wave-Crest", "Ashen-Gale", "Swift-River", "Cold-Broker"
-    ]
+# Universal fallback for any custom, obscure, or homebrew ancestry name not explicitly mapped
+DEFAULT_RULES = {
+    "prefixes": ["Kor", "Vel", "Tess", "Mor", "Sael", "Vand", "Zor", "Xan"],
+    "medials": ["an", "or", "en", "iss"],
+    "suffixes": ["is", "us", "ar", "ia"],
+    "surnames": ["Wayfinder", "Star-Gazer", "Dawn-Bringer", "Wild-Runner", "Horizon-Seeker"]
 }
 
-def generate_golarion_name(ancestry: str = "") -> str:
-    anc = (ancestry or "").lower().strip()
-    pool = DEFAULT_NAMES
+_GENERATED_NAME_CACHE = set()
+
+def generate_golarion_name(ancestry: str) -> str:
+    anc_raw = ancestry.lower().strip()
     
-    if anc in ANCESTRY_NAMES:
-        pool = ANCESTRY_NAMES[anc]
-    elif "human" in anc:
-        pool = random.choice([
-            ANCESTRY_NAMES["human_taldor"], 
-            ANCESTRY_NAMES["human_varisia"], 
-            ANCESTRY_NAMES["human_mwangi"],
-            ANCESTRY_NAMES["human_tian"]
-        ])
+    # Resolve linguistic family dynamically
+    family_key = DEFAULT_RULES
+    for key, family in ANC_LINGUISTIC_FAMILIES.items():
+        if key in anc_raw:
+            family_key = LINGUISTIC_BANKS.get(family, DEFAULT_RULES)
+            break
+            
+    for _ in range(50):
+        pref = random.choice(family_key["prefixes"])
+        med = random.choice(family_key["medials"]) if random.random() > 0.4 else ""
+        suf = random.choice(family_key["suffixes"])
+        surname = random.choice(family_key["surnames"])
         
-    first = random.choice(pool["first"])
-    last = random.choice(pool["surnames"])
-    return f"{first} {last}"
+        first_name = f"{pref}{med}{suf}".capitalize()
+        full_name = f"{first_name} {surname}"
+        
+        if full_name not in _GENERATED_NAME_CACHE:
+            _GENERATED_NAME_CACHE.add(full_name)
+            return full_name
+            
+    return f"{random.choice(family_key['prefixes'])}{random.choice(family_key['suffixes']).capitalize()} {random.choice(family_key['surnames'])}"
