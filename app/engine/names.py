@@ -125,9 +125,6 @@ DEFAULT_NAMES = {
     ]
 }
 
-def generate_ancestry_name(ancestry: str = "") -> str:
-    return generate_golarion_name(ancestry)
-
 def generate_golarion_name(ancestry: str = "") -> str:
     anc = (ancestry or "").lower().strip()
     pool = DEFAULT_NAMES
