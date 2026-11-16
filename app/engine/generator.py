@@ -1569,7 +1569,8 @@ class PF2eGenerator:
         if spec_dmg:
             for strike in equipment_loadout.strikes:
                 if f"+{spec_dmg}" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
-                    strike.damage_dice = f"{strike.damage_dice} + {spec_dmg}" 
+                    # Cast spec_dmg to str() to prevent type concatenation errors
+                    strike.damage_dice = f"{strike.damage_dice} + {str(spec_dmg)}"
 
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
@@ -2300,11 +2301,12 @@ class PF2eGenerator:
                 strike.attack_bonus += extra_prof
                 strike.map_second += extra_prof
                 strike.map_third += extra_prof
-        spec_dmg = get_weapon_spec_bonus(cls["name"], target_level)
+        spec_dmg = get_weapon_spec_bonus(cls["name"], level)
         if spec_dmg:
             for strike in equipment_loadout.strikes:
                 if f"+{spec_dmg}" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
-                    strike.damage_dice = f"{strike.damage_dice} + {spec_dmg}"
+                    # Cast spec_dmg to str() to prevent type concatenation errors
+                    strike.damage_dice = f"{strike.damage_dice} + {str(spec_dmg)}"
 
         con_mod = mods["con"]
         class_hp_per_lvl = cls.get("hp_per_level", 8)
