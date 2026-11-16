@@ -312,9 +312,14 @@ def sync_feat_partners(
     # 4. Animal Companion / Mounts (Beastmaster, Cavalier, Mammoth Lord, Animal Companion, Faithful Steed)
     animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal", "faithful steed")
     animal_arch_triggers = ("beastmaster", "cavalier", "mammoth lord")
+    has_steed_feat = any("faithful steed" in getattr(f, "name", "").lower() for f in chosen_feats) or any("faithful steed" in f.get("name", "").lower() for f in chosen_feats if isinstance(f, dict))
+    is_champion_steed = (cls_lower == "champion" and level >= 1) or has_steed_feat
+
     if not has_animal and (
         any(tr in all_feat_str for tr in animal_triggers)
+        or is_champion_steed
         or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
+        or cls_lower in ("ranger", "druid")
     ):
         comp = resolve_companion(
             class_name=class_name,
@@ -323,6 +328,8 @@ def sync_feat_partners(
             level=level,
         )
         if comp:
+            if is_champion_steed:
+                comp.name = "Faithful Steed"
             partners.append(comp)
             has_animal = True
 
