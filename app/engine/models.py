@@ -45,7 +45,7 @@ class Strike(BaseModel):
     def coerce_to_str(cls, v):
         if v is not None:
             return str(v)
-        return "
+        return ""
 
 class Item(BaseModel):
     name: str
