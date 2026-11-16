@@ -374,7 +374,7 @@ def sync_feat_partners(
             )
             has_familiar = True
 
-    # --- Automatically inject Faithful Steed / Champion Mount companion block ---
+   # --- Automatically inject Faithful Steed / Champion Mount companion block ---
     has_steed_feat = any("faithful steed" in getattr(f, "name", "").lower() for f in chosen_feats) or any("faithful steed" in f.get("name", "").lower() for f in chosen_feats if isinstance(f, dict))
     is_champion_steed = (class_name.lower() == "champion" and level >= 1) or has_steed_feat
 
@@ -390,40 +390,18 @@ def sync_feat_partners(
             steed_comp.support_benefit = "Your steed positions itself to block attacks or strikes out when you maneuver enemies."
             partners.insert(0, steed_comp)
         else:
-            # Fallback if resolve_companion returns none
-            from app.engine.models import PartnerCreatureData
-            steed_dict = {
-                "name": "Faithful Steed",
-                "creature_type": "Animal Companion",
-                "sub_type": "Riding Horse",
-                "stage": "Young",
-                "size": "Large",
-                "speed": "40 ft",
-                "hp": 6 + (level * 6),
-                "ac": 16 + level,
-                "perception": 6 + level,
-                "fortitude": 7 + level,
-                "reflex": 6 + level,
-                "will": 5 + level,
-                "attributes": {"STR": 4, "DEX": 2, "CON": 3, "INT": -4, "WIS": 1, "CHA": 0},
-                "skills": {"Acrobatics": 5 + level, "Athletics": 7 + level},
-                "traits": ["Animal", "Minion", "Mount"],
-                "senses": "Low-Light Vision, Scent (Imprecise) 30 ft",
-                "strikes": [
-                    {
-                        "name": "Jaws",
-                        "attack_bonus": 7 + level,
-                        "map_second": 2 + level,
-                        "map_third": -3 + level,
-                        "damage_dice": "1d8+4",
-                        "damage_type": "Piercing",
-                        "traits": ["Finesse"]
-                    }
-                ],
-                "support_benefit": "Your steed positions itself to block attacks or strikes out when you maneuver enemies.",
-                "advanced_maneuver": "Coordinated Charge"
-            }
-            partners.insert(0, PartnerCreatureData(**steed_dict)),
+            # Fallback calling resolve_companion with a standard riding horse config so Pydantic validation passes fully
+            fallback_steed = resolve_companion(
+                class_name="Ranger",
+                feats=chosen_feats,
+                archetype=None,
+                level=level,
+            )
+            if fallback_steed:
+                fallback_steed.name = "Faithful Steed"
+                fallback_steed.creature_type = "Animal Companion"
+                fallback_steed.support_benefit = "Your steed positions itself to block attacks or strikes out when you maneuver enemies."
+                partners.insert(0, fallback_steed)
     # --------------------------------------------------------------------------
 
     return partners
