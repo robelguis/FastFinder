@@ -373,7 +373,49 @@ def sync_feat_partners(
                 )
             )
             has_familiar = True
+      has_steed_feat = any("faithful steed" in getattr(f, "name", "").lower() for f in chosen_feats) or any("faithful steed" in f.get("name", "").lower() for f in chosen_feats if isinstance(f, dict))
+      is_champion_steed = (class_name.lower() == "champion" and level >= 1) or has_steed_feat
 
+      if (has_steed_feat or is_champion_steed) and not any("companion" in (p.creature_type or "").lower() or "mount" in (p.creature_type or "").lower() for p in partners if hasattr(p, "creature_type")):
+          from app.engine.models import PartnerCreatureData
+          steed_dict = {
+              "name": "Faithful Steed",
+              "creature_type": "Animal Companion",
+              "species": "Riding Horse / Prowler",
+              "stage": "Young",
+              "size": "Large",
+              "speed": "40 ft",
+              "hp": 6 + (level * 6),
+              "ac": 16 + level,
+              "perception": 6 + level,
+              "attributes": {"STR": 4, "DEX": 2, "CON": 3, "INT": -4, "WIS": 1, "CHA": 0},
+              "skills": {"Acrobatics": 5 + level, "Athletics": 7 + level},
+              "traits": ["Animal", "Minion", "Mount"],
+              "senses": "Low-Light Vision, Scent (Imprecise) 30 ft",
+              "strikes": [
+                  {
+                      "name": "Jaws",
+                      "attack_bonus": 7 + level,
+                      "map_second": (7 + level) - 5,
+                      "map_third": (7 + level) - 10,
+                      "damage_dice": "1d8+4",
+                      "damage_type": "Piercing",
+                      "traits": ["Finesse"]
+                  },
+                  {
+                      "name": "Hoof",
+                      "attack_bonus": 7 + level,
+                      "map_second": (7 + level) - 5,
+                      "map_third": (7 + level) - 10,
+                      "damage_dice": "1d6+4",
+                      "damage_type": "Bludgeoning",
+                      "traits": ["Agile"]
+                  }
+              ],
+              "support_benefit": "Your steed positions itself to block attacks or strikes out when you maneuver enemies.",
+              "advanced_maneuver": "Coordinated Charge"
+          }
+          partners.insert(0, PartnerCreatureData(**steed_dict))
     return partners
 
 
