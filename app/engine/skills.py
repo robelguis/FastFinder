@@ -125,6 +125,7 @@ def resolve_character_skills(
         "psychic": ["Occultism"],
         "bard": ["Occultism"],
         "inventor": ["Crafting"],
+        "alchemist": ["Crafting"],
         "thaumaturge": ["Arcana", "Nature", "Occultism", "Religion"],
     }
     class_req_skills = set(CLASS_MANDATORY_SKILLS.get(cls_name.lower(), []))
