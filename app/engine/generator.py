@@ -423,7 +423,7 @@ def sync_feat_partners(
                 "support_benefit": "Your steed positions itself to block attacks or strikes out when you maneuver enemies.",
                 "advanced_maneuver": "Coordinated Charge"
             }
-            partners.insert(0, PartnerCreatureData(**steed_dict))
+            partners.insert(0, PartnerCreatureData(**steed_dict)),
     # --------------------------------------------------------------------------
 
     return partners
