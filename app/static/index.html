@@ -919,6 +919,9 @@
       const ancestryText = data.heritage ? `${data.ancestry} (${data.heritage})` : (data.ancestry || "Human");
       document.getElementById('sheetAncestry').textContent = ancestryText;
 
+      const sheetBgEl = document.getElementById('sheetBackground');
+      if (sheetBgEl) sheetBgEl.textContent = data.background || "Farmhand";
+
       const classDisplay = data.subclass ? `${data.character_class} (${data.subclass.name})` : data.character_class;
       document.getElementById('sheetClass').textContent = classDisplay;
       
