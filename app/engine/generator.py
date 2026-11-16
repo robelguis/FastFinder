@@ -363,7 +363,7 @@ def sync_feat_partners(
                     master_fort=master_fort,
                     master_ref=master_ref,
                     master_will=master_will,
-                    master_perception=master_perception,
+                    master_perception=3 + level,
                     class_name=class_name,
                     level=level,
                     aquatic_only=False,
@@ -1247,6 +1247,19 @@ class PF2eGenerator:
                 if "precision" not in st.damage_dice.lower() and "sneak" not in st.damage_dice.lower():
                     st.damage_dice = f"{st.damage_dice} (+{s_dice_val} precision vs off-guard)"
 
+        for partner in ([primary_companion] if primary_companion else []) + (extra_partners or []):
+            p_type = (getattr(partner, "creature_type", "") or "").lower()
+            if "pet" in p_type:
+                partner.hp = 5 * level
+                partner.perception = 3 + level
+
+        for partner in ([primary_companion] if primary_companion else []) + (extra_partners or []):
+            p_type = (getattr(partner, "creature_type", "") or "").lower()
+            p_stage = (getattr(partner, "stage", "") or "").lower()
+            if "pet" in p_type or "pet" in p_stage:
+                partner.hp = 5 * level
+                partner.perception = 3 + level
+
         return CharacterSheet(
             name=name,
             level=level,
@@ -1624,7 +1637,7 @@ class PF2eGenerator:
             if f.get("category") == "class"
             and f.get("level") == 1
             and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-            and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+            and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
         ]
         if lvl1_feats:
             f1 = pick_weighted_feat(lvl1_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 1) or random.choice(lvl1_feats)
@@ -1680,7 +1693,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") == 2
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
                 ]
                 if lvl2_feats:
                     f2 = pick_weighted_feat(lvl2_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 2) or random.choice(lvl2_feats)
@@ -1772,7 +1785,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") in [1, 2, 4]
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
                     and f["name"] not in [cf.name for cf in chosen_feats]
                 ]
                 if lvl4_feats:
@@ -1853,7 +1866,7 @@ class PF2eGenerator:
                 if f.get("category") == "class"
                 and f.get("level") in (4, 6)
                 and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
             ]
             if lvl6_class_feats:
                 cf6 = pick_weighted_feat(lvl6_class_feats, cls["name"], {f.name for f in chosen_feats}, {}, mods, 6) or random.choice(lvl6_class_feats)
@@ -2348,7 +2361,7 @@ class PF2eGenerator:
                         if f.get("category") == "class"
                         and f.get("level") == 2
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
                         and f["name"] not in existing_feat_names
                     ]
                     if lvl2_feats:
@@ -2429,7 +2442,7 @@ class PF2eGenerator:
                         if f.get("category") == "class"
                         and f.get("level") in [1, 2, 4]
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+                    and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
                         and f["name"] not in existing_feat_names
                     ]
                     if lvl4_feats:
@@ -2577,7 +2590,7 @@ class PF2eGenerator:
                         if f.get("category") == "class"
                         and f.get("level") in (8, 10)
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                        and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+                        and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
                         and f["name"] not in existing_feat_names
                     ]
                     if lvl10_class_feats:
@@ -2691,7 +2704,7 @@ class PF2eGenerator:
                     if f.get("category") == "class"
                     and f.get("level") in (4, 6)
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
-                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
+                and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer")
                     and f["name"] not in existing_feat_names
                 ]
                 if lvl6_class_feats:
@@ -2835,7 +2848,7 @@ class PF2eGenerator:
             ancestry_description=clean_pf2e_text(anc.get("description", "")) or current_char.get("ancestry_description", ""),
             heritage_name=current_char["heritage"],
             background_name=current_char["background"],
-            background_description=current_char.get("background_description") or clean_pf2e_text(bg.get("description", "")),
+            background_description=clean_pf2e_text(bg.get("description", "")) or current_char.get("background_description", ""),
             cls=cls,
             subclass_data=None,
             subclass_obj=subclass_obj,

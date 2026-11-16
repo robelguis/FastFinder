@@ -121,9 +121,10 @@ def resolve_familiar(
         stage_label = "Patron Conduit" if class_name.lower() == "witch" else ("Marine Bond" if aquatic_only else "Mystical Bond")
         sub_label = f"{cfg['species']} Familiar"
 
+    eff_perception = (3 + level) if is_pet else master_perception
     return PartnerCreatureData(
         name=f"{name} ({cfg['species']})",
-        creature_type="Familiar",
+        creature_type="Pet" if is_pet else "Familiar",
         sub_type=sub_label,
         stage=stage_label,
         size="Tiny",
@@ -133,7 +134,7 @@ def resolve_familiar(
         fortitude=master_fort,
         reflex=master_ref,
         will=master_will,
-        perception=master_perception,
+        perception=eff_perception,
         strikes=[],
         primary_ability=primary_text,
         secondary_ability=secondary_text,

@@ -524,7 +524,13 @@ def resolve_equipment(
 
     shield_bonus = 0
     armor_pot = tiers["armor_potency"]
-    if cls_key in ["champion", "fighter", "cleric", "guardian"]:
+    is_cloistered = cls_key == "cleric" and "cloistered" in (subclass_name or "").lower()
+    if is_cloistered:
+        armor_name = format_runed_armor_name("Explorer's Clothing", lvl)
+        armor_item = Item(name=armor_name, bulk="L", cost_sp=1)
+        calculated_ac = 10 + 0 + min(dex_mod, 5) + (2 + lvl) + armor_pot
+        shield_item = None
+    elif cls_key in ["champion", "fighter", "cleric", "guardian"]:
         armor_name = format_runed_armor_name("Breastplate", lvl)
         armor_item = Item(name=armor_name, bulk="2", cost_sp=80)
         calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + armor_pot

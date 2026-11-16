@@ -117,7 +117,20 @@ def resolve_character_skills(
                 existing_map[sk.name] = rank_val
 
     # 3. Determine baseline trained skills
-    trained_skills: Set[str] = set()
+    CLASS_MANDATORY_SKILLS = {
+        "cleric": ["Religion"],
+        "druid": ["Nature"],
+        "wizard": ["Arcana"],
+        "witch": ["Occultism"],
+        "psychic": ["Occultism"],
+    }
+    class_req_skills = set(CLASS_MANDATORY_SKILLS.get(cls_name.lower(), []))
+    feat_names_lower = {
+        (f.name if hasattr(f, "name") else (f.get("name") if isinstance(f, dict) else "")).lower()
+        for f in all_feats
+    }
+
+    trained_skills: Set[str] = set(class_req_skills)
     if existing_map:
         for name, rank_val in existing_map.items():
             if name in ALL_PF2E_SKILLS and rank_val >= 2:
@@ -147,7 +160,34 @@ def resolve_character_skills(
         available_pool = [s for s in ALL_PF2E_SKILLS if s not in mandatory]
         random.shuffle(available_pool)
         needed = max(0, total_picks - len(mandatory))
+        mandatory = mandatory.union(class_req_skills)
+        available_pool = [s for s in ALL_PF2E_SKILLS if s not in mandatory]
+        random.shuffle(available_pool)
+        needed = max(0, total_picks - len(mandatory))
         trained_skills = mandatory.union(set(available_pool[:needed]))
+
+    # Apply feat-granted skill trainings (Harrower Dedication, Surki Lore)
+    if any("harrower dedication" in fn for fn in feat_names_lower):
+        if "Occultism" not in trained_skills:
+            trained_skills.add("Occultism")
+        else:
+            untrained = [s for s in ALL_PF2E_SKILLS if s not in trained_skills]
+            if untrained:
+                trained_skills.add(untrained[0])
+
+    if any("surki lore" in fn for fn in feat_names_lower):
+        trained_skills.add("Survival")
+        trad_skill = "Religion" if cls_name.lower() in ("cleric", "oracle", "champion") else (
+            "Nature" if cls_name.lower() in ("druid", "ranger") else (
+                "Occultism" if cls_name.lower() in ("bard", "psychic", "witch") else "Arcana"
+            )
+        )
+        if trad_skill not in trained_skills:
+            trained_skills.add(trad_skill)
+        else:
+            untrained = [s for s in ALL_PF2E_SKILLS if s not in trained_skills]
+            if untrained:
+                trained_skills.add(untrained[0])
 
     # 4. Calculate skill ranks and apply increases
     num_increases = get_skill_increases_count(cls_name, target_lvl)
@@ -244,6 +284,29 @@ def resolve_character_skills(
             attribute="INT"
         )
     )
+
+    # 6b. Add Archetype / Ancestry Feat-Granted Lore (Harrower Dedication, Surki Lore)
+    if any("harrower dedication" in fn for fn in feat_names_lower):
+        if not any(s.name.lower() == "fortune-telling lore" for s in result_skills):
+            ft_rank = existing_map.get("Fortune-Telling Lore", 2)
+            result_skills.append(SkillEntry(
+                name="Fortune-Telling Lore",
+                rank=ft_rank,
+                rank_letter=RANK_LETTER_MAP.get(ft_rank, "T"),
+                modifier=(ft_rank + target_lvl) + norm_mods.get("int", 0),
+                attribute="INT",
+            ))
+
+    if any("surki lore" in fn for fn in feat_names_lower):
+        if not any(s.name.lower() == "surki lore" for s in result_skills):
+            sl_rank = 8 if target_lvl >= 15 else (6 if target_lvl >= 7 else (4 if target_lvl >= 3 else 2))
+            result_skills.append(SkillEntry(
+                name="Surki Lore",
+                rank=sl_rank,
+                rank_letter=RANK_LETTER_MAP.get(sl_rank, "T"),
+                modifier=(sl_rank + target_lvl) + norm_mods.get("int", 0),
+                attribute="INT",
+            ))
 
     # 7. Add Feat-Granted Lore (e.g. Additional Lore)
     for f in all_feats:
