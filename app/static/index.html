@@ -461,6 +461,12 @@
           <select id="ancestrySelect"><option value="">Any Ancestry</option></select>
         </div>
         <div class="field">
+          <label for="heritageSelect">Heritage</label>
+          <select id="heritageSelect" class="form-control">
+          <option value="">-- Random / Default Heritage --</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="classSelect">Class</label>
           <select id="classSelect"><option value="">Any Class</option></select>
         </div>
@@ -730,7 +736,80 @@
 
   <script>
     let currentCharacterData = null;
+    // Complete mapping of all official compendium ancestries to their official heritages
+const ancestryHeritagesMap = {
+    "human": ["Versatile Human", "Skilled Human", "Half-Elf (Aiuvarin)", "Half-Orc (Dromaar)", "Wintertouched Human"],
+    "dwarf": ["Strong-Blooded Dwarf", "Rock Dwarf", "Forge Dwarf", "Death Warden Dwarf"],
+    "elf": ["Ancient Elf", "Cavern Elf", "Woodland Elf", "Whisper Elf"],
+    "goblin": ["Unbreakable Goblin", "Razortooth Goblin", "Charhide Goblin", "Snow Goblin"],
+    "halfling": ["Gutsy Halfling", "Nomadic Halfling", "Wildwood Halfling"],
+    "gnome": ["Fey-Touched Gnome", "Sensate Gnome", "Umbral Gnome"],
+    "orc": ["Badlands Orc", "Hold-Scarred Orc", "Rainfall Orc"],
+    "catfolk": ["Nine-Lives Catfolk", "Jungle Catfolk", "Hunting Catfolk", "Winter Catfolk", "Flexible Catfolk"],
+    "athamaru": ["Benthic Athamaru", "Kaleidoscopic Athamaru", "Hopeful Athamaru", "Quilled Athamaru", "Coral Athamaru"],
+    "azarketi": ["Muckdweller Azarketi", "Mistbreath Azarketi", "Seasage Azarketi", "Spindrift Azarketi", "Deepwater Azarketi"],
+    "anadi": ["Spell-Reft Anadi", "Climbing Anadi"],
+    "android": ["Constellation Android", "Artisan Android"],
+    "automaton": ["Aethelman", "Sharpshooter Automaton", "Bound Soul Automaton"],
+    "bugbear": ["Tangle-Tooth Bugbear", "Vicious Bugbear"],
+    "centaur": ["Plain-Runner Centaur", "Woodland Centaur"],
+    "conrasu": ["Rite of Passage", "Rite of Light", "Rite of Invocation", "Rite of Knowing"],
+    "dragonet": ["Chromatic Dragonet", "Metallic Dragonet"],
+    "fetchling": ["Gloom-Displaced Fetchling", "Resonant Fetchling"],
+    "fleshwarp": ["Alchemically Altered Fleshwarp", "Monstrous Fleshwarp"],
+    "ghoran": ["Seed-Bearer Ghoran", "Bramble Ghoran"],
+    "goloma": ["Many-Eyed Goloma", "Skittering Goloma"],
+    "hobgoblin": ["Rik Tark Hobgoblin", "Shatter-Proof Hobgoblin"],
+    "jotunborn": ["Titan-Scarred Jotunborn", "Storm-Born Jotunborn"],
+    "kashrishi": ["Crystalline-Horn Kashrishi", "Durable Kashrishi"],
+    "kholo": ["Scavenger Kholo", "Pack-Tactician Kholo"],
+    "kitsune": ["Celestial Envoy Kitsune", "Winter Kitsune"],
+    "kobold": ["Cavernborn Kobold", "Dragonscaled Kobold", "Tunneler Kobold"],
+    "leshy": ["Leaf Leshy", "Gourd Leshy", "Vine Leshy"],
+    "lizardfolk": ["Cliffscale Lizardfolk", "Ridgeback Lizardfolk", "Wading Lizardfolk"],
+    "merfolk": ["Abyssal Merfolk", "Reef Merfolk"],
+    "minotaur": ["Labyrinth Minotaur", "Gore-Horn Minotaur"],
+    "nagaji": ["Cobra-Crested Nagaji", "Constrictor Nagaji"],
+    "poppet": ["Broom Poppet", "Conscious Poppet", "Ragamuffin Poppet", "Stitch-Fleshed Poppet"],
+    "ratfolk": ["Desert Ysoki", "Longsnout Ysoki", "Tunnel Rat Ysoki"],
+    "samsaran": ["Life-Cycle Samsaran", "Ascetic Samsaran"],
+    "sarangay": ["Moon-Crested Sarangay", "Forest Guardian Sarangay"],
+    "shisk": ["Bone-Feathered Shisk", "Tunnel-Dweller Shisk"],
+    "shoony": ["Seaside Shoony", "Stout Shoony"],
+    "skeleton": ["Acolyte Skeleton", "Brutal Skeleton"],
+    "sprite": ["Luminous Sprite", "Grig Sprite"],
+    "strix": ["Nocturnal Strix", "Wingclipped Strix"],
+    "surki": ["Breaker Surki", "Elytron Surki", "Hardshell Surki", "Lantern Surki"],
+    "tanuki": ["Illusionist Tanuki", "Brewmaster Tanuki"],
+    "tengu": ["Jalmeri Tengu", "Taloned Tengu"],
+    "tripkee": ["Marsh Tripkee", "Dendritic Tripkee"],
+    "vanara": ["Canopy Vanara", "Scholar Vanara"],
+    "vishkanya": ["Venom-Blood Vishkanya", "Graceful Vishkanya"],
+    "wayang": ["Lightweaver Wayang", "Midnight Wayang"],
+    "yaksha": ["Primal Vow Yaksha", "Caretaker Yaksha"],
+    "yaoguai": ["Awakened Plant Yaoguai", "Transformed Object Yaoguai"]
+};
 
+function updateHeritageDropdown() {
+    const ancestrySelect = document.getElementById('ancestrySelect');
+    const heritageSelect = document.getElementById('heritageSelect');
+    if (!ancestrySelect || !heritageSelect) return;
+
+    const ancestryVal = ancestrySelect.value.toLowerCase().trim();
+    
+    // Reset dropdown options to default
+    heritageSelect.innerHTML = '<option value="">-- Random / Default Heritage --</option>';
+    
+    // Populate matching official heritages if available
+    if (ancestryHeritagesMap[ancestryVal]) {
+        ancestryHeritagesMap[ancestryVal].forEach(h => {
+            const opt = document.createElement('option');
+            opt.value = h;
+            opt.textContent = h;
+            heritageSelect.appendChild(opt);
+        });
+    }
+}
     async function loadOptions() {
       try {
         const res = await fetch('/api/options');
@@ -745,6 +824,7 @@
             opt.textContent = a;
             ancSelect.appendChild(opt);
           });
+        ancSelect.addEventListener('change', updateHeritageDropdown);
         }
 
         window.cachedSubclasses = data.subclasses || {};
@@ -1262,6 +1342,7 @@
     async function generate() {
       const nameInput = document.getElementById('charName').value.trim();
       const anc = document.getElementById('ancestrySelect').value;
+      const heritageVal = document.getElementById('heritageSelect').value;
       const cls = document.getElementById('classSelect').value;
       const sub = document.getElementById("subclassSelect") ? document.getElementById("subclassSelect").value : "";
       const bg = document.getElementById("backgroundSelect") ? document.getElementById("backgroundSelect").value : "";
@@ -1522,6 +1603,7 @@
     function resetEverything() {
       const selects = [
         "ancestrySelect",
+        "heritageSelect",
         "classSelect",
         "subclassSelect",
         "backgroundSelect",
