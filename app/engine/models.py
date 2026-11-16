@@ -34,9 +34,9 @@ class SkillEntry(BaseModel):
 
 class Strike(BaseModel):
     name: str
-    attack_bonus: int
-    map_second: int
-    map_third: int
+    attack_bonus: str
+    map_second: str
+    map_third: str
     damage_dice: str
     damage_type: str
     languages: List[str] = ["Common"]
