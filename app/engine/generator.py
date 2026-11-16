@@ -88,7 +88,8 @@ from app.engine.skills import resolve_character_skills
 from app.engine.feat_prereqs import check_feat_prerequisites, calculate_feat_weight, extract_gate_elements, is_kineticist_feat_allowed
 from app.engine.spells import resolve_spellcasting
 from app.engine.focus import resolve_focus_spells
-from app.engine.subclasses import resolve_heritage, resolve_subclass, BARBARIAN_ANIMAL_CHOICES, ANCESTRY_HERITAGES
+from app.engine.heritages import resolve_heritage, ANCESTRY_HERITAGES
+from app.engine.subclasses import resolve_subclass, BARBARIAN_ANIMAL_CHOICES
 from app.engine.archetypes import pick_archetype, ARCHETYPES_CATALOG, resolve_dynamic_archetype, OSTILLI_GRAFT_ITEM
 from app.engine.companions import resolve_companion
 from app.engine.eidolons import resolve_eidolon
