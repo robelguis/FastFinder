@@ -496,6 +496,7 @@
               <input type="text" id="concept-input" placeholder="Enter character concept..." style="flex: 1; padding: 10px; border-radius: 4px; border: 1px solid #4a4a75; background: #12121c; color: white;" />
               <button id="generate-concept-btn" style="padding: 10px 20px; background: #ff7f00; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold;">Generate Sheet</button>
           </div>
+          <div id="concept-resolution-banner" style="display: none; margin-top: 10px; padding: 10px 12px; border-radius: 6px; background: #141829; border: 1px solid #4f6bed; color: #dbe4ff; font-size: 0.85rem;"></div>
       </div>
       <div class="controls-row-bottom">
         <div class="field arch-field">
@@ -1510,7 +1511,15 @@ function updateHeritageDropdown() {
 
             // Automatically render the parsed sheet onto your UI
             renderSheet(sheetData);
-            alert("Character sheet generated successfully from concept!");
+            const banner = document.getElementById('concept-resolution-banner');
+            if (banner && sheetData.concept_resolution) {
+              const cr = sheetData.concept_resolution;
+              const drivers = (cr.level_drivers || [])
+                .map(d => `<span style="display:inline-block; background:#232b47; border:1px solid #4a5a94; padding:2px 8px; border-radius:12px; margin:2px 4px 2px 0;">${d.reason} <strong>(L${d.min_level})</strong></span>`)
+                .join('');
+              banner.innerHTML = `<div style="margin-bottom:4px;"><strong style="color:#ff9f43;">Solved Minimum Legal Build: Level ${cr.minimum_level}</strong> &mdash; ${sheetData.ancestry} ${sheetData.character_class}${sheetData.archetype && sheetData.archetype !== 'None' ? ' (' + sheetData.archetype + ')' : ''}</div><div>${drivers}</div>`;
+              banner.style.display = 'block';
+            }
 
           } catch (err) {
             console.error("Concept generation error:", err);
