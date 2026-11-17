@@ -2257,7 +2257,7 @@ class PF2eGenerator:
             elif lvl_to < lvl_from:
                 crossed = sorted([m for m in milestones if lvl_to < m <= lvl_from], reverse=True)
                 val = attr_val
-                floor = 4 if (is_top_attr or attr_key == key_attr) else 0
+                floor = 4 if (is_top_attr or attr == key_attr) else 0
                 floor = 4 if is_top_attr else 0
                 floor = 4 if is_top_attr else 0
                 for m in crossed:
