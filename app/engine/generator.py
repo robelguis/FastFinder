@@ -1129,56 +1129,64 @@ class PF2eGenerator:
                 if not any(k in f.name.lower() for k in ("prototype companion", "construct companion", "advanced construct", "incredible construct", "paragon construct"))
             ]
 
-       # Partners: seed all qualifying class-innate and archetype partners independently
+        # Partners: seed all qualifying class-innate partners idempotently
         arch_str = (archetype_name or "").lower()
-        # Ensure collected_partners is initialized
-        if existing_partners is None:
-            collected_partners: List[PartnerCreatureData] = []
-            
-            # Independent class-innate partner checks...
-            if cls_name_lower == "summoner":
-                eidolon_partner = resolve_eidolon(master_hp=total_hp, level=level, eidolon_type=sub_name or "")
-                if eidolon_partner:
-                    collected_partners.append(eidolon_partner)
-                    
-            if cls_name_lower == "inventor" or "construct" in (sub_name or "").lower() or "inventor" in arch_str:
+        sub_combined = f"{sub_name or ''} {subclass_name or ''}".lower()
+        collected_partners: List[PartnerCreatureData] = list(existing_partners) if existing_partners else []
+
+        # 1. Summoner Eidolon
+        if cls_name_lower == "summoner" and not any("eidolon" in (p.creature_type or "").lower() for p in collected_partners):
+            eidolon_partner = resolve_eidolon(master_hp=total_hp, level=level, eidolon_type=sub_name or "")
+            if eidolon_partner:
+                collected_partners.append(eidolon_partner)
+
+        # 2. Inventor Construct Innovation (only Construct subclass, or explicit Inventor archetype/feat)
+        if (cls_name_lower == "inventor" and "construct" in sub_combined) or "inventor" in arch_str:
+            if not any("construct" in (p.creature_type or "").lower() for p in collected_partners):
                 collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
-                
-            is_animal_druid = cls_name_lower == "druid" and ("animal" in (sub_name or "").lower() or "animal" in (subclass_name or "").lower())
-            if is_animal_druid:
-                comp = resolve_companion(class_name=cls["name"], feats=[], archetype=None, level=level)
-                if comp:
-                    collected_partners.append(comp)
-                    
-            if cls_name_lower == "champion" and level >= 1:
-                comp = resolve_companion(class_name="Ranger", feats=[], archetype=None, level=level)
-                if comp:
-                    comp.name = "Faithful Steed"
-                    comp.creature_type = "Animal Companion"
-                    collected_partners.append(comp)
-                    
-            if cls_name_lower == "witch":
-                if level >= 4 and random.random() < 0.5:
-                    collected_partners.append(resolve_specific_familiar(
-                        master_ac=calculated_ac,
-                        master_fort=fort_prof.modifier,
-                        master_ref=ref_prof.modifier,
-                        master_will=will_prof.modifier,
-                        master_perception=perception_prof.modifier,
-                        level=level,
-                    ))
-                elif not is_animal_druid:
-                    collected_partners.append(resolve_familiar(
-                        master_ac=calculated_ac,
-                        master_fort=fort_prof.modifier,
-                        master_ref=ref_prof.modifier,
-                        master_will=will_prof.modifier,
-                        master_perception=perception_prof.modifier,
-                        class_name=cls["name"],
-                        level=level,
-                    ))
-        else:
-            collected_partners = list(existing_partners)
+
+        # 3. Druid Animal Order
+        is_animal_druid = cls_name_lower == "druid" and "animal" in sub_combined
+        if is_animal_druid and not any("animal" in (p.creature_type or "").lower() for p in collected_partners):
+            comp = resolve_companion(class_name=cls["name"], feats=chosen_feats or [], archetype=None, level=level)
+            if comp:
+                collected_partners.append(comp)
+
+        # 4. Ranger Animal Companion
+        if cls_name_lower == "ranger" and not any("animal" in (p.creature_type or "").lower() for p in collected_partners):
+            comp = resolve_companion(class_name=cls["name"], feats=chosen_feats or [], archetype=None, level=level)
+            if comp:
+                collected_partners.append(comp)
+
+        # 5. Champion Faithful Steed
+        if cls_name_lower == "champion" and level >= 1 and not any("animal" in (p.creature_type or "").lower() or "mount" in (p.creature_type or "").lower() for p in collected_partners):
+            comp = resolve_companion(class_name="Champion", feats=chosen_feats or [], archetype=None, level=level)
+            if comp:
+                comp.name = "Faithful Steed"
+                comp.creature_type = "Animal Companion"
+                collected_partners.append(comp)
+
+        # 6. Witch Familiar
+        if cls_name_lower == "witch" and not any("familiar" in (p.creature_type or "").lower() for p in collected_partners):
+            if level >= 4 and random.random() < 0.5:
+                collected_partners.append(resolve_specific_familiar(
+                    master_ac=calculated_ac,
+                    master_fort=fort_prof.modifier,
+                    master_ref=ref_prof.modifier,
+                    master_will=will_prof.modifier,
+                    master_perception=perception_prof.modifier,
+                    level=level,
+                ))
+            else:
+                collected_partners.append(resolve_familiar(
+                    master_ac=calculated_ac,
+                    master_fort=fort_prof.modifier,
+                    master_ref=ref_prof.modifier,
+                    master_will=will_prof.modifier,
+                    master_perception=perception_prof.modifier,
+                    class_name=cls["name"],
+                    level=level,
+                ))
 
         # Sync feat/archetype partners using collected_partners
         collected_partners = sync_feat_partners(
