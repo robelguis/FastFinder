@@ -288,14 +288,14 @@ def sync_feat_partners(
     existing_names = {(p.name or "").lower() for p in partners}
 
     # 1. Undead Companion / Undead Master
-    if ("undead master" in arch_str or "undead companion" in all_feat_str):
+    if "undead master" in arch_str or "undead companion" in all_feat_str:
         p = resolve_undead_companion(level=level)
         if p and p.name.lower() not in existing_names:
             partners.append(p)
             existing_names.add(p.name.lower())
 
     # 2. Construct Companion / Clockwork Reanimator / Inventor Dedication
-    if ("clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str or "inventor dedication" in arch_str):
+    if "clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str or "inventor dedication" in arch_str:
         if not any("construct" in (p.creature_type or "").lower() for p in partners):
             p = resolve_construct_companion(master_int_mod=2, level=level)
             if p and p.name.lower() not in existing_names:
@@ -340,7 +340,8 @@ def sync_feat_partners(
     )
     has_pet_feat = "pet" in feat_names
 
-    if cls_lower != "witch" and not any("familiar" in (p.creature_type or "").lower() for p in partners):
+    is_animal_druid = cls_lower == "druid" and "animal" in (cls_lower or "")
+    if cls_lower != "witch" and not is_animal_druid and not any("familiar" in (p.creature_type or "").lower() for p in partners):
         if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
             fam = resolve_familiar(
                 master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
@@ -362,7 +363,6 @@ def sync_feat_partners(
                 existing_names.add(fam.name.lower())
 
     return partners
-
 
 def scale_existing_companion(companion_data: dict, old_level: int, target_level: int, master_hp: int) -> dict:
     comp = dict(companion_data)
@@ -1109,19 +1109,15 @@ class PF2eGenerator:
 
        # Partners: seed all qualifying class-innate and archetype partners independently
         arch_str = (archetype_name or "").lower()
+        # Ensure collected_partners is initialized
         if existing_partners is None:
             collected_partners: List[PartnerCreatureData] = []
             
-            # 1. Class-innate checks (independent 'if' statements instead of elif)
+            # Independent class-innate partner checks...
             if cls_name_lower == "summoner":
                 eidolon_partner = resolve_eidolon(master_hp=total_hp, level=level, eidolon_type=sub_name or "")
                 if eidolon_partner:
                     collected_partners.append(eidolon_partner)
-                    e_type = getattr(eidolon_partner, "creature_type", "")
-                    if not e_type or e_type == "Eidolon":
-                        e_type = getattr(eidolon_partner, "stage", "Eidolon")
-                    subclass_obj = SubclassSummary(name=e_type, title="Eidolon", description=f"{e_type} tactical partner")
-                    sub_name = e_type
                     
             if cls_name_lower == "inventor" or "construct" in (sub_name or "").lower() or "inventor" in arch_str:
                 collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
@@ -1139,7 +1135,7 @@ class PF2eGenerator:
                     comp.creature_type = "Animal Companion"
                     collected_partners.append(comp)
                     
-            if cls_name_lower != "witch" and not is_animal_druid and not any("animal" in (p.creature_type or "").lower() for p in partners):
+            if cls_name_lower == "witch":
                 if level >= 4 and random.random() < 0.5:
                     collected_partners.append(resolve_specific_familiar(
                         master_ac=calculated_ac,
@@ -1149,7 +1145,7 @@ class PF2eGenerator:
                         master_perception=perception_prof.modifier,
                         level=level,
                     ))
-                else:
+                elif not is_animal_druid:
                     collected_partners.append(resolve_familiar(
                         master_ac=calculated_ac,
                         master_fort=fort_prof.modifier,
@@ -1162,7 +1158,7 @@ class PF2eGenerator:
         else:
             collected_partners = list(existing_partners)
 
-        # 2. Sync feat/archetype partners (Beastmaster, Inventor Dedication, Familiars, etc.)
+        # Sync feat/archetype partners using collected_partners
         collected_partners = sync_feat_partners(
             existing_partners=collected_partners,
             chosen_feats=chosen_feats,
