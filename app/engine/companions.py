@@ -302,7 +302,7 @@ def resolve_companion(
     if not should_qualify:
         return None
 
- matched_species_key = None
+    matched_species_key = None
     search_corpus = f"{concept_text or ''}".lower()  # Search only the concept text, not the entire feat string
     
     sorted_keys = sorted(COMPANION_SPECIES.keys(), key=len, reverse=True)
