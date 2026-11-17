@@ -295,16 +295,16 @@ def resolve_companion(
     has_companion_feat = any("animal companion" in fn or "beastmaster" in fn for fn in feat_names)
     is_beastmaster = archetype and "beastmaster" in archetype.lower()
     
-    # Auto-force qualification if the user's concept text explicitly asks for a companion/pet
-    has_concept_companion = bool(concept_text and any(w in concept_text.lower() for w in ("companion", "pet", "mouse", "moose", "wolf", "bear")))
+    has_concept_companion = bool(concept_text and any(w in concept_text.lower() for w in ("companion", "pet", "mouse", "moose", "wolf", "bear", "elephant", "goat")))
     should_qualify = force_qualify or has_companion_feat or is_beastmaster or has_concept_companion or cls_lower in ("ranger", "champion") or (cls_lower == "druid" and ("order: animal" in " ".join(feat_names) or has_concept_companion))
 
     if not should_qualify:
         return None
 
     matched_species_key = None
-    search_corpus = f"{concept_text or ''}".lower()  # Search only the concept text, not the entire feat string
+    search_corpus = f"{concept_text or ''} {' '.join(feat_names)}".lower()
     
+    # 1. Check pre-defined catalog first
     sorted_keys = sorted(COMPANION_SPECIES.keys(), key=len, reverse=True)
     for key in sorted_keys:
         if re.search(rf"\b{key}\b", search_corpus):
@@ -314,7 +314,7 @@ def resolve_companion(
     if matched_species_key and matched_species_key in COMPANION_SPECIES:
         cfg = COMPANION_SPECIES[matched_species_key]
     else:
-        # Intelligent Dynamic Fallback Generator for ANY unlisted animal
+        # 2. Dynamic Fallback for ANY unlisted animal typed into the prompt
         custom_animal_name = "Beast"
         if concept_text:
             words = concept_text.split()
@@ -329,18 +329,17 @@ def resolve_companion(
 
         name_lower = custom_animal_name.lower()
         
-        # Categorize dynamic stats based on animal type keywords
-        if any(b in name_lower for b in ("elephant", "mammoth", "rhino", "hippo", "whale", "dinosaur")):
-            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Large", "Large", "30 ft", 10, 4, 3, 1, 1
+        # Scale dynamic stats intelligently based on the animal category
+        if any(b in name_lower for b in ("elephant", "mammoth", "rhino", "hippo", "whale", "dinosaur", "moose")):
+            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Large", "Large", "40 ft", 10, 4, 3, 1, 1
             strike_name, dice, dtype, traits = "Gore / Slam", "1d10", "Bludgeoning", ["Reach 10 ft", "Unarmed"]
-        elif any(bird in name_lower for bird in ("toucan", "hawk", "raven", "eagle", "parrot", "falcon")):
+        elif any(bird in name_lower for bird in ("toucan", "hawk", "raven", "eagle", "parrot", "falcon", "owl")):
             young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "10 ft, fly 50 ft", 4, 1, 1, 3, 2
             strike_name, dice, dtype, traits = "Beak / Talons", "1d6", "Piercing", ["Finesse", "Agile", "Unarmed"]
-        elif any(farm in name_lower for farm in ("goat", "sheep", "ram", "alpaca", "llama")):
+        elif any(farm in name_lower for farm in ("goat", "sheep", "ram", "alpaca", "llama", "deer")):
             young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "35 ft", 6, 2, 2, 2, 1
             strike_name, dice, dtype, traits = "Horns / Hooves", "1d8", "Bludgeoning", ["Trip", "Unarmed"]
         else:
-            # General default beast
             young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "30 ft", 6, 2, 2, 2, 1
             strike_name, dice, dtype, traits = "Natural Attack", "1d6", "Piercing", ["Unarmed"]
 
