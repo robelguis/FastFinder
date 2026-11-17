@@ -2225,7 +2225,10 @@ class PF2eGenerator:
             val = 0
             for a in aliases:
                 if a in raw_attrs:
-                    val = raw_attrs[a]
+                    try:
+                        val = int(str(raw_attrs[a]).replace("+", "").strip())
+                    except (ValueError, TypeError):
+                        val = 0
                     break
             mods[short_name] = val
 
