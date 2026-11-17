@@ -278,6 +278,7 @@ def sync_feat_partners(
     master_ref: int,
     master_will: int,
     master_perception: int,
+    master_hp: int = 20,
 ) -> list:
     partners = list(existing_partners)
     feat_names = [f.name.lower() for f in chosen_feats]
@@ -286,6 +287,14 @@ def sync_feat_partners(
     cls_lower = class_name.lower()
 
     existing_names = {(p.name or "").lower() for p in partners}
+
+    # 0. Summoner Dedication Eidolon
+    if level >= 2 and "summoner" in arch_str and cls_lower != "summoner":
+        if not any("eidolon" in (p.creature_type or "").lower() for p in partners):
+            eid = resolve_eidolon(master_hp=master_hp, level=level, eidolon_type="")
+            if eid and (eid.name or "").lower() not in existing_names:
+                partners.append(eid)
+                existing_names.add((eid.name or "").lower())
 
     # 1. Undead Companion / Undead Master / Necromancer
     if "undead master" in arch_str or "necromancer" in arch_str or "undead companion" in all_feat_str:
@@ -1200,6 +1209,7 @@ class PF2eGenerator:
             master_ref=ref_prof.modifier,
             master_will=will_prof.modifier,
             master_perception=perception_prof.modifier,
+            master_hp=total_hp,
         )
 
         primary_companion = collected_partners[0] if collected_partners else None
