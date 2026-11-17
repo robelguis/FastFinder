@@ -1107,31 +1107,37 @@ class PF2eGenerator:
                 if not any(k in f.name.lower() for k in ("prototype companion", "construct companion", "advanced construct", "incredible construct", "paragon construct"))
             ]
 
-       # Partners: seed class-innate partners on fresh generation, or preserve existing on level-up
+       # Partners: seed all qualifying class-innate and archetype partners independently
         if existing_partners is None:
             collected_partners: List[PartnerCreatureData] = []
+            
+            # 1. Class-innate checks (independent 'if' statements instead of elif)
             if cls_name_lower == "summoner":
                 eidolon_partner = resolve_eidolon(master_hp=total_hp, level=level, eidolon_type=sub_name or "")
-                collected_partners.append(eidolon_partner)
                 if eidolon_partner:
+                    collected_partners.append(eidolon_partner)
                     e_type = getattr(eidolon_partner, "creature_type", "")
                     if not e_type or e_type == "Eidolon":
                         e_type = getattr(eidolon_partner, "stage", "Eidolon")
                     subclass_obj = SubclassSummary(name=e_type, title="Eidolon", description=f"{e_type} tactical partner")
                     sub_name = e_type
-            elif cls_name_lower == "inventor" and "construct" in (sub_name or "").lower():
+                    
+            if cls_name_lower == "inventor" or "construct" in (sub_name or "").lower() or "inventor" in arch_str:
                 collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
-            elif cls_name_lower == "druid" and "animal order" in (sub_name or "").lower():
+                
+            if (cls_name_lower == "druid" and "animal order" in (sub_name or "").lower()) or any("animal order" in f.lower() for f in chosen_feat_names):
                 comp = resolve_companion(class_name=cls["name"], feats=[], archetype=None, level=level)
                 if comp:
                     collected_partners.append(comp)
-            elif cls_name_lower == "champion" and level >= 1:
+                    
+            if cls_name_lower == "champion" and level >= 1:
                 comp = resolve_companion(class_name="Ranger", feats=[], archetype=None, level=level)
                 if comp:
                     comp.name = "Faithful Steed"
                     comp.creature_type = "Animal Companion"
                     collected_partners.append(comp)
-            elif cls_name_lower == "witch":
+                    
+            if cls_name_lower == "witch":
                 if level >= 4 and random.random() < 0.5:
                     collected_partners.append(resolve_specific_familiar(
                         master_ac=calculated_ac,
@@ -1154,10 +1160,11 @@ class PF2eGenerator:
         else:
             collected_partners = list(existing_partners)
 
+        # 2. Sync feat/archetype partners (Beastmaster, Inventor Dedication, Familiars, etc.)
         collected_partners = sync_feat_partners(
             existing_partners=collected_partners,
-            chosen_feats=locals().get("chosen_feats"),
-            archetype_name=archetype_name if level >= 2 else None,
+            chosen_feats=chosen_feats,
+            archetype_name=archetype_name,
             class_name=cls["name"],
             level=level,
             master_ac=calculated_ac,
