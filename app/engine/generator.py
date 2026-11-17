@@ -2174,6 +2174,11 @@ class PF2eGenerator:
         else:
             existing_weps = None
 
+        saved_strikes = [
+            dict(s) if isinstance(s, dict) else s.model_dump()
+            for s in (existing_weps or [])
+        ]
+
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -2187,7 +2192,7 @@ class PF2eGenerator:
             feats=locals().get("chosen_feats"))
 
         # Preserve custom/concept weapons & shields that resolve_equipment may drop for non-martial classes
-        if existing_weps:
+        if saved_strikes:
             existing_base_names = {
                 re.sub(r"^\+\d+\s+(?:(?:Greater|Major)\s+)?(?:Striking\s+)?", "", (s.name or "").strip(), flags=re.I).lower()
                 for s in equipment_loadout.strikes
@@ -2198,7 +2203,7 @@ class PF2eGenerator:
             prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
 
             custom_preserved = []
-            for ps in existing_weps:
+            for ps in saved_strikes:
                 ps_dict = ps if isinstance(ps, dict) else ps.model_dump()
                 raw_name = (ps_dict.get("name") or "").strip()
                 base_name = re.sub(r"^\+\d+\s+(?:(?:Greater|Major)\s+)?(?:Striking\s+)?", "", raw_name, flags=re.I)
