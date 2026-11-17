@@ -106,6 +106,14 @@ def get_sneak_attack_dice(level: int, is_archetype: bool = False) -> str:
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 ATTRIBUTES = ["str", "dex", "con", "int", "wis", "cha"]
+ATTR_NAME_TO_SHORT = {
+    "str": "str", "strength": "str",
+    "dex": "dex", "dexterity": "dex",
+    "con": "con", "constitution": "con",
+    "int": "int", "intelligence": "int",
+    "wis": "wis", "wisdom": "wis",
+    "cha": "cha", "charisma": "cha",
+}
 
 RANK_MAP = {
     1: (2, "T"),
@@ -1447,7 +1455,7 @@ class PF2eGenerator:
 
         mods = {attr: 0 for attr in ATTRIBUTES}
 
-        key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
+        key_options = [ATTR_NAME_TO_SHORT[k.lower()] for k in cls.get("key_attributes", []) if k.lower() in ATTR_NAME_TO_SHORT] or (["int", "cha"] if cls.get("name", "").lower() == "psychic" else [])
         key_attr = random.choice(key_options) if key_options else "str"
 
         applied_anc_boosts: Set[str] = set()
@@ -2218,7 +2226,7 @@ class PF2eGenerator:
                     break
             mods[short_name] = val
 
-        key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
+        key_options = [ATTR_NAME_TO_SHORT[k.lower()] for k in cls.get("key_attributes", []) if k.lower() in ATTR_NAME_TO_SHORT] or (["int", "cha"] if cls.get("name", "").lower() == "psychic" else [])
         key_attr = key_options[0] if key_options else "str"
 
         # PF2e Remaster milestone attribute boost progression (accounts for partial boosts at +4 and +5)
