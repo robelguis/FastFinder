@@ -418,6 +418,46 @@ USER CONCEPT: "{concept_text}"
                 subclass_name=spec.subclass,
             )
 
+        # Honor explicit weapon/shield mentions in concept text
+        t_low = spec.raw_text.lower()
+        if "shield" in t_low and "shield" not in (sheet.equipment.armor.shield or "").lower():
+            sheet.equipment.armor.shield = "Steel Shield"
+            sheet.defenses.ac_notes = "+2 Shield"
+
+        weapon_presets = [
+            ("greatsword", "Greatsword", "1d12", "Slashing", ["Versatile P"]),
+            ("bastard sword", "Bastard Sword", "1d8", "Slashing", ["Two-Hand d12"]),
+            ("shortsword", "Shortsword", "1d6", "Piercing", ["Agile", "Finesse", "Versatile S"]),
+            ("longsword", "Longsword", "1d8", "Slashing", ["Versatile P"]),
+            ("sword", "Longsword", "1d8", "Slashing", ["Versatile P"]),
+            ("longbow", "Longbow", "1d8", "Piercing", ["Deadly d10", "Volley 30 ft"]),
+            ("shortbow", "Shortbow", "1d6", "Piercing", ["Deadly d10"]),
+            ("bow", "Shortbow", "1d6", "Piercing", ["Deadly d10"]),
+            ("greataxe", "Greataxe", "1d12", "Slashing", ["Sweep"]),
+            ("battleaxe", "Battleaxe", "1d8", "Slashing", ["Sweep"]),
+            ("axe", "Battleaxe", "1d8", "Slashing", ["Sweep"]),
+            ("spear", "Spear", "1d6", "Piercing", ["Thrown 20 ft"]),
+            ("staff", "Staff", "1d4", "Bludgeoning", ["Two-Hand d8"]),
+        ]
+        for kw, wname, wdice, wtype, wtraits in weapon_presets:
+            if re.search(r"\b" + re.escape(kw) + r"\b", t_low):
+                if not any(kw in (s.name or "").lower() for s in sheet.equipment.strikes):
+                    from app.engine.models import StrikeSummary
+                    best_mod = max(sheet.attributes.strength, sheet.attributes.dexterity) if any(t in ("Finesse", "Deadly d10") for t in wtraits) else sheet.attributes.strength
+                    atk = best_mod + sheet.level + 2
+                    dmg_mod = sheet.attributes.strength if "bow" not in kw else 0
+                    dmg_str = f"{wdice}+{dmg_mod}" if dmg_mod > 0 else (f"{wdice}{dmg_mod}" if dmg_mod < 0 else wdice)
+                    sheet.equipment.strikes.insert(0, StrikeSummary(
+                        name=wname,
+                        attack_bonus=f"+{atk}",
+                        map_second=f"+{atk - 5}",
+                        map_third=f"+{atk - 10}",
+                        damage_dice=dmg_str,
+                        damage_type=wtype,
+                        traits=wtraits,
+                    ))
+                break
+
         payload = sheet.model_dump()
         payload["concept_resolution"] = {
             "concept_text": spec.raw_text,
