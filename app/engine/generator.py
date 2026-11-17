@@ -1,3 +1,4 @@
+from app.engine.names import generate_ancestry_name
 
 ANCESTRY_BG_MAP = {
     "dwarf": ["dwarf", "dwarven"],
@@ -287,36 +288,35 @@ def sync_feat_partners(
 
     existing_names = {(p.name or "").lower() for p in partners}
 
-    # 1. Undead Companion / Undead Master / Necromancer Dedication
+    # 1. Undead Companion / Undead Master / Necromancer
     if "undead master" in arch_str or "necromancer" in arch_str or "undead companion" in all_feat_str:
         if not any("undead" in (p.creature_type or "").lower() for p in partners):
             p = resolve_undead_companion(level=level)
-            if p and p.name.lower() not in existing_names:
+            if p and (p.name or "").lower() not in existing_names:
                 partners.append(p)
-                existing_names.add(p.name.lower())
+                existing_names.add((p.name or "").lower())
 
     # 2. Construct Companion / Clockwork Reanimator / Inventor Dedication
-    if "clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str or "inventor dedication" in arch_str:
+    if "clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str or "inventor" in arch_str:
         if not any("construct" in (p.creature_type or "").lower() for p in partners):
             p = resolve_construct_companion(master_int_mod=2, level=level)
-            if p and p.name.lower() not in existing_names:
+            if p and (p.name or "").lower() not in existing_names:
                 partners.append(p)
-                existing_names.add(p.name.lower())
+                existing_names.add((p.name or "").lower())
 
     # 3. Plant Companion
     if "plant companion" in all_feat_str:
         if not any("plant" in (p.creature_type or "").lower() for p in partners):
             p = resolve_plant_companion(level=level)
-            if p and p.name.lower() not in existing_names:
+            if p and (p.name or "").lower() not in existing_names:
                 partners.append(p)
-                existing_names.add(p.name.lower())
+                existing_names.add((p.name or "").lower())
 
     # 4. Animal Companion / Mounts / Faithful Steed / Beastmaster / Cavalier
     animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal")
     steed_triggers = ("faithful steed", "knight's steed")
     animal_arch_triggers = ("beastmaster", "cavalier", "mammoth lord")
     is_kineticist = cls_lower == "kineticist"
-    
     has_steed_feat = any(st in all_feat_str for st in steed_triggers) or cls_lower == "champion"
 
     if not is_kineticist and (
@@ -336,22 +336,21 @@ def sync_feat_partners(
                 if has_steed_feat:
                     comp.name = "Faithful Steed"
                     comp.creature_type = "Animal Companion"
-                if comp.name.lower() not in existing_names:
+                if (comp.name or "").lower() not in existing_names:
                     partners.append(comp)
-                    existing_names.add(comp.name.lower())
+                    existing_names.add((comp.name or "").lower())
 
     # 5. Familiars & Pets (Including Kineticist Elemental Familiar)
     has_marine_ally = "marine ally" in feat_names
     is_leaf_leshy = ("leshy familiar" in all_feat_str) or (cls_lower == "druid" and "leaf" in all_feat_str)
     has_elemental_familiar = "elemental familiar" in all_feat_str
-    
+
     familiar_triggers = (
         "familiar", "marine ally", "leshy familiar", "elemental familiar",
         "shadow familiar", "spirit guide", "glyph familiar", "call wizardly tools",
     )
     has_pet_feat = "pet" in feat_names
-
-    is_animal_partner_class = cls_lower in ("ranger", "druid") and ("animal" in arch_str or "animal" in all_feat_str or cls_lower == "ranger")
+    is_animal_partner_class = cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names))
 
     if cls_lower != "witch" and not is_animal_partner_class and not any("familiar" in (p.creature_type or "").lower() for p in partners):
         if is_kineticist:
@@ -362,9 +361,9 @@ def sync_feat_partners(
                     class_name=class_name, level=level, aquatic_only=False,
                     is_pet=False, forced_species="elemental",
                 )
-                if fam and fam.name.lower() not in existing_names:
+                if fam and (fam.name or "").lower() not in existing_names:
                     partners.append(fam)
-                    existing_names.add(fam.name.lower())
+                    existing_names.add((fam.name or "").lower())
         else:
             if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
                 fam = resolve_familiar(
@@ -373,18 +372,18 @@ def sync_feat_partners(
                     class_name=class_name, level=level, aquatic_only=has_marine_ally,
                     is_pet=False, forced_species="leshy" if is_leaf_leshy else ("elemental" if has_elemental_familiar else None),
                 )
-                if fam and fam.name.lower() not in existing_names:
+                if fam and (fam.name or "").lower() not in existing_names:
                     partners.append(fam)
-                    existing_names.add(fam.name.lower())
+                    existing_names.add((fam.name or "").lower())
             elif has_pet_feat:
                 fam = resolve_familiar(
                     master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
                     master_will=master_will, master_perception=3 + level,
                     class_name=class_name, level=level, aquatic_only=False, is_pet=True,
                 )
-                if fam and fam.name.lower() not in existing_names:
+                if fam and (fam.name or "").lower() not in existing_names:
                     partners.append(fam)
-                    existing_names.add(fam.name.lower())
+                    existing_names.add((fam.name or "").lower())
 
     return partners
 
