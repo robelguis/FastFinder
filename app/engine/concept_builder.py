@@ -38,6 +38,19 @@ SKILL_NAMES = [
     "performance", "religion", "society", "stealth", "survival", "thievery",
 ]
 
+# --- Druid order detection (deterministic, does not depend on Gemini) ---
+DRUID_ORDERS = ("animal", "leaf", "wild", "storm", "untamed")
+
+# If subclasses.py expects "Animal Order" instead of "Animal", set this to " Order".
+DRUID_ORDER_SUFFIX = ""
+
+
+def detect_druid_order(text_lower: str) -> Optional[str]:
+    for o in DRUID_ORDERS:
+        if re.search(rf"\b{o}\s+order\b|\border\s+of\s+the\s+{o}\b|\b{o}\s+druid\b", text_lower):
+            return o.capitalize() + DRUID_ORDER_SUFFIX
+    return None
+
 
 @dataclass
 class LevelRequirement:
@@ -258,11 +271,12 @@ USER CONCEPT: "{concept_text}"
             spec.archetype = None
 
         # 4. Companion / Familiar / Eidolon detection
-        companion_keywords = (
-            "companion", "familiar", "eidolon", "mount", "steed",
-            "pet", "construct companion", "undead companion", "leshy",
-        )
-        if llm_data.get("wants_companion") or any(kw in text_lower for kw in companion_keywords):
+        # Word-boundary matching so "pet" doesn't hit "carpet" and "mount" doesn't hit "mountain".
+        # "leshy" is intentionally NOT a companion keyword (it is an ancestry).
+        companion_keywords = ("companion", "familiar", "eidolon", "mount", "steed", "pet")
+        if llm_data.get("wants_companion") or any(
+            re.search(rf"\b{kw}\b", text_lower) for kw in companion_keywords
+        ):
             spec.wants_companion = True
             spec.companion_kind = llm_data.get("companion_kind")
             if not spec.companion_kind:
@@ -293,6 +307,17 @@ USER CONCEPT: "{concept_text}"
                     spec.archetype = "Undead Master"
                 else:
                     spec.archetype = "Beastmaster"
+
+        # 4b. Druid order: explicit text beats Gemini, and Gemini beats random
+        if (spec.character_class or "").lower() == "druid":
+            explicit_order = detect_druid_order(text_lower)
+            if explicit_order:
+                spec.subclass = explicit_order
+            elif spec.subclass:
+                cleaned = re.sub(r"\s*order\s*$", "", spec.subclass, flags=re.I).strip().title()
+                spec.subclass = cleaned + DRUID_ORDER_SUFFIX
+            elif re.search(r"\banimal companion\b", text_lower):
+                spec.subclass = "Animal" + DRUID_ORDER_SUFFIX
 
         # 5. Requested Feats & Spell Rank / Spell Name matching
         raw_req_feats = list(llm_data.get("requested_feats") or [])
@@ -390,6 +415,7 @@ USER CONCEPT: "{concept_text}"
         spec = self.extract_requirements(concept_text)
         min_level, reqs = self.compute_minimum_level(spec)
 
+        # NOTE: generator.generate() must accept `concept_text` and forward it to resolve_companion().
         sheet = self.generator.generate(
             ancestry_name=spec.ancestry,
             class_name=spec.character_class,
@@ -400,6 +426,7 @@ USER CONCEPT: "{concept_text}"
             use_dedication=bool(spec.archetype) and min_level >= 2,
             heritage_name=spec.heritage,
             subclass_name=spec.subclass,
+            concept_text=spec.raw_text,
         )
 
         # Verify companion requirement was satisfied; bump to Level 2 if needed
@@ -416,6 +443,7 @@ USER CONCEPT: "{concept_text}"
                 use_dedication=True,
                 heritage_name=spec.heritage,
                 subclass_name=spec.subclass,
+                concept_text=spec.raw_text,
             )
 
         # Honor explicit attribute priority hints ("strong", "agile", "tough", "smart", "wise", "charismatic")
