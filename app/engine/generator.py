@@ -335,7 +335,7 @@ def sync_feat_partners(
     is_kineticist = cls_lower == "kineticist"
     has_steed_feat = any(st in all_feat_str for st in steed_triggers) or cls_lower == "champion"
 
-    if not is_kineticist and (
+    if (not is_kineticist or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))) and (
         any(tr in all_feat_str for tr in animal_triggers)
         or any(st in all_feat_str for st in steed_triggers)
         or cls_lower == "ranger"
@@ -368,7 +368,7 @@ def sync_feat_partners(
     has_pet_feat = "pet" in feat_names
     is_animal_partner_class = cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names))
 
-    if cls_lower != "witch" and not is_animal_partner_class and not any("familiar" in (p.creature_type or "").lower() for p in partners):
+    if cls_lower != "witch" and (not is_animal_partner_class or (level >= 2 and "familiar master" in arch_str) or has_marine_ally or is_leaf_leshy) and not any("familiar" in (p.creature_type or "").lower() for p in partners):
         if is_kineticist and not (has_marine_ally or is_leaf_leshy or (level >= 2 and any(k in arch_str for k in ("familiar master", "beastmaster", "clockwork reanimator")))):
             if has_elemental_familiar:
                 fam = resolve_familiar(
