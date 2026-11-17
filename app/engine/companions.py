@@ -310,14 +310,18 @@ def resolve_companion(
     if matched_species_key:
         cfg = COMPANION_SPECIES[matched_species_key]
     else:
-        # Dynamic Fallback Generator for any unlisted animal (e.g. "ferret", "turtle", "hawk")
-        # Extract custom name from concept text if possible, otherwise default to a generic beast
+        # Dynamic Fallback Generator for any unlisted animal
         custom_animal_name = "Beast"
         if concept_text:
             words = concept_text.split()
             for i, w in enumerate(words):
                 if w.lower() in ("with", "companion", "pet", "familiar") and i + 1 < len(words):
-                    custom_animal_name = words[i+1].strip(".,!?:;")
+                    # Skip articles like 'a' or 'an' to catch the actual animal noun
+                    next_idx = i + 1
+                    while next_idx < len(words) and words[next_idx].lower() in ("a", "an", "the"):
+                        next_idx += 1
+                    if next_idx < len(words):
+                        custom_animal_name = words[next_idx].strip(".,!?:;")
                     break
 
         cfg = {
