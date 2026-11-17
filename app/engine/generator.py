@@ -1455,8 +1455,9 @@ class PF2eGenerator:
 
         def _bump_bonus_gen(val, delta):
             try:
-                num = int(str(val).replace("+", "").strip()) + int(delta)
-                return f"{num:+d}"
+                clean_val = str(val).replace("+", "").strip()
+                num = int(clean_val) + int(delta)
+                return str(num)
             except (ValueError, TypeError):
                 return val
 
@@ -2245,8 +2246,9 @@ class PF2eGenerator:
 
         def _bump_bonus(val, delta):
             try:
-                num = int(str(val).replace("+", "").strip()) + int(delta)
-                return f"{num:+d}"
+                clean_val = str(val).replace("+", "").strip()
+                num = int(clean_val) + int(delta)
+                return str(num)
             except (ValueError, TypeError):
                 return val
 
