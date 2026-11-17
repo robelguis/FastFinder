@@ -421,11 +421,8 @@ USER CONCEPT: "{concept_text}"
         # Honor explicit weapon/shield mentions in concept text
         t_low = spec.raw_text.lower()
         if "shield" in t_low:
-            from app.engine.models import Item
-            if hasattr(sheet.equipment, "shield") and not getattr(sheet.equipment, "shield", None):
-                sheet.equipment.shield = Item(name="Steel Shield", quantity=1, description="+2 AC when raised (Hardness 5, HP 20, BT 10)")
-            elif hasattr(sheet.equipment, "gear") and not any("shield" in (g.name or "").lower() for g in (sheet.equipment.gear or [])):
-                sheet.equipment.gear.append(Item(name="Steel Shield", quantity=1, description="+2 AC when raised (Hardness 5, HP 20, BT 10)"))
+            if hasattr(sheet.equipment, "gear") and not any("shield" in str(g).lower() for g in (sheet.equipment.gear or [])):
+                sheet.equipment.gear.append("Steel Shield (+2 AC when raised)")
             if hasattr(sheet.defenses, "ac_notes") and "shield" not in (getattr(sheet.defenses, "ac_notes", "") or "").lower():
                 sheet.defenses.ac_notes = "+2 Shield"
 
