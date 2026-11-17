@@ -418,8 +418,82 @@ USER CONCEPT: "{concept_text}"
                 subclass_name=spec.subclass,
             )
 
-        # Honor explicit weapon/shield mentions in concept text
+        # Honor explicit attribute priority hints ("strong", "agile", "tough", "smart", "wise", "charismatic")
         t_low = spec.raw_text.lower()
+        attr_hints = [
+            (["strong", "mighty", "muscular", "brawny", "heavy"], "strength"),
+            (["agile", "nimble", "quick", "swift", "acrobatic", "stealthy"], "dexterity"),
+            (["tough", "sturdy", "hardy", "resilient", "rugged"], "constitution"),
+            (["smart", "clever", "scholarly", "brilliant", "arcane"], "intelligence"),
+            (["wise", "perceptive", "insightful", "intuitive"], "wisdom"),
+            (["charismatic", "charming", "persuasive", "inspiring"], "charisma"),
+        ]
+        preferred_attr = None
+        for kws, attr_field in attr_hints:
+            if any(re.search(r"\b" + re.escape(k) + r"\b", t_low) for k in kws):
+                preferred_attr = attr_field
+                break
+
+        if preferred_attr:
+            attrs = sheet.attributes
+            all_attr_names = ["strength", "dexterity", "constitution", "intelligence", "wisdom", "charisma"]
+            cur_val = getattr(attrs, preferred_attr)
+            # Determine max legal cap at this level (+4 at L1-9, +5 at L10-19, +6 at L20)
+            max_cap = 4 if sheet.level < 10 else (5 if sheet.level < 20 else 6)
+            # If preferred_attr isn't the highest stat, non-key cap at L1 is +3 (+4 if key attr)
+            highest_other = max(getattr(attrs, a) for a in all_attr_names if a != preferred_attr)
+            target_val = min(max_cap, max(3, highest_other))
+            # If class key stat is already +4 and different from preferred_attr, non-key L1 cap is +3
+            if sheet.level < 5 and highest_other >= 4 and cur_val < 4:
+                target_val = 3
+
+            while getattr(attrs, preferred_attr) < target_val:
+                # Donate 1 boost from the highest non-key, non-preferred attribute (> 0)
+                donors = [
+                    a for a in all_attr_names
+                    if a != preferred_attr and getattr(attrs, a) >= 2
+                ]
+                if not donors:
+                    break
+                # Prefer donating from stats that aren't the sole +4 key stat
+                non_key_donors = [a for a in donors if getattr(attrs, a) < 4] or donors
+                donor = max(non_key_donors, key=lambda a: getattr(attrs, a))
+                old_d = getattr(attrs, donor)
+                setattr(attrs, donor, old_d - 1)
+                setattr(attrs, preferred_attr, getattr(attrs, preferred_attr) + 1)
+
+                # Update dependent skill & defense modifiers for the shifted point
+                attr_short = {"strength": "str", "dexterity": "dex", "constitution": "con", "intelligence": "int", "wisdom": "wis", "charisma": "cha"}
+                sk_map = {
+                    "athletics": "strength", "acrobatics": "dexterity", "stealth": "dexterity", "thievery": "dexterity",
+                    "arcana": "intelligence", "crafting": "intelligence", "occultism": "intelligence", "society": "intelligence",
+                    "medicine": "wisdom", "nature": "wisdom", "religion": "wisdom", "survival": "wisdom",
+                    "deception": "charisma", "diplomacy": "charisma", "intimidation": "charisma", "performance": "charisma",
+                }
+                for sk in (sheet.all_skills or []):
+                    mapped = sk_map.get((sk.name or "").lower())
+                    if mapped == preferred_attr:
+                        sk.modifier += 1
+                    elif mapped == donor:
+                        sk.modifier -= 1
+                if donor == "constitution":
+                    sheet.defenses.hp = max(1, sheet.defenses.hp - sheet.level)
+                    sheet.defenses.fortitude.modifier -= 1
+                elif preferred_attr == "constitution":
+                    sheet.defenses.hp += sheet.level
+                    sheet.defenses.fortitude.modifier += 1
+                if donor == "wisdom":
+                    sheet.defenses.will.modifier -= 1
+                    sheet.perception.modifier -= 1
+                elif preferred_attr == "wisdom":
+                    sheet.defenses.will.modifier += 1
+                    sheet.perception.modifier += 1
+                if donor == "dexterity":
+                    sheet.defenses.reflex.modifier -= 1
+                elif preferred_attr == "dexterity":
+                    sheet.defenses.reflex.modifier += 1
+
+        # Honor explicit weapon/shield mentions in concept text
         if "shield" in t_low:
             if hasattr(sheet.equipment, "gear") and not any("shield" in str(g).lower() for g in (sheet.equipment.gear or [])):
                 sheet.equipment.gear.append("Steel Shield (+2 AC when raised)")
