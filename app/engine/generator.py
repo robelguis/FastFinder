@@ -369,7 +369,7 @@ def sync_feat_partners(
     is_animal_partner_class = cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names))
 
     if cls_lower != "witch" and not is_animal_partner_class and not any("familiar" in (p.creature_type or "").lower() for p in partners):
-        if is_kineticist and not (has_marine_ally or is_leaf_leshy or (level >= 2 and "familiar master" in arch_str)):
+        if is_kineticist and not (has_marine_ally or is_leaf_leshy or (level >= 2 and any(k in arch_str for k in ("familiar master", "beastmaster", "clockwork reanimator")))):
             if has_elemental_familiar:
                 fam = resolve_familiar(
                     master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
@@ -1335,6 +1335,16 @@ class PF2eGenerator:
                 partner.hp = 5 * level
                 partner.perception = 3 + level
 
+        # Deduplicate feats while preserving order
+        _seen_f = set()
+        _deduped_f = []
+        for _f in (locals().get("chosen_feats") or []):
+            _fn = (_f.name or "").strip().lower()
+            if _fn and (_fn not in _seen_f or "additional lore" in _fn):
+                _seen_f.add(_fn)
+                _deduped_f.append(_f)
+        chosen_feats = _deduped_f
+
         return CharacterSheet(
             name=name,
             level=level,
@@ -2267,11 +2277,15 @@ class PF2eGenerator:
         for idx, attr in enumerate(boost_priority[:4]):
             mods[attr] = _milestone_gains(old_level, target_level, mods[attr], idx == 0)
 
-        # Enforce hard PF2e Remaster caps per level bracket
+        # Enforce hard PF2e Remaster caps per level bracket and minimum Level 1 baseline sum
         hard_cap = 6 if target_level >= 20 else (5 if target_level >= 10 else 4)
         for a in ATTRIBUTES:
             if mods[a] > hard_cap:
                 mods[a] = hard_cap
+        min_sum = 8 + (target_level // 5) * 2
+        for a in boost_priority:
+            if sum(mods.values()) < min_sum and mods[a] < hard_cap:
+                mods[a] += 1
 
         # 3. Defenses & Proficiencies
         fort_rank, ref_rank, will_rank, perception_rank = get_class_saving_throws(
