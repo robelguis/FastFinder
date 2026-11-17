@@ -1606,7 +1606,7 @@ class PF2eGenerator:
                 strike.attack_bonus += extra_prof
                 strike.map_second += extra_prof
                 strike.map_third += extra_prof
-        spec_dmg = get_weapon_spec_bonus(cls["name"], level)
+        spec_dmg = get_weapon_spec_bonus(cls["name"], target_level)
         if spec_dmg:
             for strike in equipment_loadout.strikes:
                 if f"+{spec_dmg}" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
