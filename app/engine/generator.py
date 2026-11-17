@@ -1447,40 +1447,39 @@ class PF2eGenerator:
 
         mods = {attr: 0 for attr in ATTRIBUTES}
 
+        key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
+        key_attr = random.choice(key_options) if key_options else "str"
+
         applied_anc_boosts: Set[str] = set()
         for boost_option in anc.get("boosts", []):
             valid_targets = [b.lower() for b in boost_option if b.lower() in ATTRIBUTES and b.lower() not in applied_anc_boosts]
             if not valid_targets:
                 valid_targets = [a for a in ATTRIBUTES if a not in applied_anc_boosts]
-            chosen_target = random.choice(valid_targets)
+            chosen_target = key_attr if key_attr in valid_targets else random.choice(valid_targets)
             mods[chosen_target] += 1
             applied_anc_boosts.add(chosen_target)
 
         for flaw_option in anc.get("flaws", []):
             for fl in flaw_option:
                 fl = fl.lower()
-                if fl in mods:
+                if fl in mods and fl != key_attr:
                     mods[fl] -= 1
 
         applied_bg_boosts: Set[str] = set()
         for boost_option in bg.get("boosts", []):
             valid_targets = [
-                b.lower() for b in boost_option 
-                if b.lower() in ATTRIBUTES 
-                and b.lower() not in applied_bg_boosts 
+                b.lower() for b in boost_option
+                if b.lower() in ATTRIBUTES
+                and b.lower() not in applied_bg_boosts
                 and mods[b.lower()] < 4
             ]
             if not valid_targets:
                 valid_targets = [a for a in ATTRIBUTES if a not in applied_bg_boosts and mods[a] < 4]
             if valid_targets:
-                chosen_target = random.choice(valid_targets)
+                chosen_target = key_attr if key_attr in valid_targets else random.choice(valid_targets)
                 mods[chosen_target] += 1
                 applied_bg_boosts.add(chosen_target)
 
-        key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES and mods[k.lower()] < 4]
-        if not key_options:
-            key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
-        key_attr = random.choice(key_options) if key_options else "str"
         if mods[key_attr] < 4:
             mods[key_attr] += 1
 
@@ -2240,13 +2239,14 @@ class PF2eGenerator:
             elif lvl_to < lvl_from:
                 crossed = sorted([m for m in milestones if lvl_to < m <= lvl_from], reverse=True)
                 val = attr_val
+                floor = 4 if is_top_attr else 0
                 for m in crossed:
                     if val == 6 and m == 20:
                         val = 5
                     elif val == 5 and m == 10:
                         val = 4
-                    elif val > 0 and not (val >= 4 and m in (5, 15)):
-                        val = max(0, val - 1)
+                    elif val > floor and not (val >= 4 and m in (5, 15)):
+                        val = max(floor, val - 1)
                 return val
             return attr_val
 
