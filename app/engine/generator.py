@@ -1131,7 +1131,7 @@ class PF2eGenerator:
 
         # Partners: seed all qualifying class-innate partners idempotently
         arch_str = (archetype_name or "").lower()
-        sub_combined = f"{sub_name or ''} {subclass_name or ''}".lower()
+        sub_combined = f"{sub_name or ''} {getattr(locals().get('subclass_obj'), 'name', '') or ''}".lower()
         collected_partners: List[PartnerCreatureData] = list(existing_partners) if existing_partners else []
 
         # 1. Summoner Eidolon
