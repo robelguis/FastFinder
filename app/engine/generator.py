@@ -2240,6 +2240,8 @@ class PF2eGenerator:
                 crossed = sorted([m for m in milestones if lvl_to < m <= lvl_from], reverse=True)
                 val = attr_val
                 floor = 4 if is_top_attr else 0
+                floor = 4 if is_top_attr else 0
+                floor = 4 if is_top_attr else 0
                 for m in crossed:
                     if val == 6 and m == 20:
                         val = 5
