@@ -524,9 +524,9 @@ USER CONCEPT: "{concept_text}"
                     dmg_str = f"{wdice}+{dmg_mod}" if dmg_mod > 0 else (f"{wdice}{dmg_mod}" if dmg_mod < 0 else wdice)
                     strike_data = {
                         "name": wname,
-                        "attack_bonus": f"+{atk}",
-                        "map_second": f"+{atk - 5}",
-                        "map_third": f"+{atk - 10}",
+                        "attack_bonus": str(atk),
+                        "map_second": str(atk - 5),
+                        "map_third": str(atk - 10),
                         "damage_dice": dmg_str,
                         "damage_type": wtype,
                         "traits": wtraits,
