@@ -116,7 +116,7 @@ def export_to_foundry_actor(sheet_or_dict: Union[CharacterSheet, Dict[str, Any]]
             "type": "spellcastingEntry",
             "system": {
                 "tradition": {"value": tradition},
-                "prepared": {"value": "spontaneous" if "spontaneous" in (sheet.spellcasting.casting_type or "").lower() else "prepared"},
+                "prepared": {"value": "spontaneous" if ("spontaneous" in str(getattr(sheet.spellcasting, "casting_type", "") or "").lower() or (sheet.character_class or "").lower() in {"bard", "oracle", "psychic", "sorcerer", "summoner"}) else "prepared"},
                 "spelldc": {
                     "value": sheet.spellcasting.spell_attack,
                     "dc": sheet.spellcasting.spell_dc,
