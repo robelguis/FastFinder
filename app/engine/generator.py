@@ -311,74 +311,80 @@ def sync_feat_partners(
                 partners.append(p)
                 existing_names.add(p.name.lower())
 
-    # 4. Animal Companion / Mounts (Exclude base Kineticist unless they have an explicit companion feat)
-    animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal", "faithful steed")
+    # 4. Animal Companion / Mounts / Faithful Steed / Beastmaster / Cavalier
+    animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal")
+    steed_triggers = ("faithful steed", "knight's steed")
     animal_arch_triggers = ("beastmaster", "cavalier", "mammoth lord")
     is_kineticist = cls_lower == "kineticist"
     
+    has_steed_feat = any(st in all_feat_str for st in steed_triggers) or cls_lower == "champion"
+
     if not is_kineticist and (
         any(tr in all_feat_str for tr in animal_triggers)
+        or any(st in all_feat_str for st in steed_triggers)
+        or cls_lower == "ranger"
         or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
     ):
         if not any("animal" in (p.creature_type or "").lower() or "mount" in (p.creature_type or "").lower() for p in partners):
             comp = resolve_companion(
-                class_name=class_name,
+                class_name="Champion" if has_steed_feat else class_name,
                 feats=chosen_feats,
                 archetype=archetype_name if (archetype_name and level >= 2) else None,
                 level=level,
             )
             if comp:
-                if any("faithful steed" in tr for tr in animal_triggers) or cls_lower == "champion":
+                if has_steed_feat:
                     comp.name = "Faithful Steed"
+                    comp.creature_type = "Animal Companion"
                 if comp.name.lower() not in existing_names:
                     partners.append(comp)
                     existing_names.add(comp.name.lower())
 
-    # 5. Familiars & Pets
+    # 5. Familiars & Pets (Including Kineticist Elemental Familiar)
     has_marine_ally = "marine ally" in feat_names
     is_leaf_leshy = ("leshy familiar" in all_feat_str) or (cls_lower == "druid" and "leaf" in all_feat_str)
+    has_elemental_familiar = "elemental familiar" in all_feat_str
+    
     familiar_triggers = (
         "familiar", "marine ally", "leshy familiar", "elemental familiar",
         "shadow familiar", "spirit guide", "glyph familiar", "call wizardly tools",
     )
     has_pet_feat = "pet" in feat_names
 
-    # Familiars for Kineticist (only if they specifically took Elemental Familiar feat)
-    has_elemental_familiar = "elemental familiar" in all_feat_str
-    if is_kineticist and has_elemental_familiar and not any("familiar" in (p.creature_type or "").lower() for p in partners):
-        fam = resolve_familiar(
-            master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
-            master_will=master_will, master_perception=master_perception,
-            class_name=class_name, level=level, aquatic_only=False,
-            is_pet=False, forced_species="elemental",
-        )
-        if fam and fam.name.lower() not in existing_names:
-            partners.append(fam)
-            existing_names.add(fam.name.lower())
+    is_animal_partner_class = cls_lower in ("ranger", "druid") and ("animal" in arch_str or "animal" in all_feat_str or cls_lower == "ranger")
 
-    # Correct check for animal-focused classes/subclasses so they don't get random familiars
-    is_animal_partner_class = cls_lower in ("ranger", "druid") and ("animal" in arch_str or "animal" in all_feat_str or cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names)))
-    
     if cls_lower != "witch" and not is_animal_partner_class and not any("familiar" in (p.creature_type or "").lower() for p in partners):
-        if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
-            fam = resolve_familiar(
-                master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
-                master_will=master_will, master_perception=master_perception,
-                class_name=class_name, level=level, aquatic_only=has_marine_ally,
-                is_pet=False, forced_species="leshy" if is_leaf_leshy else None,
-            )
-            if fam and fam.name.lower() not in existing_names:
-                partners.append(fam)
-                existing_names.add(fam.name.lower())
-        elif has_pet_feat:
-            fam = resolve_familiar(
-                master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
-                master_will=master_will, master_perception=3 + level,
-                class_name=class_name, level=level, aquatic_only=False, is_pet=True,
-            )
-            if fam and fam.name.lower() not in existing_names:
-                partners.append(fam)
-                existing_names.add(fam.name.lower())
+        if is_kineticist:
+            if has_elemental_familiar:
+                fam = resolve_familiar(
+                    master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
+                    master_will=master_will, master_perception=master_perception,
+                    class_name=class_name, level=level, aquatic_only=False,
+                    is_pet=False, forced_species="elemental",
+                )
+                if fam and fam.name.lower() not in existing_names:
+                    partners.append(fam)
+                    existing_names.add(fam.name.lower())
+        else:
+            if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
+                fam = resolve_familiar(
+                    master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
+                    master_will=master_will, master_perception=master_perception,
+                    class_name=class_name, level=level, aquatic_only=has_marine_ally,
+                    is_pet=False, forced_species="leshy" if is_leaf_leshy else ("elemental" if has_elemental_familiar else None),
+                )
+                if fam and fam.name.lower() not in existing_names:
+                    partners.append(fam)
+                    existing_names.add(fam.name.lower())
+            elif has_pet_feat:
+                fam = resolve_familiar(
+                    master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
+                    master_will=master_will, master_perception=3 + level,
+                    class_name=class_name, level=level, aquatic_only=False, is_pet=True,
+                )
+                if fam and fam.name.lower() not in existing_names:
+                    partners.append(fam)
+                    existing_names.add(fam.name.lower())
 
     return partners
 
