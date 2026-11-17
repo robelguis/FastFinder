@@ -467,6 +467,10 @@ def _resolve_base_spellcasting(
     cfg = CLASS_TRADITION_MAP[cls_key]
     trad_key = cfg["catalog"]
     attr_key = cfg["attr"]
+    if cls_key == "psychic":
+        int_m = attribute_mods.get("int", 0)
+        cha_m = attribute_mods.get("cha", 0)
+        attr_key = "cha" if cha_m > int_m else "int"
 
     attr_mod = attribute_mods.get(attr_key, 0)
     prof_bonus = 2 + level

@@ -361,7 +361,7 @@ def sync_feat_partners(
     is_animal_partner_class = cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names))
 
     if cls_lower != "witch" and not is_animal_partner_class and not any("familiar" in (p.creature_type or "").lower() for p in partners):
-        if is_kineticist:
+        if is_kineticist and not (has_marine_ally or is_leaf_leshy or (level >= 2 and "familiar master" in arch_str)):
             if has_elemental_familiar:
                 fam = resolve_familiar(
                     master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
@@ -1501,40 +1501,7 @@ class PF2eGenerator:
         if not archetype_data and use_dedication and level >= 2:
             archetype_data = pick_archetype(cls["name"], {}, mods, getattr(self, "feats", None))
 
-        if level >= 5:
-            lvl5_boosts_applied: Set[str] = set()
-            lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl5_priority:
-                if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
-                    mods[attr] += 1
-                    lvl5_boosts_applied.add(attr)
-
-        if level >= 10:
-            lvl10_boosts_applied: Set[str] = set()
-            lvl10_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl10_priority:
-                if len(lvl10_boosts_applied) < 4 and attr not in lvl10_boosts_applied:
-                    mods[attr] += 1
-                    lvl10_boosts_applied.add(attr)
-
-        if level >= 15:
-            # PF2e Remaster partial boost rule: attributes >= +4 require 2 boosts (10->partial, 15->+1)
-            lvl15_boosts_applied: Set[str] = set()
-            lvl15_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl15_priority:
-                if len(lvl15_boosts_applied) < 4 and attr not in lvl15_boosts_applied:
-                    if mods[attr] < 4 or attr in lvl10_boosts_applied:
-                        mods[attr] += 1
-                    lvl15_boosts_applied.add(attr)
-
-        if level >= 20:
-            lvl20_boosts_applied: Set[str] = set()
-            lvl20_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl20_priority:
-                if len(lvl20_boosts_applied) < 4 and attr not in lvl20_boosts_applied:
-                    if mods[attr] < 4 or attr in lvl15_boosts_applied:
-                        mods[attr] += 1
-                    lvl20_boosts_applied.add(attr)
+        mods = apply_remaster_level_boosts(mods, key_attr, level)
 
         fort_rank, ref_rank, will_rank, perception_rank = get_class_saving_throws(
             cls["name"],
@@ -2255,66 +2222,46 @@ class PF2eGenerator:
         key_options = [k.lower() for k in cls.get("key_attributes", []) if k.lower() in ATTRIBUTES]
         key_attr = key_options[0] if key_options else "str"
 
-        if old_level < 5 and target_level >= 5:
-            lvl5_boosts_applied: Set[str] = set()
-            lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl5_priority:
-                if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
-                    mods[attr] += 1
-                    lvl5_boosts_applied.add(attr)
-        elif old_level >= 5 and target_level < 5:
-            # De-escalate level 5 boosts
-            lvl5_boosts_applied: Set[str] = set()
-            lvl5_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl5_priority:
-                if len(lvl5_boosts_applied) < 4 and attr not in lvl5_boosts_applied:
-                    mods[attr] = max(0, mods[attr] - 1)
-                    lvl5_boosts_applied.add(attr)
+        # PF2e Remaster milestone attribute boost progression (accounts for partial boosts at +4 and +5)
+        def _milestone_gains(lvl_from: int, lvl_to: int, attr_val: int, is_top_attr: bool) -> int:
+            # Milestones crossed going up or down
+            milestones = [5, 10, 15, 20]
+            if lvl_to > lvl_from:
+                crossed = [m for m in milestones if lvl_from < m <= lvl_to]
+                val = attr_val
+                for m in crossed:
+                    if val < 4:
+                        val += 1
+                    elif val == 4 and m >= 10:
+                        val = 5
+                    elif val == 5 and m >= 20:
+                        val = 6
+                return val
+            elif lvl_to < lvl_from:
+                crossed = sorted([m for m in milestones if lvl_to < m <= lvl_from], reverse=True)
+                val = attr_val
+                for m in crossed:
+                    if val == 6 and m == 20:
+                        val = 5
+                    elif val == 5 and m == 10:
+                        val = 4
+                    elif val > 0 and not (val >= 4 and m in (5, 15)):
+                        val = max(0, val - 1)
+                return val
+            return attr_val
 
-        if old_level < 10 and target_level >= 10:
-            lvl10_boosts_applied: Set[str] = set()
-            lvl10_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl10_priority:
-                if len(lvl10_boosts_applied) < 4 and attr not in lvl10_boosts_applied:
-                    mods[attr] += 1
-                    lvl10_boosts_applied.add(attr)
-        elif old_level >= 10 and target_level < 10:
-            lvl10_boosts_applied: Set[str] = set()
-            lvl10_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl10_priority:
-                if len(lvl10_boosts_applied) < 4 and attr not in lvl10_boosts_applied:
-                    mods[attr] = max(0, mods[attr] - 1)
-                    lvl10_boosts_applied.add(attr)
+        boost_priority = []
+        for a in [key_attr, "con", "dex", "wis", "str", "int", "cha"]:
+            if a not in boost_priority:
+                boost_priority.append(a)
+        for idx, attr in enumerate(boost_priority[:4]):
+            mods[attr] = _milestone_gains(old_level, target_level, mods[attr], idx == 0)
 
-        if old_level < 15 and target_level >= 15:
-            lvl15_boosts_applied: Set[str] = set()
-            lvl15_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl15_priority:
-                if len(lvl15_boosts_applied) < 4 and attr not in lvl15_boosts_applied:
-                    mods[attr] += 1
-                    lvl15_boosts_applied.add(attr)
-        elif old_level >= 15 and target_level < 15:
-            lvl15_boosts_applied: Set[str] = set()
-            lvl15_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl15_priority:
-                if len(lvl15_boosts_applied) < 4 and attr not in lvl15_boosts_applied:
-                    mods[attr] = max(0, mods[attr] - 1)
-                    lvl15_boosts_applied.add(attr)
-
-        if old_level < 20 and target_level >= 20:
-            lvl20_boosts_applied: Set[str] = set()
-            lvl20_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl20_priority:
-                if len(lvl20_boosts_applied) < 4 and attr not in lvl20_boosts_applied:
-                    mods[attr] += 1
-                    lvl20_boosts_applied.add(attr)
-        elif old_level >= 20 and target_level < 20:
-            lvl20_boosts_applied: Set[str] = set()
-            lvl20_priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
-            for attr in lvl20_priority:
-                if len(lvl20_boosts_applied) < 4 and attr not in lvl20_boosts_applied:
-                    mods[attr] = max(0, mods[attr] - 1)
-                    lvl20_boosts_applied.add(attr)
+        # Enforce hard PF2e Remaster caps per level bracket
+        hard_cap = 6 if target_level >= 20 else (5 if target_level >= 10 else 4)
+        for a in ATTRIBUTES:
+            if mods[a] > hard_cap:
+                mods[a] = hard_cap
 
         # 3. Defenses & Proficiencies
         fort_rank, ref_rank, will_rank, perception_rank = get_class_saving_throws(
@@ -2470,7 +2417,11 @@ class PF2eGenerator:
                     
                 if target_level < 7 and f.name == "Weapon Specialization":
                     continue
-                if target_level < 2 and f.id == "graft-wing-beast-graft":
+                if target_level < 2 and (
+                    f.id == "graft-wing-beast-graft"
+                    or "dedication" in (f.name or "").lower()
+                    or "archetype" in cat
+                ):
                     continue
                 filtered_feats.append(f)
             chosen_feats = filtered_feats
