@@ -61,7 +61,7 @@ def export_to_foundry_actor(sheet_or_dict: Union[CharacterSheet, Dict[str, Any]]
             "name": sheet.equipment.armor.name,
             "type": "armor",
             "system": {
-                "description": {"value": sheet.equipment.armor.description or ""},
+                "description": {"value": getattr(sheet.equipment.armor, "description", "") or ""},
                 "equipped": {"carryType": "worn", "inSlot": True},
             },
         })
@@ -88,7 +88,7 @@ def export_to_foundry_actor(sheet_or_dict: Union[CharacterSheet, Dict[str, Any]]
             "type": "consumable",
             "system": {
                 "quantity": con.quantity,
-                "description": {"value": con.description or ""},
+                "description": {"value": getattr(con, "description", "") or ""},
             },
         })
 
