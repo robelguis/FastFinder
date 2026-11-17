@@ -1443,7 +1443,7 @@ class PF2eGenerator:
 
                     animal_strike = Strike(
                         name=strike_name,
-                        attack_bonus=f"+{unarmed_attack_bonus}",
+                        attack_bonus=str(unarmed_attack_bonus).replace("+", ""),
                         map_second=map_second,
                         map_third=map_third,
                         damage_dice=damage_dice_str,
