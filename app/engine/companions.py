@@ -294,8 +294,12 @@ def resolve_companion(
     feat_names = [f.name.lower() for f in feats]
     has_companion_feat = any("animal companion" in fn or "beastmaster" in fn for fn in feat_names)
     is_beastmaster = archetype and "beastmaster" in archetype.lower()
+    
+    # Auto-force qualification if the user's concept text explicitly asks for a companion/pet
+    has_concept_companion = bool(concept_text and any(w in concept_text.lower() for w in ("companion", "pet", "mouse", "moose", "wolf", "bear")))
+    should_qualify = force_qualify or has_companion_feat or is_beastmaster or has_concept_companion or cls_lower in ("ranger", "champion") or (cls_lower == "druid" and ("order: animal" in " ".join(feat_names) or has_concept_companion))
 
-    if not (force_qualify or has_companion_feat or is_beastmaster or cls_lower in ("ranger", "champion") or (cls_lower == "druid" and "order: animal" in " ".join(feat_names))):
+    if not should_qualify:
         return None
 
   # Search concept text or feats for any matching keyword
