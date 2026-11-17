@@ -1,0 +1,437 @@
+import os
+import re
+import json
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Tuple
+
+try:
+    from google import genai
+    from google.genai import types
+except Exception:
+    genai = None
+    types = None
+
+try:
+    from app.engine.archetypes import ARCHETYPE_DATA
+except Exception:
+    ARCHETYPE_DATA = {}
+
+try:
+    from app.engine.spells import SPELL_CATALOG
+except Exception:
+    SPELL_CATALOG = {}
+
+
+NATIVE_COMPANION_CLASSES = {"summoner", "witch", "ranger", "druid", "champion", "inventor"}
+COMPANION_ARCHETYPES = {
+    "beastmaster",
+    "familiar master",
+    "clockwork reanimator",
+    "cavalier",
+    "mammoth lord",
+    "undead master",
+}
+
+SKILL_NAMES = [
+    "acrobatics", "arcana", "athletics", "crafting", "deception",
+    "diplomacy", "intimidation", "medicine", "nature", "occultism",
+    "performance", "religion", "society", "stealth", "survival", "thievery",
+]
+
+
+@dataclass
+class LevelRequirement:
+    reason: str
+    min_level: int
+
+
+@dataclass
+class ConceptSpec:
+    raw_text: str
+    char_name: Optional[str] = None
+    ancestry: Optional[str] = None
+    heritage: Optional[str] = None
+    background: Optional[str] = None
+    character_class: Optional[str] = None
+    subclass: Optional[str] = None
+    archetype: Optional[str] = None
+    explicit_level: Optional[int] = None
+    requested_feats: List[str] = field(default_factory=list)
+    requested_spells: List[str] = field(default_factory=list)
+    requested_skills: Dict[str, str] = field(default_factory=dict)  # skill -> rank ("T","E","M","L")
+    wants_companion: bool = False
+    companion_kind: Optional[str] = None
+    requirements: List[LevelRequirement] = field(default_factory=list)
+
+
+class ConceptToSheetBuilder:
+    """
+    Parses natural-language character concepts (via Gemini + deterministic PF2e
+    catalog extraction) and computes the lowest legal PF2e Remaster level that
+    satisfies every requirement in the prompt.
+    """
+
+    def __init__(self, generator: Any):
+        self.generator = generator
+        self._build_lookup_indexes()
+
+    def _build_lookup_indexes(self) -> None:
+        self.ancestry_map: Dict[str, str] = {}
+        raw_anc = self.generator.ancestries
+        items_anc = raw_anc.values() if isinstance(raw_anc, dict) else raw_anc
+        for a in items_anc:
+            name = a["name"] if isinstance(a, dict) else str(a)
+            self.ancestry_map[name.lower()] = name
+
+        self.class_map: Dict[str, str] = {}
+        raw_cls = self.generator.classes
+        items_cls = raw_cls.values() if isinstance(raw_cls, dict) else raw_cls
+        for c in items_cls:
+            name = c["name"] if isinstance(c, dict) else str(c)
+            self.class_map[name.lower()] = name
+
+        self.background_map: Dict[str, str] = {}
+        raw_bg = getattr(self.generator, "backgrounds", {}) or {}
+        items_bg = raw_bg.values() if isinstance(raw_bg, dict) else raw_bg
+        for b in items_bg:
+            name = b["name"] if isinstance(b, dict) else str(b)
+            self.background_map[name.lower()] = name
+
+        self.archetype_map: Dict[str, str] = {k.lower(): k for k in ARCHETYPE_DATA.keys()}
+        for cname in self.class_map.values():
+            self.archetype_map.setdefault(cname.lower(), cname)
+
+        # Index feat names -> minimum level
+        self.feat_level_map: Dict[str, Tuple[str, int]] = {}
+        raw_feats = getattr(self.generator, "feats", {}) or {}
+        if isinstance(raw_feats, dict):
+            feat_iter = []
+            for v in raw_feats.values():
+                if isinstance(v, list):
+                    feat_iter.extend(v)
+                elif isinstance(v, dict):
+                    feat_iter.append(v)
+        else:
+            feat_iter = list(raw_feats)
+
+        for ft in feat_iter:
+            if not isinstance(ft, dict):
+                continue
+            fname = (ft.get("name") or "").strip()
+            if not fname:
+                continue
+            flvl = int(ft.get("level") or ft.get("min_level") or 1)
+            key = fname.lower()
+            if key not in self.feat_level_map or flvl < self.feat_level_map[key][1]:
+                self.feat_level_map[key] = (fname, max(1, flvl))
+
+        # Index spell names -> rank
+        self.spell_rank_map: Dict[str, Tuple[str, int]] = {}
+        for trad_data in SPELL_CATALOG.values():
+            if not isinstance(trad_data, dict):
+                continue
+            for bucket, entries in trad_data.items():
+                if not isinstance(entries, list):
+                    continue
+                default_rank = 0 if "cantrip" in bucket else 1
+                m_rank = re.search(r"(\d+)", bucket)
+                if m_rank:
+                    default_rank = int(m_rank.group(1))
+                for sp in entries:
+                    if isinstance(sp, dict) and sp.get("name"):
+                        sname = sp["name"].strip()
+                        srank = int(sp.get("rank", default_rank))
+                        self.spell_rank_map[sname.lower()] = (sname, srank)
+
+    def _match_longest_phrase(self, text_lower: str, lookup: Dict[str, str]) -> Optional[str]:
+        matches = []
+        for k_lower, canonical in lookup.items():
+            if len(k_lower) < 3:
+                continue
+            if re.search(r"\b" + re.escape(k_lower) + r"\b", text_lower):
+                matches.append((len(k_lower), canonical))
+        if not matches:
+            return None
+        matches.sort(key=lambda x: x[0], reverse=True)
+        return matches[0][1]
+
+    def _parse_with_gemini(self, concept_text: str) -> Dict[str, Any]:
+        api_key = os.environ.get("GEMINI_API_KEY")
+        if not api_key or genai is None or types is None:
+            return {}
+
+        prompt = f"""
+Extract Pathfinder 2e Remastered mechanical requirements from the user's character concept.
+Return ONLY valid JSON with these exact keys (use null or [] if not mentioned):
+{{
+  "char_name": string or null,
+  "ancestry": string or null,
+  "heritage": string or null,
+  "background": string or null,
+  "character_class": string or null,
+  "subclass": string or null,
+  "archetype": string or null,
+  "explicit_level": integer or null,
+  "requested_feats": [string],
+  "requested_spells": [string],
+  "requested_skills": {{"skill_name": "T|E|M|L"}},
+  "wants_companion": boolean,
+  "companion_kind": "animal|familiar|eidolon|construct|undead|plant|null"
+}}
+
+USER CONCEPT: "{concept_text}"
+"""
+        for model_name in ("gemini-2.5-flash", "gemini-2.0-flash"):
+            try:
+                client = genai.Client(api_key=api_key)
+                resp = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        response_mime_type="application/json",
+                        temperature=0.1,
+                    ),
+                )
+                if resp and resp.text:
+                    raw = resp.text.strip()
+                    if raw.startswith("```"):
+                        raw = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw, flags=re.DOTALL)
+                    data = json.loads(raw)
+                    if isinstance(data, dict):
+                        return data
+            except Exception:
+                continue
+        return {}
+
+    def extract_requirements(self, concept_text: str) -> ConceptSpec:
+        text = (concept_text or "").strip()
+        text_lower = text.lower()
+        llm_data = self._parse_with_gemini(text)
+
+        spec = ConceptSpec(raw_text=text)
+        spec.char_name = llm_data.get("char_name") or None
+
+        # 1. Explicit level extraction ("level 6", "lvl 5", "L4")
+        lvl_match = re.search(r"\b(?:level|lvl|l)\s*(\d{1,2})\b", text_lower)
+        if lvl_match:
+            spec.explicit_level = max(1, min(20, int(lvl_match.group(1))))
+        elif isinstance(llm_data.get("explicit_level"), int):
+            spec.explicit_level = max(1, min(20, llm_data["explicit_level"]))
+
+        # 2. Ancestry, Heritage, Background, Class, Subclass
+        llm_anc = (llm_data.get("ancestry") or "").lower()
+        spec.ancestry = self.ancestry_map.get(llm_anc) or self._match_longest_phrase(text_lower, self.ancestry_map)
+
+        spec.heritage = llm_data.get("heritage") or None
+
+        llm_bg = (llm_data.get("background") or "").lower()
+        spec.background = self.background_map.get(llm_bg) or self._match_longest_phrase(text_lower, self.background_map)
+
+        llm_cls = (llm_data.get("character_class") or "").lower()
+        spec.character_class = self.class_map.get(llm_cls) or self._match_longest_phrase(text_lower, self.class_map)
+
+        spec.subclass = llm_data.get("subclass") or None
+
+        # 3. Archetype / Multiclass detection
+        llm_arch = (llm_data.get("archetype") or "").lower()
+        if llm_arch and llm_arch != "none":
+            spec.archetype = self.archetype_map.get(llm_arch) or llm_data.get("archetype")
+
+        if not spec.archetype:
+            # Look for "<Archetype> dedication" or "<Archetype> archetype" or "multiclass <Class>"
+            arch_pattern = re.search(
+                r"\b([a-z][a-z\s'-]{2,28}?)\s+(?:dedication|archetype)\b|\bmulticlass\s+([a-z][a-z\s'-]{2,24}?)\b",
+                text_lower,
+            )
+            if arch_pattern:
+                cand = (arch_pattern.group(1) or arch_pattern.group(2) or "").strip()
+                spec.archetype = self._match_longest_phrase(cand, self.archetype_map) or cand.title()
+            else:
+                # Check non-class archetype names directly (e.g., Beastmaster, Familiar Master, Sentinel, Medic)
+                non_class_archs = {
+                    k: v for k, v in self.archetype_map.items() if k not in self.class_map
+                }
+                spec.archetype = self._match_longest_phrase(text_lower, non_class_archs)
+
+        # Avoid setting archetype equal to primary class
+        if spec.archetype and spec.character_class and spec.archetype.lower() == spec.character_class.lower():
+            spec.archetype = None
+
+        # 4. Companion / Familiar / Eidolon detection
+        companion_keywords = (
+            "companion", "familiar", "eidolon", "mount", "steed",
+            "pet", "construct companion", "undead companion", "leshy",
+        )
+        if llm_data.get("wants_companion") or any(kw in text_lower for kw in companion_keywords):
+            spec.wants_companion = True
+            spec.companion_kind = llm_data.get("companion_kind")
+            if not spec.companion_kind:
+                if "familiar" in text_lower or "leshy" in text_lower:
+                    spec.companion_kind = "familiar"
+                elif "eidolon" in text_lower:
+                    spec.companion_kind = "eidolon"
+                elif "construct" in text_lower or "clockwork" in text_lower:
+                    spec.companion_kind = "construct"
+                elif "undead" in text_lower or "skeleton" in text_lower or "zombie" in text_lower:
+                    spec.companion_kind = "undead"
+                else:
+                    spec.companion_kind = "animal"
+
+            # If user wants a companion/familiar but didn't pick a class or archetype that grants one
+            cls_l = (spec.character_class or "").lower()
+            if not spec.archetype and cls_l not in NATIVE_COMPANION_CLASSES:
+                if spec.companion_kind == "familiar":
+                    spec.archetype = "Familiar Master"
+                elif spec.companion_kind == "construct":
+                    spec.archetype = "Clockwork Reanimator"
+                elif spec.companion_kind == "undead":
+                    spec.archetype = "Undead Master"
+                else:
+                    spec.archetype = "Beastmaster"
+
+        # 5. Requested Feats & Spell Rank / Spell Name matching
+        raw_req_feats = list(llm_data.get("requested_feats") or [])
+        for fname_l, (canonical_f, _) in self.feat_level_map.items():
+            if len(fname_l) >= 5 and re.search(r"\b" + re.escape(fname_l) + r"\b", text_lower):
+                if canonical_f not in raw_req_feats:
+                    raw_req_feats.append(canonical_f)
+        spec.requested_feats = raw_req_feats
+
+        raw_req_spells = list(llm_data.get("requested_spells") or [])
+        for sname_l, (canonical_s, _) in self.spell_rank_map.items():
+            if len(sname_l) >= 4 and re.search(r"\b" + re.escape(sname_l) + r"\b", text_lower):
+                if canonical_s not in raw_req_spells:
+                    raw_req_spells.append(canonical_s)
+        spec.requested_spells = raw_req_spells
+
+        # 6. Skill proficiency rank mentions ("master in stealth", "expert medicine", "legendary athletics")
+        if isinstance(llm_data.get("requested_skills"), dict):
+            for sk, rk in llm_data["requested_skills"].items():
+                if sk.lower() in SKILL_NAMES and str(rk).upper() in ("T", "E", "M", "L"):
+                    spec.requested_skills[sk.lower()] = str(rk).upper()
+
+        for sk in SKILL_NAMES:
+            m_sk = re.search(
+                rf"\b(trained|expert|master|legendary)\s+(?:in\s+)?{sk}\b|\b{sk}\s*\((trained|expert|master|legendary)\)",
+                text_lower,
+            )
+            if m_sk:
+                word = (m_sk.group(1) or m_sk.group(2) or "").lower()
+                spec.requested_skills[sk] = word[0].upper()
+
+        return spec
+
+    def compute_minimum_level(self, spec: ConceptSpec) -> Tuple[int, List[LevelRequirement]]:
+        reqs: List[LevelRequirement] = [LevelRequirement("Base PF2e Remaster character", 1)]
+
+        if spec.explicit_level:
+            reqs.append(LevelRequirement(f"Explicitly requested Level {spec.explicit_level}", spec.explicit_level))
+
+        if spec.archetype:
+            reqs.append(LevelRequirement(f"{spec.archetype} Dedication feat slot", 2))
+
+        if spec.wants_companion:
+            cls_l = (spec.character_class or "").lower()
+            arch_l = (spec.archetype or "").lower()
+            if cls_l in NATIVE_COMPANION_CLASSES and not any(a in arch_l for a in COMPANION_ARCHETYPES):
+                reqs.append(LevelRequirement(f"Native {spec.character_class} {spec.companion_kind or 'companion'}", 1))
+            else:
+                reqs.append(LevelRequirement(f"Archetype {spec.companion_kind or 'companion'} dedication", 2))
+
+            if "mature" in spec.raw_text.lower():
+                reqs.append(LevelRequirement("Mature Animal Companion feat", 4))
+            if "incredible" in spec.raw_text.lower():
+                reqs.append(LevelRequirement("Incredible Companion feat", 8))
+            if "specialized" in spec.raw_text.lower():
+                reqs.append(LevelRequirement("Specialized Companion feat", 14))
+
+        # Skill proficiency rank floors
+        rank_floors = {"T": 1, "E": 3, "M": 7, "L": 15}
+        rank_labels = {"T": "Trained", "E": "Expert", "M": "Master", "L": "Legendary"}
+        for sk, rk in spec.requested_skills.items():
+            floor = rank_floors.get(rk, 1)
+            if floor > 1:
+                reqs.append(LevelRequirement(f"{rank_labels[rk]} proficiency in {sk.title()}", floor))
+
+        # Named feat prerequisites
+        for feat_name in spec.requested_feats:
+            hit = self.feat_level_map.get(feat_name.lower())
+            if hit:
+                canonical_f, flvl = hit
+                if "dedication" in canonical_f.lower():
+                    flvl = max(2, flvl)
+                reqs.append(LevelRequirement(f"Feat prerequisite: {canonical_f} (Level {flvl})", flvl))
+
+        # Explicit spell rank mentions ("3rd-rank spells", "rank 4 spell", "5th level spells")
+        for m in re.finditer(r"\b(\d{1,2})(?:st|nd|rd|th)?[- ]rank\s+spell|\brank\s+(\d{1,2})\s+spell", spec.raw_text.lower()):
+            rank = int(m.group(1) or m.group(2))
+            if 1 <= rank <= 10:
+                min_lvl = max(1, (rank * 2) - 1)
+                reqs.append(LevelRequirement(f"Cast Rank {rank} spells", min_lvl))
+
+        # Named spells
+        for sp_name in spec.requested_spells:
+            hit = self.spell_rank_map.get(sp_name.lower())
+            if hit:
+                canonical_s, srank = hit
+                min_lvl = 1 if srank == 0 else max(1, (srank * 2) - 1)
+                reqs.append(LevelRequirement(f"Spell '{canonical_s}' (Rank {srank})", min_lvl))
+
+        min_level = max(1, min(20, max(r.min_level for r in reqs)))
+        spec.requirements = reqs
+        return min_level, reqs
+
+    def build_lowest_level_sheet(self, concept_text: str) -> Dict[str, Any]:
+        spec = self.extract_requirements(concept_text)
+        min_level, reqs = self.compute_minimum_level(spec)
+
+        sheet = self.generator.generate(
+            ancestry_name=spec.ancestry,
+            class_name=spec.character_class,
+            background_name=spec.background,
+            archetype_name=spec.archetype if min_level >= 2 else None,
+            char_name=spec.char_name,
+            level=min_level,
+            use_dedication=bool(spec.archetype) and min_level >= 2,
+            heritage_name=spec.heritage,
+            subclass_name=spec.subclass,
+        )
+
+        # Verify companion requirement was satisfied; bump to Level 2 if needed
+        if spec.wants_companion and sheet.companion is None and min_level < 2:
+            min_level = 2
+            reqs.append(LevelRequirement("Archetype companion unlock", 2))
+            sheet = self.generator.generate(
+                ancestry_name=spec.ancestry,
+                class_name=spec.character_class,
+                background_name=spec.background,
+                archetype_name=spec.archetype or "Beastmaster",
+                char_name=spec.char_name,
+                level=min_level,
+                use_dedication=True,
+                heritage_name=spec.heritage,
+                subclass_name=spec.subclass,
+            )
+
+        payload = sheet.model_dump()
+        payload["concept_resolution"] = {
+            "concept_text": spec.raw_text,
+            "minimum_level": min_level,
+            "extracted": {
+                "ancestry": spec.ancestry or payload.get("ancestry"),
+                "heritage": spec.heritage or payload.get("heritage"),
+                "background": spec.background or payload.get("background"),
+                "character_class": spec.character_class or payload.get("character_class"),
+                "subclass": spec.subclass or payload.get("subclass"),
+                "archetype": spec.archetype or payload.get("archetype"),
+                "wants_companion": spec.wants_companion,
+                "requested_feats": spec.requested_feats,
+                "requested_spells": spec.requested_spells,
+                "requested_skills": spec.requested_skills,
+            },
+            "level_drivers": [
+                {"reason": r.reason, "min_level": r.min_level}
+                for r in sorted(reqs, key=lambda x: (-x.min_level, x.reason))
+            ],
+        }
+        return payload
