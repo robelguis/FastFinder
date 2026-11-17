@@ -1126,7 +1126,8 @@ class PF2eGenerator:
             if cls_name_lower == "inventor" or "construct" in (sub_name or "").lower() or "inventor" in arch_str:
                 collected_partners.append(resolve_construct_companion(master_int_mod=mods["int"], level=level))
                 
-            if (cls_name_lower == "druid" and "animal order" in (sub_name or "").lower()) or any("animal order" in getattr(f, "name", "").lower() for f in chosen_feats):
+            is_animal_druid = cls_name_lower == "druid" and ("animal" in (sub_name or "").lower() or "animal" in (subclass_name or "").lower())
+            if is_animal_druid:
                 comp = resolve_companion(class_name=cls["name"], feats=[], archetype=None, level=level)
                 if comp:
                     collected_partners.append(comp)
@@ -1138,7 +1139,7 @@ class PF2eGenerator:
                     comp.creature_type = "Animal Companion"
                     collected_partners.append(comp)
                     
-            if cls_name_lower == "witch":
+            if cls_name_lower != "witch" and not is_animal_druid and not any("animal" in (p.creature_type or "").lower() for p in partners):
                 if level >= 4 and random.random() < 0.5:
                     collected_partners.append(resolve_specific_familiar(
                         master_ac=calculated_ac,
