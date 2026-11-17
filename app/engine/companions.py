@@ -298,12 +298,17 @@ def resolve_companion(
     if not (force_qualify or has_companion_feat or is_beastmaster or cls_lower in ("ranger", "champion") or (cls_lower == "druid" and "order: animal" in " ".join(feat_names))):
         return None
 
-    # Search concept text or feats for any matching keyword
+  # Search concept text or feats for any matching keyword
     matched_species_key = None
     search_corpus = f"{concept_text or ''} {' '.join(feat_names)}".lower()
     
-    for key in COMPANION_SPECIES.keys():
-        if key in search_corpus:
+    # Sort species keys by length descending so longer/specific names ("mouse", "deinonychus") 
+    # are evaluated before short ones ("cat", "bear")
+    sorted_keys = sorted(COMPANION_SPECIES.keys(), key=len, reverse=True)
+    
+    for key in sorted_keys:
+        # Use whole-word matching boundary \b so short keys don't falsely match substrings
+        if re.search(rf"\b{key}\b", search_corpus):
             matched_species_key = key
             break
 
