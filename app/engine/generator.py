@@ -287,12 +287,13 @@ def sync_feat_partners(
 
     existing_names = {(p.name or "").lower() for p in partners}
 
-    # 1. Undead Companion / Undead Master
-    if "undead master" in arch_str or "undead companion" in all_feat_str:
-        p = resolve_undead_companion(level=level)
-        if p and p.name.lower() not in existing_names:
-            partners.append(p)
-            existing_names.add(p.name.lower())
+    # 1. Undead Companion / Undead Master / Necromancer Dedication
+    if "undead master" in arch_str or "necromancer" in arch_str or "undead companion" in all_feat_str:
+        if not any("undead" in (p.creature_type or "").lower() for p in partners):
+            p = resolve_undead_companion(level=level)
+            if p and p.name.lower() not in existing_names:
+                partners.append(p)
+                existing_names.add(p.name.lower())
 
     # 2. Construct Companion / Clockwork Reanimator / Inventor Dedication
     if "clockwork reanimator" in arch_str or "construct companion" in all_feat_str or "prototype companion" in all_feat_str or "inventor dedication" in arch_str:
@@ -310,10 +311,12 @@ def sync_feat_partners(
                 partners.append(p)
                 existing_names.add(p.name.lower())
 
-    # 4. Animal Companion / Mounts / Faithful Steed / Beastmaster / Cavalier
+    # 4. Animal Companion / Mounts (Exclude base Kineticist unless they have an explicit companion feat)
     animal_triggers = ("animal companion", "mature animal companion", "mount", "bonded animal", "faithful steed")
     animal_arch_triggers = ("beastmaster", "cavalier", "mammoth lord")
-    if (
+    is_kineticist = cls_lower == "kineticist"
+    
+    if not is_kineticist and (
         any(tr in all_feat_str for tr in animal_triggers)
         or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
     ):
@@ -340,8 +343,23 @@ def sync_feat_partners(
     )
     has_pet_feat = "pet" in feat_names
 
-    is_animal_druid = cls_lower == "druid" and "animal" in (cls_lower or "")
-    if cls_lower != "witch" and not is_animal_druid and not any("familiar" in (p.creature_type or "").lower() for p in partners):
+    # Familiars for Kineticist (only if they specifically took Elemental Familiar feat)
+    has_elemental_familiar = "elemental familiar" in all_feat_str
+    if is_kineticist and has_elemental_familiar and not any("familiar" in (p.creature_type or "").lower() for p in partners):
+        fam = resolve_familiar(
+            master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
+            master_will=master_will, master_perception=master_perception,
+            class_name=class_name, level=level, aquatic_only=False,
+            is_pet=False, forced_species="elemental",
+        )
+        if fam and fam.name.lower() not in existing_names:
+            partners.append(fam)
+            existing_names.add(fam.name.lower())
+
+    # Correct check for animal-focused classes/subclasses so they don't get random familiars
+    is_animal_partner_class = cls_lower in ("ranger", "druid") and ("animal" in arch_str or "animal" in all_feat_str or cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names)))
+    
+    if cls_lower != "witch" and not is_animal_partner_class and not any("familiar" in (p.creature_type or "").lower() for p in partners):
         if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
             fam = resolve_familiar(
                 master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
