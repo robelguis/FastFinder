@@ -1,4 +1,3 @@
-from app.engine.names import generate_ancestry_name
 
 ANCESTRY_BG_MAP = {
     "dwarf": ["dwarf", "dwarven"],
@@ -1396,8 +1395,7 @@ class PF2eGenerator:
 
         # Safe name resolution fallback
         try:
-            from app.engine.names import generate_ancestry_name
-            fallback_name = generate_ancestry_name(anc["name"])
+            fallback_name = generate_golarion_name(anc["name"])
         except (ImportError, NameError):
             try:
                 from app.engine.names import generate_golarion_name
