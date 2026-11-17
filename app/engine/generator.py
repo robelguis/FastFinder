@@ -1148,19 +1148,19 @@ class PF2eGenerator:
         # 3. Druid Animal Order
         is_animal_druid = cls_name_lower == "druid" and "animal" in sub_combined
         if is_animal_druid and not any("animal" in (p.creature_type or "").lower() for p in collected_partners):
-            comp = resolve_companion(class_name=cls["name"], feats=chosen_feats or [], archetype=None, level=level)
+            comp = resolve_companion(class_name=cls["name"], feats=chosen_feats or [], archetype=None, level=level, force_qualify=True)
             if comp:
                 collected_partners.append(comp)
 
         # 4. Ranger Animal Companion
         if cls_name_lower == "ranger" and not any("animal" in (p.creature_type or "").lower() for p in collected_partners):
-            comp = resolve_companion(class_name=cls["name"], feats=chosen_feats or [], archetype=None, level=level)
+            comp = resolve_companion(class_name=cls["name"], feats=chosen_feats or [], archetype=None, level=level, force_qualify=True)
             if comp:
                 collected_partners.append(comp)
 
         # 5. Champion Faithful Steed
         if cls_name_lower == "champion" and level >= 1 and not any("animal" in (p.creature_type or "").lower() or "mount" in (p.creature_type or "").lower() for p in collected_partners):
-            comp = resolve_companion(class_name="Champion", feats=chosen_feats or [], archetype=None, level=level)
+            comp = resolve_companion(class_name="Champion", feats=chosen_feats or [], archetype=None, level=level, force_qualify=True)
             if comp:
                 comp.name = "Faithful Steed"
                 comp.creature_type = "Animal Companion"

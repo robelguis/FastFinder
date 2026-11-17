@@ -152,7 +152,8 @@ def resolve_companion(
     class_name: str,
     feats: List[FeatSummary],
     archetype: Optional[str],
-    level: int = 1
+    level: int = 1,
+    force_qualify: bool = False
 ) -> Optional[AnimalCompanionData]:
     # Determine if character qualifies for a companion
     cls_lower = class_name.lower()
@@ -160,7 +161,7 @@ def resolve_companion(
     has_companion_feat = any("animal companion" in fn or "beastmaster" in fn for fn in feat_names)
     is_beastmaster = archetype and "beastmaster" in archetype.lower()
 
-    if not (has_companion_feat or is_beastmaster or (cls_lower == "druid" and "order: animal" in " ".join(feat_names))):
+    if not (force_qualify or has_companion_feat or is_beastmaster or cls_lower in ("ranger", "champion") or (cls_lower == "druid" and "order: animal" in " ".join(feat_names))):
         return None
 
     # Pick a companion species
