@@ -1108,6 +1108,7 @@ class PF2eGenerator:
             ]
 
        # Partners: seed all qualifying class-innate and archetype partners independently
+        arch_str = (archetype_name or "").lower()
         if existing_partners is None:
             collected_partners: List[PartnerCreatureData] = []
             
