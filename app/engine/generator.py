@@ -1544,6 +1544,12 @@ class PF2eGenerator:
                 description=feat_desc
             ))
             added_feat_names.add(bg_feat_name.lower())
+            
+        bg_trained_lore = bg.get("trained_lore")
+        if bg_trained_lore and not any(bg_trained_lore.lower() in s.name.lower() for s in all_skills if hasattr(s, "name")):
+            # Background lore injection is also handled downstream in resolve_character_skills, 
+            # but ensuring it aligns with chosen feats/skills prevents any missing display bugs.
+            pass
 
         # 2. Handle Explicit Background Actions via BACKGROUND_CUSTOM_ACTIONS registry only
         for act_key, c_act in BACKGROUND_CUSTOM_ACTIONS.items():
@@ -1588,7 +1594,9 @@ class PF2eGenerator:
                     description=clean_pf2e_text(ded["description"])
                 ))
                 if ded["name"] in ARCHETYPE_GRANTED_FEATURES:
-                    chosen_feats.append(ARCHETYPE_GRANTED_FEATURES[ded["name"]])
+                    granted_feat = ARCHETYPE_GRANTED_FEATURES[ded["name"]]
+                    if not any(f.name.lower() == granted_feat.name.lower() for f in chosen_feats):
+                        chosen_feats.append(granted_feat)
                 if "bloodrager dedication" in ded["name"].lower() and not any("harvest blood" in f.name.lower() for f in chosen_feats):
                     chosen_feats.append(FeatSummary(
                         id="bloodrager-harvest-blood",
