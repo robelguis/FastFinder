@@ -412,21 +412,34 @@ def scale_existing_companion(companion_data: dict, old_level: int, target_level:
         comp["hp"] = comp.get("hp", 20) + (level_delta * 8)
 
     stage_bump = 2 if (old_level < 4 and target_level >= 4 and "eidolon" not in creature_type) else 0
+    def _parse_int(val, default=0):
+        try:
+            return int(str(val).replace("+", "").strip())
+        except (ValueError, TypeError):
+            return default
+
     total_stat_boost = level_delta + stage_bump
-    comp["ac"] = comp.get("ac", 16) + total_stat_boost
-    comp["fortitude"] = comp.get("fortitude", 5) + total_stat_boost
-    comp["reflex"] = comp.get("reflex", 5) + total_stat_boost
-    comp["will"] = comp.get("will", 5) + total_stat_boost
-    comp["perception"] = comp.get("perception", 4) + total_stat_boost
+    comp["ac"] = _parse_int(comp.get("ac", 16), 16) + total_stat_boost
+    comp["fortitude"] = _parse_int(comp.get("fortitude", 5), 5) + total_stat_boost
+    comp["reflex"] = _parse_int(comp.get("reflex", 5), 5) + total_stat_boost
+    comp["will"] = _parse_int(comp.get("will", 5), 5) + total_stat_boost
+    comp["perception"] = _parse_int(comp.get("perception", 4), 4) + total_stat_boost
 
     updated_strikes = []
     for strike in comp.get("strikes", []):
         s = dict(strike)
-        s["attack_bonus"] = s.get("attack_bonus", 5) + total_stat_boost
+        raw_atk = s.get("attack_bonus", 5)
+        is_str_atk = isinstance(raw_atk, str)
+        new_atk = _parse_int(raw_atk, 5) + total_stat_boost
+        s["attack_bonus"] = f"{new_atk:+d}" if is_str_atk else new_atk
         if "map_second" in s:
-            s["map_second"] = s.get("map_second", 0) + total_stat_boost
+            raw_m2 = s.get("map_second", 0)
+            new_m2 = _parse_int(raw_m2, 0) + total_stat_boost
+            s["map_second"] = f"{new_m2:+d}" if isinstance(raw_m2, str) else new_m2
         if "map_third" in s:
-            s["map_third"] = s.get("map_third", -5) + total_stat_boost
+            raw_m3 = s.get("map_third", -5)
+            new_m3 = _parse_int(raw_m3, -5) + total_stat_boost
+            s["map_third"] = f"{new_m3:+d}" if isinstance(raw_m3, str) else new_m3
         updated_strikes.append(s)
     comp["strikes"] = updated_strikes
 
