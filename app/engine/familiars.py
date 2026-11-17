@@ -65,6 +65,30 @@ FAMILIAR_SPECIES: Dict[str, Dict[str, Any]] = {
         "innate_abilities": ["Plant Form", "Restorative Familiar"],
         "aquatic": False,
         "description": "A diminutive nature spirit formed from pressed autumn leaves and twigs."
+    },
+    "elemental_wisp": {
+        "species": "Elemental Wisp",
+        "speed": "15 ft, fly 25 ft",
+        "innate_abilities": ["Elemental", "Flier", "Darkvision"],
+        "aquatic": False,
+        "elemental": True,
+        "description": "A tiny, swirling mote of raw elemental essence bound to your kinetic gate."
+    },
+    "elemental_mote": {
+        "species": "Crystalline Mote",
+        "speed": "20 ft, burrow 10 ft",
+        "innate_abilities": ["Elemental", "Darkvision", "Tough"],
+        "aquatic": False,
+        "elemental": True,
+        "description": "A hovering shard of living stone and forged metal resonating with planar energy."
+    },
+    "elemental_spirit": {
+        "species": "Tidal & Ember Sprite",
+        "speed": "20 ft, swim 25 ft",
+        "innate_abilities": ["Elemental", "Amphibious", "Resistance"],
+        "aquatic": True,
+        "elemental": True,
+        "description": "A flickering planar spirit formed of dancing sparks, mist, and living timber."
     }
 }
 
@@ -91,12 +115,14 @@ def resolve_familiar(
     is_pet: bool = False,
     forced_species: Optional[str] = None
 ) -> PartnerCreatureData:
-    if forced_species and forced_species in FAMILIAR_SPECIES:
+    if forced_species == "elemental":
+        pool = [k for k, v in FAMILIAR_SPECIES.items() if v.get("elemental")]
+    elif forced_species and forced_species in FAMILIAR_SPECIES:
         pool = [forced_species]
     elif aquatic_only:
-        pool = [k for k, v in FAMILIAR_SPECIES.items() if v.get("aquatic")]
+        pool = [k for k, v in FAMILIAR_SPECIES.items() if v.get("aquatic") and not v.get("elemental")]
     else:
-        pool = list(FAMILIAR_SPECIES.keys())
+        pool = [k for k, v in FAMILIAR_SPECIES.items() if not v.get("elemental")]
 
     key = random.choice(pool)
     cfg = FAMILIAR_SPECIES[key]
