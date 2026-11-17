@@ -420,6 +420,7 @@ def resolve_companion(
     return AnimalCompanionData(
         name=f"Companion ({cfg['species']})",
         creature_type=cfg['species'],
+        sub_type="Animal Companion",  
         primary_ability=cfg.get("support_benefit", ""),
         secondary_ability=cfg.get("advanced_maneuver") if is_mature else None,
         stage=stage,
