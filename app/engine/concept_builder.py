@@ -266,20 +266,25 @@ USER CONCEPT: "{concept_text}"
             spec.wants_companion = True
             spec.companion_kind = llm_data.get("companion_kind")
             if not spec.companion_kind:
-                if "familiar" in text_lower or "leshy" in text_lower:
-                    spec.companion_kind = "familiar"
-                elif "eidolon" in text_lower:
+                if "eidolon" in text_lower:
                     spec.companion_kind = "eidolon"
                 elif "construct" in text_lower or "clockwork" in text_lower:
                     spec.companion_kind = "construct"
                 elif "undead" in text_lower or "skeleton" in text_lower or "zombie" in text_lower:
                     spec.companion_kind = "undead"
+                elif "familiar" in text_lower or "leshy familiar" in text_lower:
+                    spec.companion_kind = "familiar"
                 else:
                     spec.companion_kind = "animal"
 
-            # If user wants a companion/familiar but didn't pick a class or archetype that grants one
+            # Map companion kind to native class or dedication archetype if unspecified
             cls_l = (spec.character_class or "").lower()
-            if not spec.archetype and cls_l not in NATIVE_COMPANION_CLASSES:
+            if spec.companion_kind == "eidolon":
+                if not spec.character_class and not spec.archetype:
+                    spec.character_class = "Summoner"
+                elif cls_l != "summoner" and not spec.archetype:
+                    spec.archetype = "Summoner"
+            elif not spec.archetype and cls_l not in NATIVE_COMPANION_CLASSES:
                 if spec.companion_kind == "familiar":
                     spec.archetype = "Familiar Master"
                 elif spec.companion_kind == "construct":
