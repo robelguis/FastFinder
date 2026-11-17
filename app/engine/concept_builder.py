@@ -444,20 +444,22 @@ USER CONCEPT: "{concept_text}"
         for kw, wname, wdice, wtype, wtraits in weapon_presets:
             if re.search(r"\b" + re.escape(kw) + r"\b", t_low):
                 if not any(kw in (s.name or "").lower() for s in sheet.equipment.strikes):
-                    from app.engine.models import StrikeSummary
                     best_mod = max(sheet.attributes.strength, sheet.attributes.dexterity) if any(t in ("Finesse", "Deadly d10") for t in wtraits) else sheet.attributes.strength
                     atk = best_mod + sheet.level + 2
                     dmg_mod = sheet.attributes.strength if "bow" not in kw else 0
                     dmg_str = f"{wdice}+{dmg_mod}" if dmg_mod > 0 else (f"{wdice}{dmg_mod}" if dmg_mod < 0 else wdice)
-                    sheet.equipment.strikes.insert(0, StrikeSummary(
-                        name=wname,
-                        attack_bonus=f"+{atk}",
-                        map_second=f"+{atk - 5}",
-                        map_third=f"+{atk - 10}",
-                        damage_dice=dmg_str,
-                        damage_type=wtype,
-                        traits=wtraits,
-                    ))
+                    strike_data = {
+                        "name": wname,
+                        "attack_bonus": f"+{atk}",
+                        "map_second": f"+{atk - 5}",
+                        "map_third": f"+{atk - 10}",
+                        "damage_dice": dmg_str,
+                        "damage_type": wtype,
+                        "traits": wtraits,
+                    }
+                    strike_cls = type(sheet.equipment.strikes[0]) if sheet.equipment.strikes else None
+                    new_entry = strike_cls.model_validate(strike_data) if hasattr(strike_cls, "model_validate") else strike_data
+                    sheet.equipment.strikes.insert(0, new_entry)
                 break
 
         payload = sheet.model_dump()
