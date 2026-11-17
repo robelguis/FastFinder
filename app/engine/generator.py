@@ -2339,12 +2339,19 @@ class PF2eGenerator:
             existing_weapons=existing_weps,
             feats=locals().get("chosen_feats"))
 
+        def _bump_bonus(val, delta):
+            try:
+                num = int(str(val).replace("+", "").strip()) + int(delta)
+                return f"{num:+d}"
+            except (ValueError, TypeError):
+                return val
+
         extra_prof = get_weapon_prof_bonus_delta(cls["name"], target_level)
         if extra_prof:
             for strike in equipment_loadout.strikes:
-                strike.attack_bonus += extra_prof
-                strike.map_second += extra_prof
-                strike.map_third += extra_prof
+                strike.attack_bonus = _bump_bonus(strike.attack_bonus, extra_prof)
+                strike.map_second = _bump_bonus(strike.map_second, extra_prof)
+                strike.map_third = _bump_bonus(strike.map_third, extra_prof)
         spec_dmg = get_weapon_spec_bonus(cls["name"], target_level)
         if spec_dmg:
             for strike in equipment_loadout.strikes:
