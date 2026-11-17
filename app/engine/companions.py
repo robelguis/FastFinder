@@ -312,16 +312,15 @@ def resolve_companion(
             matched_species_key = key
             break
 
-    if matched_species_key:
+    if matched_species_key and matched_species_key in COMPANION_SPECIES:
         cfg = COMPANION_SPECIES[matched_species_key]
     else:
-        # Dynamic Fallback Generator for any unlisted animal
+        # Intelligent Dynamic Fallback Generator for ANY unlisted animal
         custom_animal_name = "Beast"
         if concept_text:
             words = concept_text.split()
             for i, w in enumerate(words):
                 if w.lower() in ("with", "companion", "pet", "familiar") and i + 1 < len(words):
-                    # Skip articles like 'a' or 'an' to catch the actual animal noun
                     next_idx = i + 1
                     while next_idx < len(words) and words[next_idx].lower() in ("a", "an", "the"):
                         next_idx += 1
@@ -329,21 +328,38 @@ def resolve_companion(
                         custom_animal_name = words[next_idx].strip(".,!?:;")
                     break
 
+        name_lower = custom_animal_name.lower()
+        
+        # Categorize dynamic stats based on animal type keywords
+        if any(b in name_lower for b in ("elephant", "mammoth", "rhino", "hippo", "whale", "dinosaur")):
+            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Large", "Large", "30 ft", 10, 4, 3, 1, 1
+            strike_name, dice, dtype, traits = "Gore / Slam", "1d10", "Bludgeoning", ["Reach 10 ft", "Unarmed"]
+        elif any(bird in name_lower for bird in ("toucan", "hawk", "raven", "eagle", "parrot", "falcon")):
+            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "10 ft, fly 50 ft", 4, 1, 1, 3, 2
+            strike_name, dice, dtype, traits = "Beak / Talons", "1d6", "Piercing", ["Finesse", "Agile", "Unarmed"]
+        elif any(farm in name_lower for farm in ("goat", "sheep", "ram", "alpaca", "llama")):
+            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "35 ft", 6, 2, 2, 2, 1
+            strike_name, dice, dtype, traits = "Horns / Hooves", "1d8", "Bludgeoning", ["Trip", "Unarmed"]
+        else:
+            # General default beast
+            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "30 ft", 6, 2, 2, 2, 1
+            strike_name, dice, dtype, traits = "Natural Attack", "1d6", "Piercing", ["Unarmed"]
+
         cfg = {
             "species": custom_animal_name.capitalize(),
-            "young_size": "Small",
-            "mature_size": "Medium",
-            "speed": "30 ft",
-            "base_hp": 6,
-            "con_mod": 2,
-            "str_mod": 2,
-            "dex_mod": 2,
-            "wis_mod": 1,
+            "young_size": young_size,
+            "mature_size": mature_size,
+            "speed": speed,
+            "base_hp": base_hp,
+            "con_mod": con_m,
+            "str_mod": str_m,
+            "dex_mod": dex_m,
+            "wis_mod": wis_m,
             "strikes": [
-                {"name": "Natural Attack", "dice": "1d6", "type": "Piercing", "traits": ["Unarmed"], "finesse": False}
+                {"name": strike_name, "dice": dice, "type": dtype, "traits": traits, "finesse": "Finesse" in traits}
             ],
-            "support_benefit": f"Your {custom_animal_name.lower()} harries and distracts your foes, granting you an opening. Enemies in its reach are off-guard to your strikes.",
-            "advanced_maneuver": f"Feral Assault: The {custom_animal_name.lower()} surges forward with a ferocious flurry of attacks."
+            "support_benefit": f"Your {custom_animal_name.lower()} coordinates seamlessly with your attacks. Enemies adjacent to it are off-guard.",
+            "advanced_maneuver": f"Feral Surge: The {custom_animal_name.lower()} unleashes a coordinated assault."
         }
 
     is_mature = level >= 4 or any("mature" in fn for fn in feat_names)
