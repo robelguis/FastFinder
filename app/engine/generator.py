@@ -2174,10 +2174,8 @@ class PF2eGenerator:
         else:
             existing_weps = None
 
-        saved_strikes = [
-            dict(s) if isinstance(s, dict) else s.model_dump()
-            for s in (existing_weps or [])
-        ]
+        import copy
+        saved_strikes = copy.deepcopy(existing_weps or [])
 
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
