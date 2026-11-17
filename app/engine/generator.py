@@ -2168,9 +2168,9 @@ class PF2eGenerator:
         current_arch = current_char.get("archetype") or ""
         raw_eq = current_char.get("equipment")
         if isinstance(raw_eq, dict):
-            existing_weps = raw_eq.get("weapons") or raw_eq.get("strikes")
+            existing_weps = raw_eq.get("strikes") or raw_eq.get("weapons")
         elif raw_eq is not None:
-            existing_weps = getattr(raw_eq, "weapons", None) or getattr(raw_eq, "strikes", None)
+            existing_weps = getattr(raw_eq, "strikes", None) or getattr(raw_eq, "weapons", None)
         else:
             existing_weps = None
 
