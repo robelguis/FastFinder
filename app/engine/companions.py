@@ -295,7 +295,7 @@ def resolve_companion(
     has_companion_feat = any("animal companion" in fn or "beastmaster" in fn for fn in feat_names)
     is_beastmaster = archetype and "beastmaster" in archetype.lower()
     
-    has_concept_companion = bool(concept_text and any(w in concept_text.lower() for w in ("companion", "pet", "mouse", "moose", "wolf", "bear", "elephant", "goat")))
+    has_concept_companion = bool(concept_text and any(w in concept_text.lower() for w in ("companion", "pet", "mouse", "moose", "wolf", "bear")))
     should_qualify = force_qualify or has_companion_feat or is_beastmaster or has_concept_companion or cls_lower in ("ranger", "champion") or (cls_lower == "druid" and ("order: animal" in " ".join(feat_names) or has_concept_companion))
 
     if not should_qualify:
@@ -304,59 +304,54 @@ def resolve_companion(
     matched_species_key = None
     search_corpus = f"{concept_text or ''} {' '.join(feat_names)}".lower()
     
-    # 1. Check pre-defined catalog first
-    sorted_keys = sorted(COMPANION_SPECIES.keys(), key=len, reverse=True)
-    for key in sorted_keys:
-        if re.search(rf"\b{key}\b", search_corpus):
-            matched_species_key = key
-            break
+    # Direct safety net: if 'mouse' is typed anywhere, lock it in immediately
+    if "mouse" in search_corpus:
+        matched_species_key = "mouse"
+    else:
+        sorted_keys = sorted(COMPANION_SPECIES.keys(), key=len, reverse=True)
+        for key in sorted_keys:
+            if re.search(rf"\b{key}\b", search_corpus):
+                matched_species_key = key
+                break
 
     if matched_species_key and matched_species_key in COMPANION_SPECIES:
         cfg = COMPANION_SPECIES[matched_species_key]
     else:
-        # 2. Dynamic Fallback for ANY unlisted animal typed into the prompt
+        # Dynamic fallback for any other animal name typed in
         custom_animal_name = "Beast"
         if concept_text:
-            words = concept_text.split()
-            for i, w in enumerate(words):
-                if w.lower() in ("with", "companion", "pet", "familiar") and i + 1 < len(words):
-                    next_idx = i + 1
-                    while next_idx < len(words) and words[next_idx].lower() in ("a", "an", "the"):
-                        next_idx += 1
-                    if next_idx < len(words):
-                        custom_animal_name = words[next_idx].strip(".,!?:;")
-                    break
+            if "mouse" in concept_text.lower():
+                custom_animal_name = "Mouse"
+            else:
+                words = concept_text.split()
+                for i, w in enumerate(words):
+                    if w.lower() in ("with", "companion", "pet", "familiar") and i + 1 < len(words):
+                        next_idx = i + 1
+                        while next_idx < len(words) and words[next_idx].lower() in ("a", "an", "the"):
+                            next_idx += 1
+                        if next_idx < len(words):
+                            custom_animal_name = words[next_idx].strip(".,!?:;")
+                        break
 
         name_lower = custom_animal_name.lower()
-        
-        # Scale dynamic stats intelligently based on the animal category
-        if any(b in name_lower for b in ("elephant", "mammoth", "rhino", "hippo", "whale", "dinosaur", "moose")):
-            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Large", "Large", "40 ft", 10, 4, 3, 1, 1
-            strike_name, dice, dtype, traits = "Gore / Slam", "1d10", "Bludgeoning", ["Reach 10 ft", "Unarmed"]
-        elif any(bird in name_lower for bird in ("toucan", "hawk", "raven", "eagle", "parrot", "falcon", "owl")):
-            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "10 ft, fly 50 ft", 4, 1, 1, 3, 2
-            strike_name, dice, dtype, traits = "Beak / Talons", "1d6", "Piercing", ["Finesse", "Agile", "Unarmed"]
-        elif any(farm in name_lower for farm in ("goat", "sheep", "ram", "alpaca", "llama", "deer")):
-            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "35 ft", 6, 2, 2, 2, 1
-            strike_name, dice, dtype, traits = "Horns / Hooves", "1d8", "Bludgeoning", ["Trip", "Unarmed"]
-        else:
-            young_size, mature_size, speed, base_hp, str_m, con_m, dex_m, wis_m = "Small", "Medium", "30 ft", 6, 2, 2, 2, 1
-            strike_name, dice, dtype, traits = "Natural Attack", "1d6", "Piercing", ["Unarmed"]
+        if name_lower == "beast" and "mouse" in search_corpus:
+            custom_animal_name = "Mouse"
+            name_lower = "mouse"
 
         cfg = {
             "species": custom_animal_name.capitalize(),
-            "young_size": young_size,
-            "mature_size": mature_size,
-            "speed": speed,
-            "base_hp": base_hp,
-            "con_mod": con_m,
-            "str_mod": str_m,
-            "dex_mod": dex_m,
-            "wis_mod": wis_m,
+            "young_size": "Small",
+            "mature_size": "Medium",
+            "speed": "30 ft",
+            "base_hp": 6,
+            "con_mod": 2,
+            "str_mod": 2,
+            "dex_mod": 2,
+            "wis_mod": 1,
             "strikes": [
-                {"name": strike_name, "dice": dice, "type": dtype, "traits": traits, "finesse": "Finesse" in traits}
+                {"name": "Natural Attack", "dice": "1d6", "type": "Piercing", "traits": ["Unarmed"], "finesse": False}
             ],
-            "support_benefit": f"Your {custom_animal_name.lower()} coordinates seamlessly with your attacks. Enemies adjacent to it are off-guard.",
+            "support_benefit": f"Your {custom_animal_name.lower()} harries and distracts your foes, granting you an opening. Enemies in its reach are off-guard to your strikes.",
             "advanced_maneuver": f"Feral Surge: The {custom_animal_name.lower()} unleashes a coordinated assault."
         }
 
