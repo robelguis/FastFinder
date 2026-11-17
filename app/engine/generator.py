@@ -2186,6 +2186,60 @@ class PF2eGenerator:
             existing_weapons=existing_weps,
             feats=locals().get("chosen_feats"))
 
+        # Preserve custom/concept weapons & shields that resolve_equipment may drop for non-martial classes
+        if existing_weps:
+            existing_base_names = {
+                re.sub(r"^\+\d+\s+(?:(?:Greater|Major)\s+)?(?:Striking\s+)?", "", (s.name or "").strip(), flags=re.I).lower()
+                for s in equipment_loadout.strikes
+            }
+            potency = 3 if target_level >= 16 else (2 if target_level >= 10 else (1 if target_level >= 2 else 0))
+            dice_mult = 4 if target_level >= 19 else (3 if target_level >= 12 else (2 if target_level >= 4 else 1))
+            striking_label = "Major Striking " if dice_mult == 4 else ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
+            prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
+
+            custom_preserved = []
+            for ps in existing_weps:
+                ps_dict = ps if isinstance(ps, dict) else ps.model_dump()
+                raw_name = (ps_dict.get("name") or "").strip()
+                base_name = re.sub(r"^\+\d+\s+(?:(?:Greater|Major)\s+)?(?:Striking\s+)?", "", raw_name, flags=re.I)
+                if not base_name or base_name.lower().startswith("elemental blast") or "(rage strike)" in base_name.lower():
+                    continue
+                if base_name.lower() in existing_base_names:
+                    continue
+                traits = list(ps_dict.get("traits") or [])
+                traits_low = [t.lower() for t in traits]
+                is_ranged = any(k in base_name.lower() for k in ("bow", "crossbow", "sling", "dart", "pistol", "musket"))
+                use_dex = is_ranged or ("finesse" in traits_low and mods.get("dex", 0) > mods.get("str", 0))
+                best_mod = mods.get("dex", 0) if use_dex else mods.get("str", 0)
+                atk = target_level + 2 + best_mod + potency
+                step = 4 if "agile" in traits_low else 5
+
+                raw_dmg = str(ps_dict.get("damage_dice") or "1d6")
+                m_die = re.match(r"^(\d+)(d\d+)", raw_dmg)
+                die_part = f"{dice_mult}{m_die.group(2)}" if m_die else raw_dmg
+                dmg_mod = 0 if (is_ranged and "propulsive" not in traits_low and "thrown" not in traits_low) else mods.get("str", 0)
+                dmg_str = f"{die_part}+{dmg_mod}" if dmg_mod > 0 else (f"{die_part}{dmg_mod}" if dmg_mod < 0 else die_part)
+
+                strike_cls = type(equipment_loadout.strikes[0]) if equipment_loadout.strikes else dict
+                new_st = {
+                    "name": f"{prefix}{base_name}",
+                    "attack_bonus": str(atk),
+                    "map_second": str(atk - step),
+                    "map_third": str(atk - (step * 2)),
+                    "damage_dice": dmg_str,
+                    "damage_type": ps_dict.get("damage_type") or "Slashing",
+                    "traits": traits,
+                }
+                custom_preserved.append(strike_cls.model_validate(new_st) if hasattr(strike_cls, "model_validate") else new_st)
+
+            if custom_preserved:
+                equipment_loadout.strikes = custom_preserved + list(equipment_loadout.strikes)
+
+        prev_gear = (raw_eq.get("gear") if isinstance(raw_eq, dict) else getattr(raw_eq, "gear", None)) or []
+        if any("shield" in str(g).lower() for g in prev_gear):
+            if not any("shield" in str(g).lower() for g in (equipment_loadout.gear or [])):
+                equipment_loadout.gear.append("Steel Shield (+2 AC when raised)")
+
         def _bump_bonus(val, delta):
             try:
                 num = int(str(val).replace("+", "").strip()) + int(delta)
