@@ -327,7 +327,15 @@ def resolve_companion(
                 for i, w in enumerate(words):
                     if w.lower() in ("with", "companion", "pet", "familiar") and i + 1 < len(words):
                         next_idx = i + 1
-                        while next_idx < len(words) and words[next_idx].lower() in ("a", "an", "the"):
+                        # Replace the while loop in resolve_companion's fallback block in companions.py:
+
+                        SKIP_WORDS = {
+                             "a", "an", "the", "large", "big", "huge", "giant", "small", "tiny", "little", 
+                            "medium", "strong", "loyal", "fierce", "faithful", "metal", "iron", "steel", 
+                             "companion", "pet", "familiar"
+                        }
+
+                        while next_idx < len(words) and words[next_idx].lower().strip(".,!?:;") in SKIP_WORDS:
                             next_idx += 1
                         if next_idx < len(words):
                             custom_animal_name = words[next_idx].strip(".,!?:;")
