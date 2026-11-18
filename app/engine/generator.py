@@ -220,7 +220,7 @@ ARCHER_DEDICATION = {
     "feat": "Archer Dedication",
     "level": 2,
     "prerequisites": ["Trained in Martial Weapons"],
-    "weapons": ["Shortbow", "Longbow", "Composite Shortbow"],
+    "weapons": ["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"],
     "benefit": (
         "You become trained in all simple and martial ranged weapons. "
         "Whenever you gain a class feature that grants you expert or greater "
@@ -1440,6 +1440,37 @@ class PF2eGenerator:
             subclass_name=sub_n,
             archetype_name=arch_n,
             feats=locals().get("chosen_feats"))
+
+        # --- HOOK: Enforce Bow-Only Strikes for Archer Archetype ---
+        arch_name_check = arch_n.lower() if arch_n else ""
+        if "archer" in arch_name_check:
+            bow_pool = ["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"]
+            potency = 3 if level >= 16 else (2 if level >= 10 else (1 if level >= 2 else 0))
+            dice_mult = 4 if level >= 19 else (3 if level >= 12 else (2 if level >= 4 else 1))
+            striking_label = "Major Striking " if dice_mult == 4 else ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
+            prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
+
+            forced_bow_strikes = []
+            # Pick 2-3 distinct or random bows for their strike loadout
+            chosen_bows = random.choices(bow_pool, k=3 if level >= 6 else 2)
+            for b_name in chosen_bows:
+                is_long = "longbow" in b_name.lower()
+                range_ft = 100 if is_long else 60
+                atk = level + 2 + mods.get("dex", 0) + potency
+                dmg_dice = f"{dice_mult}d8" if is_long else f"{dice_mult}d6"
+                prop_trait = ["Propulsive"] if not is_long else [] # example trait handling
+                
+                forced_bow_strikes.append(Strike(
+                    name=f"{prefix}{b_name}",
+                    attack_bonus=str(atk),
+                    map_second=str(atk - 5),
+                    map_third=str(atk - 10),
+                    damage_dice=dmg_dice,
+                    damage_type="Piercing",
+                    traits=["Deadly d10", "Range " + str(range_ft) + " ft"] + prop_trait
+                ))
+            equipment_loadout.strikes = forced_bow_strikes
+        # -----------------------------------------------------------
 
         # Inject Barbarian Animal Instinct Bestial Strike
         if cls["name"].lower() == "barbarian" and subclass_data:
