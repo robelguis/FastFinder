@@ -73,7 +73,6 @@ class ConceptSpec:
     requested_spells: List[str] = field(default_factory=list)
     requested_skills: Dict[str, str] = field(default_factory=dict)  # skill -> rank ("T","E","M","L")
     wants_companion: bool = False
-    Optional[str] = None
     requirements: List[LevelRequirement] = field(default_factory=list)
 
 
