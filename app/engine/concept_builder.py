@@ -73,7 +73,7 @@ class ConceptSpec:
     requested_spells: List[str] = field(default_factory=list)
     requested_skills: Dict[str, str] = field(default_factory=dict)  # skill -> rank ("T","E","M","L")
     wants_companion: bool = False
-    companion_kind: Optional[str] = None
+    : Optional[str] = None
     requirements: List[LevelRequirement] = field(default_factory=list)
 
 
@@ -189,7 +189,7 @@ Return ONLY valid JSON with these exact keys (use null or [] if not mentioned):
   "requested_spells": [string],
   "requested_skills": {{"skill_name": "T|E|M|L"}},
   "wants_companion": boolean,
-  "companion_kind": "animal|familiar|eidolon|construct|undead|plant|null"
+  "": "animal|familiar|eidolon|construct|undead|plant|null"
 }}
 
 USER CONCEPT: "{concept_text}"
@@ -279,7 +279,22 @@ USER CONCEPT: "{concept_text}"
         ):
             spec.wants_companion = True
             spec.companion_kind = llm_data.get("companion_kind")
-            if not spec.companion_kind:
+            
+            # Check for direct descriptive words right before companion/pet (e.g., "metal companion")
+            CONSTRUCT_WORDS = {"metal", "iron", "steel", "robot", "robotic", "golem", "mechanical", "clockwork", "construct", "brass", "mechanism"}
+            UNDEAD_WORDS = {"undead", "skeletal", "zombie", "ghostly", "spectral"}
+            PLANT_WORDS = {"plant", "vine", "treant", "wooden", "leafy"}
+
+            m_desc = re.search(r"\b([a-z\-]+)\s+(?:animal\s+)?(?:companion|pet)\b", text_lower)
+            desc = m_desc.group(1) if m_desc else ""
+
+            if desc in CONSTRUCT_WORDS:
+                spec.companion_kind = "construct"
+            elif desc in UNDEAD_WORDS:
+                spec.companion_kind = "undead"
+            elif desc in PLANT_WORDS:
+                spec.companion_kind = "plant"
+            elif not spec.companion_kind:
                 if "eidolon" in text_lower:
                     spec.companion_kind = "eidolon"
                 elif "construct" in text_lower or "clockwork" in text_lower:
@@ -290,7 +305,6 @@ USER CONCEPT: "{concept_text}"
                     spec.companion_kind = "familiar"
                 else:
                     spec.companion_kind = "animal"
-
             # Map companion kind to native class or dedication archetype if unspecified
             cls_l = (spec.character_class or "").lower()
             if spec.companion_kind == "eidolon":
