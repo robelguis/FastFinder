@@ -1441,36 +1441,37 @@ class PF2eGenerator:
             archetype_name=arch_n,
             feats=locals().get("chosen_feats"))
 
-        # --- HOOK: Enforce Bow-Only Strikes for Archer Archetype ---
+        # --- HOOK: Archer Archetype 3rd Weapon Bow Guarantee ---
         arch_name_check = arch_n.lower() if arch_n else ""
-        if "archer" in arch_name_check:
-            bow_pool = ["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"]
-            potency = 3 if level >= 16 else (2 if level >= 10 else (1 if level >= 2 else 0))
-            dice_mult = 4 if level >= 19 else (3 if level >= 12 else (2 if level >= 4 else 1))
-            striking_label = "Major Striking " if dice_mult == 4 else ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
-            prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
-
-            forced_bow_strikes = []
-            # Pick 2-3 distinct or random bows for their strike loadout
-            chosen_bows = random.choices(bow_pool, k=3 if level >= 6 else 2)
-            for b_name in chosen_bows:
-                is_long = "longbow" in b_name.lower()
+        if "archer" in arch_name_check and equipment_loadout and equipment_loadout.strikes:
+            bow_keywords = ["bow", "shortbow", "longbow"]
+            has_bow = any(any(kw in (st.name or "").lower() for kw in bow_keywords) for st in equipment_loadout.strikes)
+            
+            if not has_bow:
+                bow_pool = ["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"]
+                chosen_bow = random.choice(bow_pool)
+                is_long = "longbow" in chosen_bow.lower()
                 range_ft = 100 if is_long else 60
+                
+                potency = 3 if level >= 16 else (2 if level >= 10 else (1 if level >= 2 else 0))
+                dice_mult = 4 if level >= 19 else (3 if level >= 12 else (2 if level >= 4 else 1))
+                striking_label = "Major Striking " if dice_mult == 4 else ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
+                prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
+                
                 atk = level + 2 + mods.get("dex", 0) + potency
                 dmg_dice = f"{dice_mult}d8" if is_long else f"{dice_mult}d6"
-                prop_trait = ["Propulsive"] if not is_long else [] # example trait handling
                 
-                forced_bow_strikes.append(Strike(
-                    name=f"{prefix}{b_name}",
+                bow_strike = Strike(
+                    name=f"{prefix}{chosen_bow}",
                     attack_bonus=str(atk),
                     map_second=str(atk - 5),
                     map_third=str(atk - 10),
                     damage_dice=dmg_dice,
                     damage_type="Piercing",
-                    traits=["Deadly d10", "Range " + str(range_ft) + " ft"] + prop_trait
-                ))
-            equipment_loadout.strikes = forced_bow_strikes
-        # -----------------------------------------------------------
+                    traits=["Deadly d10", f"Range {range_ft} ft"]
+                )
+                equipment_loadout.strikes.append(bow_strike)
+        # -------------------------------------------------------
 
         # Inject Barbarian Animal Instinct Bestial Strike
         if cls["name"].lower() == "barbarian" and subclass_data:
