@@ -1441,9 +1441,9 @@ class PF2eGenerator:
             archetype_name=arch_n,
             feats=locals().get("chosen_feats"))
 
-        # --- HOOK: Ensure Archer 3rd Weapon Appears on Level Up ---
-        arch_name_check = resolved_arch_name.lower() if resolved_arch_name else ""
-        if target_level >= 2 and "archer" in arch_name_check and equipment_loadout and equipment_loadout.strikes:
+        # --- HOOK: Archer Archetype 3rd Weapon Bow Guarantee ---
+        active_arch = locals().get("arch_n") or locals().get("resolved_arch_name") or ""
+        if level >= 2 and "archer" in active_arch.lower() and equipment_loadout and equipment_loadout.strikes:
             bow_keywords = ["bow", "shortbow", "longbow"]
             has_bow = any(any(kw in (st.name or "").lower() for kw in bow_keywords) for st in equipment_loadout.strikes)
             
@@ -1453,12 +1453,12 @@ class PF2eGenerator:
                 is_long = "longbow" in chosen_bow.lower()
                 range_ft = 100 if is_long else 60
                 
-                potency = 3 if target_level >= 16 else (2 if target_level >= 10 else (1 if target_level >= 2 else 0))
-                dice_mult = 4 if target_level >= 19 else (3 if target_level >= 12 else (2 if target_level >= 4 else 1))
+                potency = 3 if level >= 16 else (2 if level >= 10 else (1 if level >= 2 else 0))
+                dice_mult = 4 if level >= 19 else (3 if level >= 12 else (2 if level >= 4 else 1))
                 striking_label = "Major Striking " if dice_mult == 4 else ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
                 prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
                 
-                atk = target_level + 2 + mods.get("dex", 0) + potency
+                atk = level + 2 + mods.get("dex", 0) + potency
                 dmg_dice = f"{dice_mult}d8" if is_long else f"{dice_mult}d6"
                 
                 bow_strike = Strike(
@@ -1471,7 +1471,7 @@ class PF2eGenerator:
                     traits=["Deadly d10", f"Range {range_ft} ft"]
                 )
                 equipment_loadout.strikes.append(bow_strike)
-        # -----------------------------------------------------------
+        # -------------------------------------------------------
 
         # Inject Barbarian Animal Instinct Bestial Strike
         if cls["name"].lower() == "barbarian" and subclass_data:
