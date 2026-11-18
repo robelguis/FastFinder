@@ -278,6 +278,7 @@ def clean_pf2e_text(text: str) -> str:
     if not text:
         return ""
     text = re.sub(r"<[^>]+>", "", text)
+    text = re.sub(r"@Template\[(?:type:)?([a-zA-Z]+)\|distance:(\d+)[^\]]*\](?:\{([^}]+)\})?", lambda m: m.group(3) if m.group(3) else f"{m.group(2)}-foot {m.group(1)}", text)
     text = re.sub(r"@UUID\[[^\]]+\]\{([^}]+)\}", r"\1", text)
     text = re.sub(r"@UUID\[(?:.*?\.)?([^\]\.]+?)\]", r"\1", text)
     text = re.sub(r"@Check\[[^\]]+\]\{([^}]+)\}", r"\1", text)
@@ -294,6 +295,7 @@ def clean_pf2e_text(text: str) -> str:
     text = re.sub(r"\[[^\]]*options:[^\]]*\]", "", text)
     text = re.sub(r"/act\s+([a-zA-Z\-]+)(?:\s+skill=([a-zA-Z]+))?", lambda m: f"{m.group(1).replace('-', ' ').title()}" + (f" ({m.group(2).title()})" if m.group(2) else ""), text)
     text = re.sub(r"(\d+d\d+(?:\+\d+)?)\[([a-zA-Z]+)\]", r"\1 \2", text)
+    text = re.sub(r"\(([A-Za-z]+)\)\s*\{[^}]+\}", r"(\1)", text)
     text = text.replace("[[", "").replace("]]", "")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n+", "\n\n", text)
@@ -2142,6 +2144,28 @@ class PF2eGenerator:
                     sk.rank = 2
                     sk.rank_letter = "T"
                     sk.modifier += (2 + level)
+
+        # Grant bonus Level 1 Ancestry feat if Ancestral Paragon was selected
+        if any(f.name.lower() == "ancestral paragon" for f in chosen_feats):
+            anc_l1_ap = anc["name"].lower()
+            owned_ap = {f.name.lower() for f in chosen_feats}
+            ap_pool = [
+                f for f in self.feats
+                if f.get("category") == "ancestry"
+                and f.get("level") == 1
+                and anc_l1_ap in [t.lower() for t in f.get("traits", [])]
+                and f["name"].lower() not in owned_ap
+            ]
+            if ap_pool:
+                ap_f = random.choice(ap_pool)
+                chosen_feats.append(FeatSummary(
+                    id=ap_f["id"],
+                    name=ap_f["name"],
+                    category="Ancestry (Ancestral Paragon)",
+                    action_cost=safe_action_cost(ap_f.get("action_cost")),
+                    traits=ap_f.get("traits", [anc_l1_ap]),
+                    description=clean_pf2e_text(ap_f.get("description", ""))
+                ))
 
         # Ensure every even level (2..level) has its allotted Skill Feat
         existing_skill_cats = {f.category for f in chosen_feats}
