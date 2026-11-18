@@ -335,7 +335,30 @@ def resolve_spellcasting(
     feats: Optional[List[Any]] = None,
 ) -> Optional[SpellcastingData]:
     sc = _resolve_base_spellcasting(class_name, attribute_mods, level, subclass_name)
-    return _apply_dedication_cantrips(sc, feats, attribute_mods, level)
+    sc = _apply_dedication_cantrips(sc, feats, attribute_mods, level)
+    
+    # If character has no base spellcasting but has acquired focus spells / divine/occult/primal/arcane dedication
+    if not sc and feats:
+        feat_names = [
+            (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else "")).lower()
+            for f in feats
+        ]
+        has_dedication_spells = any("godling dedication" in fn or "dedication" in fn for fn in feat_names)
+        if has_dedication_spells:
+            # Determine attribute modifier (default to Wis or Cha, or Int for Inventor)
+            attr_key = "wis" if "wis" in attribute_mods else ("cha" if "cha" in attribute_mods else "int")
+            attr_mod = attribute_mods.get(attr_key, 3)
+            prof_bonus = 2 + level # Expert/Trained baseline scaling
+            spell_dc = 10 + prof_bonus + attr_mod
+            spell_attack = prof_bonus + attr_mod
+            sc = SpellcastingData(
+                tradition="Divine",
+                casting_attribute=attr_key.upper(),
+                spell_dc=spell_dc,
+                spell_attack=spell_attack,
+                cantrips=[],
+            )
+    return sc
 
 
 def _resolve_base_spellcasting(
