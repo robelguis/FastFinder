@@ -213,6 +213,7 @@ ARCHETYPE_GRANTED_FEATURES = {
         traits=["archetype", "concentrate", "fortune", "investigator"],
         description="Roll a d20. You must use that result for the attack roll of your next Strike this round against the designated creature, substituting your Intelligence modifier for your Strength or Dexterity modifier on the attack roll."
     )
+}     
    # Example snippet for archer dedication feat data
    ARCHER_DEDICATION = {
        "feat": "Archer Dedication",
