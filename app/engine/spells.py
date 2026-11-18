@@ -327,14 +327,202 @@ def _apply_dedication_cantrips(
     return sc
 
 
+
+CLERIC_DOMAINS: Dict[str, Dict[str, Any]] = {
+    "healing": {
+        "name": "Healing",
+        "focus_spell": {"rank": 1, "name": "Healer's Blessing (Healing Domain)", "actions": "1 action", "traits": ["Cleric", "Focus", "Healing", "Vitality"], "range": "30 feet", "defense": "None", "description": "Your words bless a creature with enhanced healing; the next time it regains HP from a healing spell, it regains an additional 2 HP per spell rank."},
+        "cantrips": [
+            {"name": "Vitality Lash", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Vitality"], "range": "30 feet", "defense": "Basic Fortitude", "description": "A lash of radiant energy deals 2d6 vitality damage to an undead target."},
+            {"name": "Stabilize", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Healing", "Vitality"], "range": "30 feet", "defense": "None", "description": "Positive energy shuts death's door, stabilizing a dying creature."},
+            {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to one attack roll, Perception check, saving throw, or skill check."},
+            {"name": "Light", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Light"], "range": "Touch", "defense": "None", "description": "An object sheds bright light in a 20-foot radius for 1 hour."}
+        ],
+        "rank_1": [
+            {"name": "Heal", "actions": "1 to 3 actions", "traits": ["Divine", "Healing", "Vitality"], "range": "Varies", "defense": "None", "description": "Channels positive energy to heal living creatures or harm undead (1d8 HP per action/rank)."},
+            {"name": "Sanctuary", "actions": "2 actions", "traits": ["Divine", "Abjuration"], "range": "Touch", "defense": "Will", "description": "Wards a creature. Foes attempting to attack the target must succeed at a Will save."},
+            {"name": "Soothe", "actions": "2 actions", "traits": ["Divine", "Emotion", "Healing", "Mental"], "range": "30 feet", "defense": "None", "description": "Graces the target's mind, restoring 1d10+4 HP and granting a +2 status bonus against mental effects."}
+        ],
+        "rank_2": [
+            {"name": "Cleanse Affliction", "actions": "2 actions", "traits": ["Divine", "Healing"], "range": "Touch", "defense": "None", "description": "Attempt a counteract check to remove a poison, disease, or curse affecting the target."},
+            {"name": "Restore Senses", "actions": "2 actions", "traits": ["Divine", "Healing"], "range": "Touch", "defense": "None", "description": "Attempt a counteract check to remove blinded or deafened conditions."},
+            {"name": "Calm", "actions": "2 actions", "traits": ["Divine", "Emotion", "Incapacitation", "Mental"], "range": "120 feet", "defense": "Will", "description": "Forcibly calms creatures in a 10-foot burst, preventing hostile actions."}
+        ],
+        "rank_3": [
+            {"name": "Safe Passage", "actions": "3 actions", "traits": ["Divine", "Abjuration"], "range": "Touch", "defense": "None", "description": "Protects creatures passing through hazardous terrain or environmental damage."},
+            {"name": "Heroism", "actions": "2 actions", "traits": ["Divine", "Mental"], "range": "Touch", "defense": "None", "description": "Grants a +1 status bonus to attack rolls, Perception, saving throws, and skill checks for 10 minutes."}
+        ],
+        "rank_4": [
+            {"name": "Vital Beacon", "actions": "2 actions", "traits": ["Divine", "Healing", "Vitality"], "range": "Self", "defense": "None", "description": "You radiate restorative energy that you or an ally can tap into as an action to heal HP."},
+            {"name": "Spiritual Anamnesis", "actions": "2 actions", "traits": ["Divine", "Mental"], "range": "60 feet", "defense": "Will", "description": "Overwhelms a target with visions of past lives, slowing them."}
+        ],
+        "rank_5": [
+            {"name": "Breath of Life", "actions": "Reaction", "traits": ["Divine", "Healing"], "range": "60 feet", "defense": "None", "description": "Trigger: An ally within 60 ft would die. You restore 4d8 HP to prevent their death."},
+            {"name": "Cleanse Curse", "actions": "2 actions", "traits": ["Divine", "Healing"], "range": "Touch", "defense": "None", "description": "You attempt a counteract check against a curse or affliction afflicting the target."}
+        ]
+    },
+    "fire": {
+        "name": "Fire",
+        "focus_spell": {"rank": 1, "name": "Fire Ray (Fire Domain)", "actions": "2 actions", "traits": ["Attack", "Cleric", "Fire", "Focus"], "range": "60 feet", "defense": "AC", "description": "A blazing band of fire arcs from your hands, dealing 2d6 fire damage (plus 1d6 persistent fire on a critical hit)."},
+        "cantrips": [
+            {"name": "Ignition", "actions": "2 actions", "traits": ["Attack", "Cantrip", "Concentrate", "Divine", "Fire"], "range": "30 feet", "defense": "AC", "description": "You ignite a flame in your hand and hurl it at a foe for 2d4 fire damage."},
+            {"name": "Light", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Light"], "range": "Touch", "defense": "None", "description": "An object sheds bright light in a 20-foot radius for 1 hour."},
+            {"name": "Divine Lance", "actions": "2 actions", "traits": ["Attack", "Divine", "Holy"], "range": "30 feet", "defense": "AC", "description": "You launch a beam of sanctified divine energy dealing 2d4 spirit damage."},
+            {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to one roll."}
+        ],
+        "rank_1": [
+            {"name": "Breathe Fire", "actions": "2 actions", "traits": ["Divine", "Fire"], "range": "15-foot cone", "defense": "Basic Reflex", "description": "A torrent of sacred flame deals 2d6 fire damage to all creatures in the area."},
+            {"name": "Bless", "actions": "2 actions", "traits": ["Divine", "Concentrate"], "range": "15-foot emanation", "defense": "None", "description": "You and allies in the area gain a +1 status bonus to attack rolls."}
+        ],
+        "rank_2": [
+            {"name": "Blazing Bolt", "actions": "1 to 3 actions", "traits": ["Attack", "Divine", "Fire"], "range": "120 feet", "defense": "AC", "description": "Fires up to three rays of scorching fire, each dealing 2d6 fire damage."},
+            {"name": "Resist Energy", "actions": "2 actions", "traits": ["Divine"], "range": "Touch", "defense": "None", "description": "Grants resistance 5 to fire or another chosen energy type."}
+        ],
+        "rank_3": [
+            {"name": "Fireball", "actions": "2 actions", "traits": ["Divine", "Fire"], "range": "500 feet", "defense": "Basic Reflex", "description": "A roaring blast of divine flame erupts in a 20-foot burst, dealing 6d6 fire damage."},
+            {"name": "Holy Light", "actions": "2 actions", "traits": ["Attack", "Divine", "Fire", "Light"], "range": "120 feet", "defense": "AC", "description": "Fires a beam of searing radiance dealing 5d6 fire damage plus extra spirit damage to unholy foes."}
+        ],
+        "rank_4": [
+            {"name": "Wall of Fire", "actions": "3 actions", "traits": ["Divine", "Fire"], "range": "120 feet", "defense": "None", "description": "Creates a blazing wall of divine flame that burns creatures passing through."},
+            {"name": "Fire Shield", "actions": "2 actions", "traits": ["Divine", "Fire"], "range": "Self", "defense": "None", "description": "Flames wreath you, granting cold resistance 10 and damaging melee attackers."}
+        ],
+        "rank_5": [
+            {"name": "Divine Immolation", "actions": "2 actions", "traits": ["Divine", "Fire", "Sanctified"], "range": "120 feet", "defense": "Basic Reflex", "description": "Holy fire bursts in a 20-foot area dealing 6d10 fire damage plus 2d6 persistent spirit damage."},
+            {"name": "Flame Strike", "actions": "2 actions", "traits": ["Divine", "Fire"], "range": "120 feet", "defense": "Basic Reflex", "description": "Calls down a vertical column of divine fire dealing 8d6 fire and spirit damage."}
+        ]
+    },
+    "protection": {
+        "name": "Protection",
+        "focus_spell": {"rank": 1, "name": "Protector's Sacrifice (Protection Domain)", "actions": "Reaction", "traits": ["Cleric", "Focus"], "range": "30 feet", "defense": "None", "description": "Trigger: An ally within 30 feet takes damage. You redirect up to 3 damage per spell rank to yourself instead."},
+        "cantrips": [
+            {"name": "Forbidding Ward", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Target ally gains a +1 status bonus to AC and saves against attacks from a designated enemy."},
+            {"name": "Shield", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine", "Force"], "range": "Self", "defense": "None", "description": "You raise a magical shield granting a +1 circumstance bonus to AC and Shield Block."},
+            {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to one roll."},
+            {"name": "Divine Lance", "actions": "2 actions", "traits": ["Attack", "Divine", "Holy"], "range": "30 feet", "defense": "AC", "description": "You launch a beam of sanctified divine energy dealing 2d4 spirit damage."}
+        ],
+        "rank_1": [
+            {"name": "Sanctuary", "actions": "2 actions", "traits": ["Divine", "Abjuration"], "range": "Touch", "defense": "Will", "description": "Wards a creature. Foes attempting to attack the target must succeed at a Will save."},
+            {"name": "Protection", "actions": "2 actions", "traits": ["Divine", "Abjuration"], "range": "Touch", "defense": "None", "description": "Wards a creature against unholy or holy foes, granting a +1 status bonus to AC and saves."}
+        ],
+        "rank_2": [
+            {"name": "Resist Energy", "actions": "2 actions", "traits": ["Divine"], "range": "Touch", "defense": "None", "description": "Protects a creature against acid, cold, electricity, fire, or sonic damage."},
+            {"name": "Dispel Magic", "actions": "2 actions", "traits": ["Divine"], "range": "120 feet", "defense": "None", "description": "Unravels a hostile spell or magical effect."}
+        ],
+        "rank_3": [
+            {"name": "Glyph of Warding", "actions": "10 minutes", "traits": ["Divine"], "range": "Touch", "defense": "None", "description": "Inscribes a protective ward that triggers when an intruder approaches."},
+            {"name": "Safe Passage", "actions": "3 actions", "traits": ["Divine"], "range": "Touch", "defense": "None", "description": "Shields allies moving through hazardous terrain."}
+        ],
+        "rank_4": [
+            {"name": "Globe of Invulnerability", "actions": "2 actions", "traits": ["Divine"], "range": "Self", "defense": "None", "description": "Creates an immobile sphere that blocks lower-rank hostile spells."},
+            {"name": "Freedom of Movement", "actions": "2 actions", "traits": ["Divine"], "range": "Touch", "defense": "None", "description": "Allows the target to ignore effects that would impede movement or paralyze them."}
+        ],
+        "rank_5": [
+            {"name": "Repulsion", "actions": "2 actions", "traits": ["Divine", "Aura", "Mental"], "range": "Self", "defense": "Will", "description": "Creates an aura that prevents enemies from approaching you."},
+            {"name": "Breath of Life", "actions": "Reaction", "traits": ["Divine", "Healing"], "range": "60 feet", "defense": "None", "description": "Prevents an ally within 60 feet from dying."}
+        ]
+    },
+    "knowledge": {
+        "name": "Knowledge",
+        "focus_spell": {"rank": 1, "name": "Scholarly Recollection (Knowledge Domain)", "actions": "Free Action", "traits": ["Cleric", "Focus", "Fortune"], "range": "Self", "defense": "None", "description": "Trigger: You attempt a Recall Knowledge check. Roll twice and take the higher result."},
+        "cantrips": [
+            {"name": "Read Aura", "actions": "1 minute", "traits": ["Cantrip", "Concentrate", "Detection", "Divine"], "range": "30 feet", "defense": "None", "description": "Detects whether an object is magical and identifies its school/tradition."},
+            {"name": "Know the Way", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Detection", "Divine"], "range": "Self", "defense": "None", "description": "Instantly determines true north and retraces your path."},
+            {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to one roll."},
+            {"name": "Divine Lance", "actions": "2 actions", "traits": ["Attack", "Divine", "Holy"], "range": "30 feet", "defense": "AC", "description": "Launches a beam of sanctified divine energy dealing 2d4 spirit damage."}
+        ],
+        "rank_1": [
+            {"name": "Share Lore", "actions": "1 minute", "traits": ["Divine", "Mental"], "range": "Touch", "defense": "None", "description": "Shares your knowledge of a Lore skill with touched allies."},
+            {"name": "Command", "actions": "2 actions", "traits": ["Auditory", "Divine", "Linguistic", "Mental"], "range": "30 feet", "defense": "Will", "description": "Utters a word of divine authority forcing a target to obey."}
+        ],
+        "rank_2": [
+            {"name": "Augury", "actions": "10 minutes", "traits": ["Divine", "Prediction"], "range": "Self", "defense": "None", "description": "Predicts whether a specific course of action will bring weal or woe."},
+            {"name": "Translate", "actions": "2 actions", "traits": ["Divine", "Mental"], "range": "Touch", "defense": "None", "description": "Allows the target to understand and speak a chosen language."}
+        ],
+        "rank_3": [
+            {"name": "Hypercognition", "actions": "1 action", "traits": ["Divine"], "range": "Self", "defense": "None", "description": "You rapidly catalog vast information, instantly attempting up to six Recall Knowledge checks."},
+            {"name": "Clairaudience", "actions": "1 minute", "traits": ["Divine", "Scrying"], "range": "500 feet", "defense": "None", "description": "Creates an invisible magical sensor at a distant location."}
+        ],
+        "rank_4": [
+            {"name": "Read Omens", "actions": "10 minutes", "traits": ["Divine", "Prediction"], "range": "Self", "defense": "None", "description": "Peeks into the future to receive a cryptic clue about upcoming events."},
+            {"name": "Clairvoyance", "actions": "1 minute", "traits": ["Divine", "Scrying"], "range": "500 feet", "defense": "None", "description": "Creates an invisible visual sensor up to 500 feet away."}
+        ],
+        "rank_5": [
+            {"name": "Truesight", "actions": "2 actions", "traits": ["Divine", "Revelation"], "range": "Self", "defense": "None", "description": "Pierces illusions and transmutations within 60 feet."},
+            {"name": "Sending", "actions": "3 actions", "traits": ["Divine", "Mental"], "range": "Planetary", "defense": "None", "description": "Sends a 25-word telepathic message to a known creature anywhere on the planet."}
+        ]
+    },
+    "destruction": {
+        "name": "Destruction",
+        "focus_spell": {"rank": 1, "name": "Cry of Destruction (Destruction Domain)", "actions": "2 actions", "traits": ["Auditory", "Cleric", "Focus", "Sonic"], "range": "15-foot emanation", "defense": "Basic Fortitude", "description": "Your booming voice shatters foes for 1d8 sonic damage (or 1d12 if you already dealt damage to an enemy this turn)."},
+        "cantrips": [
+            {"name": "Divine Lance", "actions": "2 actions", "traits": ["Attack", "Divine", "Holy"], "range": "30 feet", "defense": "AC", "description": "Launches a beam of sanctified divine energy dealing 2d4 spirit damage."},
+            {"name": "Void Warp", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Void"], "range": "30 feet", "defense": "Basic Fortitude", "description": "Calls upon entropic power to deal 2d4 void damage to a living creature."},
+            {"name": "Shield", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine", "Force"], "range": "Self", "defense": "None", "description": "Raises a magical shield granting +1 AC."},
+            {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to one roll."}
+        ],
+        "rank_1": [
+            {"name": "Harm", "actions": "1 to 3 actions", "traits": ["Divine", "Void"], "range": "Varies", "defense": "Basic Fortitude", "description": "Channels entropic energy to deal 1d8 void damage per action/rank to living creatures."},
+            {"name": "Bane", "actions": "2 actions", "traits": ["Aura", "Divine", "Mental"], "range": "15-foot emanation", "defense": "Will", "description": "Foes in the aura suffer a -1 status penalty to attack rolls."}
+        ],
+        "rank_2": [
+            {"name": "Spiritual Armament", "actions": "2 actions", "traits": ["Divine", "Force"], "range": "120 feet", "defense": "AC", "description": "Summons a glowing ghostly weapon dealing 2d8 damage on command."},
+            {"name": "Shatter", "actions": "2 actions", "traits": ["Divine", "Sonic"], "range": "30 feet", "defense": "None", "description": "High-frequency divine resonance deals 2d10 sonic damage to an unattended object."}
+        ],
+        "rank_3": [
+            {"name": "Crisis of Faith", "actions": "2 actions", "traits": ["Divine", "Mental"], "range": "30 feet", "defense": "Will", "description": "Assaults the target's convictions, dealing 6d6 mental damage and stupefying them."},
+            {"name": "Vampiric Feast", "actions": "2 actions", "traits": ["Divine", "Void"], "range": "Touch", "defense": "Basic Fortitude", "description": "Deals 6d6 void damage and grants temporary HP equal to half."}
+        ],
+        "rank_4": [
+            {"name": "Divine Wrath", "actions": "2 actions", "traits": ["Divine", "Sanctified"], "range": "100 feet", "defense": "Basic Fortitude", "description": "Channels righteous fury, dealing 4d10 spirit damage in a 20-foot burst and sickening foes."},
+            {"name": "Enervation", "actions": "2 actions", "traits": ["Divine", "Void"], "range": "30-foot line", "defense": "Fortitude", "description": "Drains life force in a line, dealing persistent void damage and draining targets."}
+        ],
+        "rank_5": [
+            {"name": "Divine Immolation", "actions": "2 actions", "traits": ["Divine", "Fire", "Sanctified"], "range": "120 feet", "defense": "Basic Reflex", "description": "Holy fire bursts in a 20-foot area dealing 6d10 fire damage plus 2d6 persistent spirit damage."},
+            {"name": "Wave of Despair", "actions": "2 actions", "traits": ["Divine", "Emotion", "Mental"], "range": "30-foot cone", "defense": "Will", "description": "Crushes foes' spirits, slowing them on a failed save."}
+        ]
+    },
+    "trickery": {
+        "name": "Trickery",
+        "focus_spell": {"rank": 1, "name": "Sudden Shift (Trickery Domain)", "actions": "Reaction", "traits": ["Cleric", "Focus", "Illusion"], "range": "Self", "defense": "None", "description": "Trigger: An enemy misses you with a melee attack. You turn invisible until the end of your next turn and Step."},
+        "cantrips": [
+            {"name": "Figment", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Illusion"], "range": "30 feet", "defense": "None", "description": "Creates a simple illusory sound or image to distract foes."},
+            {"name": "Prestidigitation", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "10 feet", "defense": "None", "description": "Performs minor magical tricks and illusions."},
+            {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to one roll."},
+            {"name": "Divine Lance", "actions": "2 actions", "traits": ["Attack", "Divine", "Holy"], "range": "30 feet", "defense": "AC", "description": "Launches a beam of sanctified divine energy dealing 2d4 spirit damage."}
+        ],
+        "rank_1": [
+            {"name": "Illusory Disguise", "actions": "2 actions", "traits": ["Divine", "Illusion", "Visual"], "range": "Self", "defense": "None", "description": "Cloaks you in an illusion that alters your appearance and voice."},
+            {"name": "Charm", "actions": "2 actions", "traits": ["Divine", "Emotion", "Incapacitation", "Mental"], "range": "30 feet", "defense": "Will", "description": "Makes a creature friendlier toward you."}
+        ],
+        "rank_2": [
+            {"name": "Invisibility", "actions": "2 actions", "traits": ["Divine", "Illusion"], "range": "Touch", "defense": "None", "description": "Cloaks a creature in illusion, making it invisible for 10 minutes or until it attacks."},
+            {"name": "Silence", "actions": "2 actions", "traits": ["Divine", "Illusion"], "range": "Touch", "defense": "None", "description": "Suppresses all sound emanating from the target."}
+        ],
+        "rank_3": [
+            {"name": "Veil of Privacy", "actions": "10 minutes", "traits": ["Divine"], "range": "Touch", "defense": "None", "description": "Wards an area or creature against scrying and detection."},
+            {"name": "Wanderer's Guide", "actions": "1 minute", "traits": ["Divine"], "range": "Self", "defense": "None", "description": "Finds an ideal hidden route to your destination."}
+        ],
+        "rank_4": [
+            {"name": "Outcast's Curse", "actions": "2 actions", "traits": ["Curse", "Divine", "Mental", "Misfortune"], "range": "Touch", "defense": "Will", "description": "Curses a target so everyone finds them obnoxious and untrustworthy."},
+            {"name": "Veil", "actions": "2 actions", "traits": ["Divine", "Illusion", "Visual"], "range": "30 feet", "defense": "None", "description": "Disguises up to 10 creatures with matching illusions."}
+        ],
+        "rank_5": [
+            {"name": "Hallucination", "actions": "2 actions", "traits": ["Divine", "Illusion", "Incapacitation", "Mental"], "range": "30 feet", "defense": "Will", "description": "Creates a realistic multi-sensory hallucination in the target's mind."},
+            {"name": "Shadow Walk", "actions": "1 minute", "traits": ["Divine", "Shadow", "Teleportation"], "range": "Touch", "defense": "None", "description": "Steps into the Netherworld to travel vast distances rapidly."}
+        ]
+    }
+}
+
+
 def resolve_spellcasting(
     class_name: str,
     attribute_mods: Dict[str, int],
     level: int = 1,
     subclass_name: Optional[str] = None,
     feats: Optional[List[Any]] = None,
+    concept_text: Optional[str] = None,
 ) -> Optional[SpellcastingData]:
-    sc = _resolve_base_spellcasting(class_name, attribute_mods, level, subclass_name)
+    sc = _resolve_base_spellcasting(class_name, attribute_mods, level, subclass_name, concept_text=concept_text, feats=feats)
     sc = _apply_dedication_cantrips(sc, feats, attribute_mods, level)
     
     # If character has no base spellcasting but has acquired focus spells / divine/occult/primal/arcane dedication
@@ -344,7 +532,7 @@ def resolve_spellcasting(
             (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else "")).lower()
             for f in feats
         ]
-        has_dedication_spells = any("godling dedication" in fn or "dedication" in fn for fn in feat_names)
+        has_dedication_spells = any("godling dedication" in fn for fn in feat_names)
         if has_dedication_spells:
             # Determine attribute modifier (default to Wis or Cha, or Int for Inventor)
             attr_key = "wis" if "wis" in attribute_mods else ("cha" if "cha" in attribute_mods else "int")
@@ -388,7 +576,9 @@ def _resolve_base_spellcasting(
     class_name: str,
     attribute_mods: Dict[str, int],
     level: int = 1,
-    subclass_name: Optional[str] = None
+    subclass_name: Optional[str] = None,
+    concept_text: Optional[str] = None,
+    feats: Optional[List[Any]] = None,
 ) -> Optional[SpellcastingData]:
     cls_key = class_name.lower()
     if cls_key == "magus":
@@ -531,18 +721,55 @@ def _resolve_base_spellcasting(
     spell_attack = prof_bonus + attr_mod
 
     cat_data = SPELL_CATALOG[trad_key]
+    tradition_label = cfg["tradition"]
 
-    cantrips = [SpellSummary(rank=0, **s) for s in cat_data["cantrips"]]
-    rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
-    rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])] if level >= 3 else []
-    rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if level >= 5 else []
-    rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if level >= 7 else []
-    rank_5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])] if level >= 9 else []
-    rank_6 = [SpellSummary(rank=6, **s) for s in cat_data.get("rank_6", [])] if level >= 11 else []
-    rank_7 = [SpellSummary(rank=7, **s) for s in cat_data.get("rank_7", [])] if level >= 13 else []
-    rank_8 = [SpellSummary(rank=8, **s) for s in cat_data.get("rank_8", [])] if level >= 15 else []
-    rank_9 = [SpellSummary(rank=9, **s) for s in cat_data.get("rank_9", [])] if level >= 17 else []
-    rank_10 = [SpellSummary(rank=10, **s) for s in cat_data.get("rank_10", [])] if level >= 19 else []
+    # Cloistered Cleric: select explicit domain (or pick one at random) and align all spells to that domain
+    is_cloistered = cls_key == "cleric" and "cloistered" in (subclass_name or "").lower()
+    selected_dom_data = None
+    if is_cloistered:
+        search_blob = " ".join([
+            concept_text or "",
+            subclass_name or "",
+            " ".join(
+                (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else ""))
+                for f in (feats or [])
+            )
+        ]).lower()
+        chosen_dom_key = None
+        for dom_key in CLERIC_DOMAINS:
+            if dom_key in search_blob:
+                chosen_dom_key = dom_key
+                break
+        if not chosen_dom_key:
+            chosen_dom_key = random.choice(list(CLERIC_DOMAINS.keys()))
+        selected_dom_data = CLERIC_DOMAINS[chosen_dom_key]
+        tradition_label = f"Divine ({selected_dom_data['name']} Domain)"
+
+    if selected_dom_data:
+        cantrips = [SpellSummary(rank=0, **s) for s in selected_dom_data["cantrips"]]
+        domain_focus = SpellSummary(**selected_dom_data["focus_spell"])
+        rank_1 = [domain_focus] + [SpellSummary(rank=1, **s) for s in selected_dom_data.get("rank_1", [])]
+        rank_2 = [SpellSummary(rank=2, **s) for s in selected_dom_data.get("rank_2", cat_data.get("rank_2", []))] if level >= 3 else []
+        rank_3 = [SpellSummary(rank=3, **s) for s in selected_dom_data.get("rank_3", cat_data.get("rank_3", []))] if level >= 5 else []
+        rank_4 = [SpellSummary(rank=4, **s) for s in selected_dom_data.get("rank_4", cat_data.get("rank_4", []))] if level >= 7 else []
+        rank_5 = [SpellSummary(rank=5, **s) for s in selected_dom_data.get("rank_5", cat_data.get("rank_5", []))] if level >= 9 else []
+        rank_6 = [SpellSummary(rank=6, **s) for s in cat_data.get("rank_6", [])] if level >= 11 else []
+        rank_7 = [SpellSummary(rank=7, **s) for s in cat_data.get("rank_7", [])] if level >= 13 else []
+        rank_8 = [SpellSummary(rank=8, **s) for s in cat_data.get("rank_8", [])] if level >= 15 else []
+        rank_9 = [SpellSummary(rank=9, **s) for s in cat_data.get("rank_9", [])] if level >= 17 else []
+        rank_10 = [SpellSummary(rank=10, **s) for s in cat_data.get("rank_10", [])] if level >= 19 else []
+    else:
+        cantrips = [SpellSummary(rank=0, **s) for s in cat_data["cantrips"]]
+        rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
+        rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])] if level >= 3 else []
+        rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if level >= 5 else []
+        rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if level >= 7 else []
+        rank_5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])] if level >= 9 else []
+        rank_6 = [SpellSummary(rank=6, **s) for s in cat_data.get("rank_6", [])] if level >= 11 else []
+        rank_7 = [SpellSummary(rank=7, **s) for s in cat_data.get("rank_7", [])] if level >= 13 else []
+        rank_8 = [SpellSummary(rank=8, **s) for s in cat_data.get("rank_8", [])] if level >= 15 else []
+        rank_9 = [SpellSummary(rank=9, **s) for s in cat_data.get("rank_9", [])] if level >= 17 else []
+        rank_10 = [SpellSummary(rank=10, **s) for s in cat_data.get("rank_10", [])] if level >= 19 else []
 
     slots = [SpellSlotTracker(rank=1, max_slots=3 if level >= 3 else 2)]
     if level >= 3:
@@ -565,7 +792,7 @@ def _resolve_base_spellcasting(
         slots.append(SpellSlotTracker(rank=10, max_slots=2 if level >= 20 else 1))
 
     return SpellcastingData(
-        tradition=cfg["tradition"],
+        tradition=tradition_label,
         casting_attribute=attr_key.upper(),
         spell_dc=spell_dc,
         spell_attack=spell_attack,

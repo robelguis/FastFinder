@@ -1141,6 +1141,7 @@ class PF2eGenerator:
             level=level,
             subclass_name=sub_name,
             feats=locals().get("chosen_feats"),
+            concept_text=locals().get("concept_text") or locals().get("prompt"),
         )
 
         focus_data = resolve_focus_spells(
@@ -3095,6 +3096,7 @@ class PF2eGenerator:
             level=target_level,
             subclass_name=sub_name,
             feats=locals().get("chosen_feats"),
+            concept_text=locals().get("concept_text") or locals().get("prompt"),
         )
 
         focus_data = resolve_focus_spells(
