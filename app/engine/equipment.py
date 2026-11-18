@@ -556,41 +556,42 @@ def resolve_equipment(
         ))
 
 
-    # Append ancestry-granted natural attacks / weapons (e.g. Automaton Armament claws/pincers, Surki claws, goblin jaws) as supplemental strikes
+    # Robust ancestry natural attacks / weapons extraction
     ancestry_search_blob = " ".join([
         ancestry_name or "",
         heritage_name or "",
         " ".join((f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))) for f in (feats or []))
     ]).lower()
 
+    base_anc_atk = 2 + lvl + max(str_mod, dex_mod)
     ancestry_strikes_to_add = []
-    if "automaton armament" in ancestry_search_blob or "claw" in ancestry_search_blob:
+    if "automaton armament" in ancestry_search_blob or "claw" in ancestry_search_blob or "pincer" in ancestry_search_blob:
         if "pincer" in ancestry_search_blob:
             ancestry_strikes_to_add.append(Strike(
                 name="Pincer (Automaton Armament)",
-                attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + str_mod),
-                map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + str_mod)) - 5),
-                map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + str_mod)) - 10),
+                attack_bonus=base_anc_atk,
+                map_second=base_anc_atk - 5,
+                map_third=base_anc_atk - 10,
                 damage_dice="1d6",
                 damage_type="Piercing",
                 traits=["brawling", "grapple", "unarmed"]
             ))
         else:
             ancestry_strikes_to_add.append(Strike(
-                name="Claw (Automaton Armament / Natural)",
-                attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod)),
-                map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 4),
-                map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 8),
+                name="Claw (Automaton Armament)",
+                attack_bonus=base_anc_atk,
+                map_second=base_anc_atk - 4,
+                map_third=base_anc_atk - 8,
                 damage_dice="1d4",
                 damage_type="Slashing",
                 traits=["agile", "finesse", "unarmed", "brawling"]
             ))
     if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob or "tengu" in ancestry_search_blob:
         ancestry_strikes_to_add.append(Strike(
-            name="Natural Ancestry Attack (Claws/Jaws/Talons)",
-            attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod)),
-            map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 4),
-            map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 8),
+            name="Natural Ancestry Attack",
+            attack_bonus=base_anc_atk,
+            map_second=base_anc_atk - 4,
+            map_third=base_anc_atk - 8,
             damage_dice="1d4",
             damage_type="Slashing",
             traits=["agile", "finesse", "unarmed"]
@@ -674,41 +675,42 @@ def resolve_equipment(
 
     consumables: List[ConsumableItem] = []
 
-    # Append ancestry-granted natural attacks / weapons (e.g. Automaton Armament claws/pincers, Surki claws, goblin jaws) as supplemental strikes
+    # Robust ancestry natural attacks / weapons extraction
     ancestry_search_blob = " ".join([
         ancestry_name or "",
         heritage_name or "",
         " ".join((f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))) for f in (feats or []))
     ]).lower()
 
+    base_anc_atk = 2 + lvl + max(str_mod, dex_mod)
     ancestry_strikes_to_add = []
-    if "automaton armament" in ancestry_search_blob or "claw" in ancestry_search_blob:
+    if "automaton armament" in ancestry_search_blob or "claw" in ancestry_search_blob or "pincer" in ancestry_search_blob:
         if "pincer" in ancestry_search_blob:
             ancestry_strikes_to_add.append(Strike(
                 name="Pincer (Automaton Armament)",
-                attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + str_mod),
-                map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + str_mod)) - 5),
-                map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + str_mod)) - 10),
+                attack_bonus=base_anc_atk,
+                map_second=base_anc_atk - 5,
+                map_third=base_anc_atk - 10,
                 damage_dice="1d6",
                 damage_type="Piercing",
                 traits=["brawling", "grapple", "unarmed"]
             ))
         else:
             ancestry_strikes_to_add.append(Strike(
-                name="Claw (Automaton Armament / Natural)",
-                attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod)),
-                map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 4),
-                map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 8),
+                name="Claw (Automaton Armament)",
+                attack_bonus=base_anc_atk,
+                map_second=base_anc_atk - 4,
+                map_third=base_anc_atk - 8,
                 damage_dice="1d4",
                 damage_type="Slashing",
                 traits=["agile", "finesse", "unarmed", "brawling"]
             ))
     if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob or "tengu" in ancestry_search_blob:
         ancestry_strikes_to_add.append(Strike(
-            name="Natural Ancestry Attack (Claws/Jaws/Talons)",
-            attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod)),
-            map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 4),
-            map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 8),
+            name="Natural Ancestry Attack",
+            attack_bonus=base_anc_atk,
+            map_second=base_anc_atk - 4,
+            map_third=base_anc_atk - 8,
             damage_dice="1d4",
             damage_type="Slashing",
             traits=["agile", "finesse", "unarmed"]
