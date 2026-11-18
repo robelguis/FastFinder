@@ -210,17 +210,6 @@ def resolve_character_skills(
             if untrained:
                 trained_skills.add(untrained[0])
 
-    if any("tanuki lore" in fn for fn in feat_names_lower):
-        if not any(s.name.lower() == "tanuki lore" for s in result_skills):
-            tl_rank = 8 if target_lvl >= 15 else (6 if target_lvl >= 7 else (4 if target_lvl >= 3 else 2))
-            result_skills.append(SkillEntry(
-                name="Tanuki Lore",
-                rank=tl_rank,
-                rank_letter=RANK_LETTER_MAP.get(tl_rank, "T"),
-                modifier=(tl_rank + target_lvl) + norm_mods.get("int", 0),
-                attribute="INT",
-            ))
-
     if any("surki lore" in fn for fn in feat_names_lower):
         trained_skills.add("Survival")
         trad_skill = "Religion" if cls_name.lower() in ("cleric", "oracle", "champion") else (
@@ -426,6 +415,17 @@ def resolve_character_skills(
                 rank=ft_rank,
                 rank_letter=RANK_LETTER_MAP.get(ft_rank, "T"),
                 modifier=(ft_rank + target_lvl) + norm_mods.get("int", 0),
+                attribute="INT",
+            ))
+
+    if any("tanuki lore" in fn for fn in feat_names_lower):
+        if not any(s.name.lower() == "tanuki lore" for s in result_skills):
+            tl_rank = 8 if target_lvl >= 15 else (6 if target_lvl >= 7 else (4 if target_lvl >= 3 else 2))
+            result_skills.append(SkillEntry(
+                name="Tanuki Lore",
+                rank=tl_rank,
+                rank_letter=RANK_LETTER_MAP.get(tl_rank, "T"),
+                modifier=(tl_rank + target_lvl) + norm_mods.get("int", 0),
                 attribute="INT",
             ))
 
