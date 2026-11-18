@@ -339,6 +339,7 @@ def resolve_spellcasting(
     
     # If character has no base spellcasting but has acquired focus spells / divine/occult/primal/arcane dedication
     if not sc and feats:
+        import random
         feat_names = [
             (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else "")).lower()
             for f in feats
@@ -351,12 +352,34 @@ def resolve_spellcasting(
             prof_bonus = 2 + level # Expert/Trained baseline scaling
             spell_dc = 10 + prof_bonus + attr_mod
             spell_attack = prof_bonus + attr_mod
+            
+            # Randomly select a divine domain and assign its initial domain spell
+            domains = [
+                ("Ambition", "Aspiration's Price", "2 actions", ["Divine", "Enchantment", "Focus", "Mental"], "30 feet", "Will", "You compel a target to strive relentlessly, taking mental damage if they fail to advance their ambitions."),
+                ("Protection", "Warding Light", "1 action", ["Divine", "Abjuration", "Focus", "Light"], "Touch", "None", "You touch an ally, warding them with divine light to grant a +1 status bonus to AC and saves."),
+                ("Knowledge", "Cognitive Library", "1 action", ["Divine", "Divination", "Focus"], "Self", "None", "You tap into divine archives, granting yourself a circumstance bonus to Recall Knowledge."),
+                ("Trickery", "Mask of Deception", "1 action", ["Divine", "Focus", "Illusion"], "Self", "None", "You cloak yourself in shifting divine illusions, granting a bonus to Deception checks."),
+                ("Destruction", "Smite", "1 action", ["Divine", "Evocation", "Focus"], "Free Action", "None", "Channel divine wrath into your next strike to deal extra spirit or force damage.")
+            ]
+            dom_name, spell_name, actions, traits, rng, defense, desc = random.choice(domains)
+            
+            domain_spell = SpellSummary(
+                rank=1,
+                name=f"{spell_name} ({dom_name} Domain)",
+                actions=actions,
+                traits=traits,
+                range=rng,
+                defense=defense,
+                description=f"Granted by Godling Dedication ({dom_name} Domain): {desc}"
+            )
+            
             sc = SpellcastingData(
-                tradition="Divine",
+                tradition=f"Divine ({dom_name} Domain)",
                 casting_attribute=attr_key.upper(),
                 spell_dc=spell_dc,
                 spell_attack=spell_attack,
                 cantrips=[],
+                rank_1_spells=[domain_spell]
             )
     return sc
 
