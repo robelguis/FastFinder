@@ -348,7 +348,8 @@ def _resolve_base_spellcasting(
     if cls_key == "magus":
         trad_name, cat_key = "Arcane", "arcane"
         attr_mod = attribute_mods.get("int", 3)
-        prof_bonus = 2 + level
+        cast_rank = 6 if level >= 17 else (4 if level >= 9 else 2)
+        prof_bonus = cast_rank + level
         spell_dc = 10 + prof_bonus + attr_mod
         spell_attack = prof_bonus + attr_mod
         cat_data = SPELL_CATALOG["arcane"]
@@ -410,7 +411,8 @@ def _resolve_base_spellcasting(
             trad_name, cat_key = "Occult", "occult"
 
         attr_mod = attribute_mods.get("cha", 3)
-        prof_bonus = 2 + level
+        cast_rank = 6 if level >= 17 else (4 if level >= 9 else 2)
+        prof_bonus = cast_rank + level
         spell_dc = 10 + prof_bonus + attr_mod
         spell_attack = prof_bonus + attr_mod
 
@@ -473,7 +475,12 @@ def _resolve_base_spellcasting(
         attr_key = "cha" if cha_m > int_m else "int"
 
     attr_mod = attribute_mods.get(attr_key, 0)
-    prof_bonus = 2 + level
+    is_warpriest = cls_key == "cleric" and "warpriest" in (subclass_name or "").lower()
+    if is_warpriest:
+        cast_rank = 6 if level >= 19 else (4 if level >= 11 else 2)
+    else:
+        cast_rank = 8 if level >= 19 else (6 if level >= 15 else (4 if level >= 7 else 2))
+    prof_bonus = cast_rank + level
     spell_dc = 10 + prof_bonus + attr_mod
     spell_attack = prof_bonus + attr_mod
 

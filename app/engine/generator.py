@@ -975,7 +975,7 @@ class PF2eGenerator:
         if lvl in (12, 14, 15, 16, 18, 20) or (lvl in (11, 13, 17, 19) and cls_lower in ("rogue", "investigator")):
             sk_pool = [
                 f for f in self.feats
-                if f.get("category") == "skill"
+                if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
                 and f.get("level", 1) <= lvl
                 and f["name"] not in existing_feat_names
                 and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls_name, archetype_data.get("name", "") if archetype_data else ""))
@@ -1624,6 +1624,37 @@ class PF2eGenerator:
                 ))
                 added_feat_names.add(c_act["name"].lower())
 
+        # Level 1 Ancestry Feat
+        anc_l1 = anc["name"].lower()
+        lvl1_anc_feats = [
+            f for f in self.feats
+            if f.get("category") == "ancestry"
+            and f.get("level") == 1
+            and anc_l1 in [t.lower() for t in f.get("traits", [])]
+            and f["name"].lower() not in added_feat_names
+        ]
+        if lvl1_anc_feats:
+            af1 = random.choice(lvl1_anc_feats)
+            chosen_feats.append(FeatSummary(
+                id=af1["id"],
+                name=af1["name"],
+                category="Ancestry (Level 1)",
+                action_cost=safe_action_cost(af1.get("action_cost")),
+                traits=af1.get("traits", [anc_l1]),
+                description=clean_pf2e_text(af1.get("description", ""))
+            ))
+            added_feat_names.add(af1["name"].lower())
+        else:
+            chosen_feats.append(FeatSummary(
+                id=f"anc-feat-{anc_l1}-1",
+                name=f"{anc['name']} Lore",
+                category="Ancestry (Level 1)",
+                action_cost=None,
+                traits=[anc_l1],
+                description=f"You are deeply versed in the traditions, stories, and customs of the {anc['name']} people."
+            ))
+            added_feat_names.add(f"{anc_l1} lore")
+
         lvl1_feats = [
             f for f in self.feats
             if f.get("category") == "class"
@@ -1701,7 +1732,7 @@ class PF2eGenerator:
                     ))
 
             owned_names = {f.name for f in chosen_feats}
-            skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("level") in [1, 2] and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_names, cls["name"]))]
+            skill_feats_2 = [f for f in self.feats if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing" and f.get("level") in [1, 2] and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_names, cls["name"]))]
             sf = pick_weighted_feat(skill_feats_2, cls["name"], owned_names, {}, mods, 2)
             if sf:
                 resolved_feat_name2 = resolve_feat_subchoices(sf["name"], owned_names)
@@ -1795,7 +1826,7 @@ class PF2eGenerator:
 
             skill_feats_4 = [
                 f for f in self.feats 
-                if f.get("category") == "skill" 
+                if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing" 
                 and f.get("level") in [1, 2, 4]
                 and f["name"] not in [cf.name for cf in chosen_feats]
             ]
@@ -1876,7 +1907,7 @@ class PF2eGenerator:
             owned_names = {f.name for f in chosen_feats}
             skill_feats_6 = [
                 f for f in self.feats
-                if f.get("category") == "skill"
+                if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
                 and f.get("level") in [1, 2, 4, 6]
              and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_names, cls["name"]))]
             sf6 = pick_weighted_feat(skill_feats_6, cls["name"], owned_names, {}, mods, 6)
@@ -1977,6 +2008,27 @@ class PF2eGenerator:
                         traits=[cls_name_lower],
                         description=clean_pf2e_text(cf8["description"])
                     ))
+
+            owned_names_8 = {f.name for f in chosen_feats}
+            skill_feats_8 = [
+                f for f in self.feats
+                if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
+                and f.get("level", 1) <= 8
+                and f["name"] not in owned_names_8
+                and f["name"].lower() != "cushion landing"
+                and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_names_8, cls["name"]))
+            ]
+            if skill_feats_8:
+                sf8 = pick_weighted_feat(skill_feats_8, cls["name"], owned_names_8, {}, mods, 8) or random.choice(skill_feats_8)
+                resolved_name8 = resolve_feat_subchoices(sf8["name"], owned_names_8)
+                chosen_feats.append(FeatSummary(
+                    id=sf8["id"],
+                    name=resolved_name8,
+                    category="Skill (Level 8)",
+                    action_cost=safe_action_cost(sf8.get("action_cost")),
+                    traits=sf8.get("traits", ["skill"]),
+                    description=enrich_feat_description(resolved_name8, sf8.get("description", ""))
+                ))
 
         if level >= 9:
             anc_name_lower = anc["name"].lower()
@@ -2522,7 +2574,7 @@ class PF2eGenerator:
 
                 skill_feats_2 = [
                     f for f in self.feats
-                    if f.get("category") == "skill"
+                    if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
                     and f.get("level") in [1, 2]
                     and f["name"] not in existing_feat_names
                  and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
@@ -2603,7 +2655,7 @@ class PF2eGenerator:
 
                 skill_feats_4 = [
                     f for f in self.feats
-                    if f.get("category") == "skill"
+                    if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
                     and f.get("level") in [1, 2, 4]
                     and f["name"] not in existing_feat_names
                  and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
@@ -2753,7 +2805,7 @@ class PF2eGenerator:
                 # Level 10: Skill Feat
                 skill_feats_10 = [
                     f for f in self.feats
-                    if f.get("category") == "skill"
+                    if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
                     and f.get("level", 1) <= 10
                     and f["name"] not in existing_feat_names
                 ]
@@ -2891,7 +2943,7 @@ class PF2eGenerator:
 
                 skill_feats_6 = [
                     f for f in self.feats
-                    if f.get("category") == "skill"
+                    if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
                     and f.get("level") in [1, 2, 4, 6]
                  and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
                 sf6 = pick_weighted_feat(skill_feats_6, cls["name"], existing_feat_names, {}, mods, 6)

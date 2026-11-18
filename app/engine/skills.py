@@ -158,8 +158,39 @@ def resolve_character_skills(
                 if s.lower() == bs.lower():
                     mandatory.add(s)
 
-        base_count = bg.get("class_skill_count", 3)
-        total_picks = max(1, base_count + int_mod)
+        CLASS_BASE_SKILL_COUNTS = {
+            "rogue": 7,
+            "investigator": 4,
+            "bard": 4,
+            "ranger": 4,
+            "thaumaturge": 4,
+            "swashbuckler": 4,
+            "commander": 4,
+            "monk": 4,
+            "barbarian": 3,
+            "fighter": 3,
+            "gunslinger": 3,
+            "kineticist": 3,
+            "oracle": 3,
+            "animist": 3,
+            "exemplar": 3,
+            "guardian": 3,
+            "runesmith": 3,
+            "alchemist": 3,
+            "inventor": 3,
+            "witch": 3,
+            "druid": 2,
+            "cleric": 2,
+            "wizard": 2,
+            "sorcerer": 2,
+            "psychic": 2,
+            "magus": 2,
+            "summoner": 2,
+            "champion": 2,
+            "necromancer": 2,
+        }
+        base_count = bg.get("class_skill_count") or CLASS_BASE_SKILL_COUNTS.get(cls_name.lower(), 3)
+        total_picks = max(2, base_count + len(mandatory) + int_mod)
 
         available_pool = [s for s in ALL_PF2E_SKILLS if s not in mandatory]
         random.shuffle(available_pool)
@@ -178,6 +209,17 @@ def resolve_character_skills(
             untrained = [s for s in ALL_PF2E_SKILLS if s not in trained_skills]
             if untrained:
                 trained_skills.add(untrained[0])
+
+    if any("tanuki lore" in fn for fn in feat_names_lower):
+        if not any(s.name.lower() == "tanuki lore" for s in result_skills):
+            tl_rank = 8 if target_lvl >= 15 else (6 if target_lvl >= 7 else (4 if target_lvl >= 3 else 2))
+            result_skills.append(SkillEntry(
+                name="Tanuki Lore",
+                rank=tl_rank,
+                rank_letter=RANK_LETTER_MAP.get(tl_rank, "T"),
+                modifier=(tl_rank + target_lvl) + norm_mods.get("int", 0),
+                attribute="INT",
+            ))
 
     if any("surki lore" in fn for fn in feat_names_lower):
         trained_skills.add("Survival")
@@ -219,10 +261,10 @@ def resolve_character_skills(
 
         remaining = num_increases - increases_applied
         while remaining > 0:
-            eligible_expert = [s for s in trained_skills if skill_ranks[s] == 2 and target_lvl >= 2]
-            if eligible_expert:
-                pick = eligible_expert[0]
-                skill_ranks[pick] = 4
+            eligible_legendary = [s for s in trained_skills if skill_ranks[s] == 6 and target_lvl >= 15]
+            if eligible_legendary:
+                pick = eligible_legendary[0]
+                skill_ranks[pick] = 8
                 remaining -= 1
                 continue
             eligible_master = [s for s in trained_skills if skill_ranks[s] == 4 and target_lvl >= 7]
@@ -231,23 +273,73 @@ def resolve_character_skills(
                 skill_ranks[pick] = 6
                 remaining -= 1
                 continue
+            eligible_expert = [s for s in trained_skills if skill_ranks[s] == 2 and target_lvl >= 2]
+            if eligible_expert:
+                pick = eligible_expert[0]
+                skill_ranks[pick] = 4
+                remaining -= 1
+                continue
             break
     else:
+        # Fresh generation: build realistic PF2e vertical specialization (Legendary -> Master -> Expert)
         remaining = num_increases
-        while remaining > 0:
-            eligible = [s for s in trained_skills if skill_ranks[s] == 2 and target_lvl >= 2]
-            if not eligible:
+        pool = list(trained_skills)
+        random.shuffle(pool)
+        # Prioritize class mandatory skills first
+        pool.sort(key=lambda s: 0 if s in class_req_skills else 1)
+
+        # Promote up to 3 core skills to Legendary (if level >= 15) / Master (if level >= 7)
+        for sk in pool:
+            if remaining <= 0:
                 break
-            pick = random.choice(eligible)
-            skill_ranks[pick] = 4
-            remaining -= 1
+            if target_lvl >= 15 and remaining >= 3 and skill_ranks[sk] == 2:
+                skill_ranks[sk] = 8
+                remaining -= 3
+            elif target_lvl >= 7 and remaining >= 2 and skill_ranks[sk] == 2:
+                skill_ranks[sk] = 6
+                remaining -= 2
+
+        # Spend any remaining increases on Master (7+) or Expert (2+)
+        while remaining > 0:
+            eligible_master = [s for s in pool if skill_ranks[s] == 4 and target_lvl >= 7]
+            if eligible_master:
+                skill_ranks[eligible_master[0]] = 6
+                remaining -= 1
+                continue
+            eligible_expert = [s for s in pool if skill_ranks[s] == 2 and target_lvl >= 2]
+            if eligible_expert:
+                skill_ranks[eligible_expert[0]] = 4
+                remaining -= 1
+                continue
+            break
 
     # Class auto-scaling skills (Inventor Crafting: Expert at 3, Master at 7, Legendary at 15)
     if cls_name.lower() == "inventor":
         inv_craft = 8 if target_lvl >= 15 else (6 if target_lvl >= 7 else (4 if target_lvl >= 3 else 2))
         skill_ranks["Crafting"] = max(skill_ranks.get("Crafting", 0), inv_craft)
 
-    # Archetype-granted skill rank minimums (e.g. Knight Vigilant Dedication -> Expert in Religion)
+    # Ancestry & Archetype feat skill training & rank minimums
+    if any("tanuki lore" in fn for fn in feat_names_lower):
+        for t_sk in ("Deception", "Performance"):
+            if skill_ranks.get(t_sk, 0) < 2:
+                skill_ranks[t_sk] = 2
+                trained_skills.add(t_sk)
+            else:
+                extra_untrained = [s for s in ALL_PF2E_SKILLS if skill_ranks.get(s, 0) == 0]
+                if extra_untrained:
+                    skill_ranks[extra_untrained[0]] = 2
+                    trained_skills.add(extra_untrained[0])
+
+    if any("provocator dedication" in fn for fn in feat_names_lower):
+        skill_ranks["Performance"] = max(skill_ranks.get("Performance", 0), 4)
+        trained_skills.add("Performance")
+        if skill_ranks.get("Athletics", 0) >= skill_ranks.get("Acrobatics", 0):
+            skill_ranks["Athletics"] = max(skill_ranks.get("Athletics", 0), 4)
+            trained_skills.add("Athletics")
+        else:
+            skill_ranks["Acrobatics"] = max(skill_ranks.get("Acrobatics", 0), 4)
+            trained_skills.add("Acrobatics")
+
     if any("knight vigilant dedication" in fn for fn in feat_names_lower):
         skill_ranks["Religion"] = max(skill_ranks.get("Religion", 0), 4)
 
