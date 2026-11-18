@@ -88,9 +88,19 @@ class PF2eGenerator:
             return json.loads(raw_text.strip())
         except Exception as e:
             print(f"LLM Backstory Generation Error: {e}")
+            # Procedural fallback so the user never hits a generation error modal
+            feat_list = ", ".join(feats[:4]) if feats else "standard training"
             return [
                 {
-                    "chapter": f"The Chronicle of {name}",
-                    "narrative": f"A Level {lvl} {cls} hailing from a background as a {bg}, {name} carries the unique heritage of a {ancestry} forward into a dangerous world."
+                    "chapter": f"Chapter I: The Roots of {name}",
+                    "narrative": f"Long before rising to Level {lvl} as a {cls}, {name} walked the shadowed paths of Golarion as a {ancestry} with the heritage of a {heritage if 'heritage' in locals() and heritage else ancestry}. Touched by the experiences of a {bg}, their early days were defined by quiet resilience and an unyielding will to survive in a harsh world."
+                },
+                {
+                    "chapter": f"Chapter II: Trials and Ascendancy",
+                    "narrative": f"As their powers grew, {name} mastered techniques such as {feat_list}. Navigating the complex politics and dangers of the Inner Sea, they forged alliances and faced down formidable perils that tested both body and spirit."
+                },
+                {
+                    "chapter": f"Chapter III: The Legend Unbound",
+                    "narrative": f"Now standing at the pinnacle of power as a Level {lvl} {cls}, {name} looks toward the horizon. Whether bound by duty, prophecy, or personal redemption, their chronicle is far from finished, and the legends of Golarion will long remember their name."
                 }
             ]
