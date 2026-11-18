@@ -1441,9 +1441,9 @@ class PF2eGenerator:
             archetype_name=arch_n,
             feats=locals().get("chosen_feats"))
 
-        # --- HOOK: Archer Archetype 3rd Weapon Bow Guarantee ---
+        # --- HOOK: Archer Archetype 3rd Weapon Bow Guarantee (Level 2+) ---
         arch_name_check = arch_n.lower() if arch_n else ""
-        if "archer" in arch_name_check and equipment_loadout and equipment_loadout.strikes:
+        if level >= 2 and "archer" in arch_name_check and equipment_loadout and equipment_loadout.strikes:
             bow_keywords = ["bow", "shortbow", "longbow"]
             has_bow = any(any(kw in (st.name or "").lower() for kw in bow_keywords) for st in equipment_loadout.strikes)
             
