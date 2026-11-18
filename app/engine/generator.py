@@ -3019,6 +3019,34 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add(resolved_name6)
 
+        # Ensure every even level (2..target_level) in level_up has its allotted Skill Feat
+        existing_skill_cats_lu = {f.category for f in chosen_feats}
+        owned_all_lu = {f.name for f in chosen_feats}
+        for ev_lvl in range(2, target_level + 1, 2):
+            cat_label = f"Skill (Level {ev_lvl})"
+            if cat_label not in existing_skill_cats_lu:
+                ev_pool = [
+                    f for f in self.feats
+                    if f.get("category") == "skill"
+                    and f.get("name", "").lower() != "cushion landing"
+                    and f.get("level", 1) <= ev_lvl
+                    and f["name"] not in owned_all_lu
+                    and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_all_lu, cls["name"]))
+                ]
+                if ev_pool:
+                    ev_sf = pick_weighted_feat(ev_pool, cls["name"], owned_all_lu, {}, mods, ev_lvl) or random.choice(ev_pool)
+                    ev_sf_name = resolve_feat_subchoices(ev_sf["name"], owned_all_lu)
+                    chosen_feats.append(FeatSummary(
+                        id=ev_sf["id"],
+                        name=ev_sf_name,
+                        category=cat_label,
+                        action_cost=safe_action_cost(ev_sf.get("action_cost")),
+                        traits=ev_sf.get("traits", ["skill"]),
+                        description=enrich_feat_description(ev_sf_name, ev_sf.get("description", ""))
+                    ))
+                    owned_all_lu.add(ev_sf_name)
+                    existing_skill_cats_lu.add(cat_label)
+
         if any(f.name.lower() == "toughness" for f in chosen_feats):
             total_hp += target_level
 
