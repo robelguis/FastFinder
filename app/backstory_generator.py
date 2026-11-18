@@ -51,15 +51,41 @@ class PF2eGenerator:
         """
 
         try:
-            response = client.models.generate_content(
-                model='gemini-2.5-flash',
-                contents=prompt,
-                config=types.GenerateContentConfig(
-                    response_mime_type="application/json",
-                    temperature=0.85,
-                ),
-            )
-            return json.loads(response.text)
+            models_to_try = ['gemini-3.8-flash', 'gemini-3.5-flash-lite']
+            response = None
+            last_error = None
+
+            for model_name in models_to_try:
+                for attempt in range(2):
+                    try:
+                        response = client.models.generate_content(
+                            model=model_name,
+                            contents=prompt,
+                            config=types.GenerateContentConfig(
+                                response_mime_type="application/json",
+                                temperature=0.85,
+                            ),
+                        )
+                        if response and response.text:
+                            break
+                    except Exception as e:
+                        last_error = e
+                        import time
+                        time.sleep(2 ** attempt)
+                        continue
+                if response and response.text:
+                    break
+
+            if not response or not response.text:
+                raise Exception(f"All models busy or failed. Last error: {str(last_error)}")
+
+            raw_text = response.text.strip()
+            if raw_text.startswith("```json"):
+                raw_text = raw_text[7:]
+            if raw_text.endswith("```"):
+                raw_text = raw_text[:-3]
+
+            return json.loads(raw_text.strip())
         except Exception as e:
             print(f"LLM Backstory Generation Error: {e}")
             return [
