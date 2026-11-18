@@ -295,7 +295,8 @@ def clean_pf2e_text(text: str) -> str:
     text = re.sub(r"\[[^\]]*options:[^\]]*\]", "", text)
     text = re.sub(r"/act\s+([a-zA-Z\-]+)(?:\s+skill=([a-zA-Z]+))?", lambda m: f"{m.group(1).replace('-', ' ').title()}" + (f" ({m.group(2).title()})" if m.group(2) else ""), text)
     text = re.sub(r"(\d+d\d+(?:\+\d+)?)\[([a-zA-Z]+)\]", r"\1 \2", text)
-    text = re.sub(r"\(([A-Za-z]+)\)\s*\{[^}]+\}", r"(\1)", text)
+    text = re.sub(r"\(([A-Za-z]+)\)\s*\{[^}\n]+\}?", r"(\1)", text)
+    text = re.sub(r"\s*\{[A-Za-z][^}\n]*$", "", text, flags=re.MULTILINE)
     text = text.replace("[[", "").replace("]]", "")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n+", "\n\n", text)
@@ -2170,7 +2171,8 @@ class PF2eGenerator:
         # Ensure every even level (2..level) has its allotted Skill Feat
         existing_skill_cats = {f.category for f in chosen_feats}
         owned_all = {f.name for f in chosen_feats}
-        for ev_lvl in range(2, level + 1, 2):
+        sk_step = 1 if cls["name"].lower() in ("rogue", "investigator") else 2
+        for ev_lvl in range(2, level + 1, sk_step):
             cat_label = f"Skill (Level {ev_lvl})"
             if cat_label not in existing_skill_cats:
                 ev_pool = [
@@ -3022,7 +3024,8 @@ class PF2eGenerator:
         # Ensure every even level (2..target_level) in level_up has its allotted Skill Feat
         existing_skill_cats_lu = {f.category for f in chosen_feats}
         owned_all_lu = {f.name for f in chosen_feats}
-        for ev_lvl in range(2, target_level + 1, 2):
+        sk_step_lu = 1 if cls["name"].lower() in ("rogue", "investigator") else 2
+        for ev_lvl in range(2, target_level + 1, sk_step_lu):
             cat_label = f"Skill (Level {ev_lvl})"
             if cat_label not in existing_skill_cats_lu:
                 ev_pool = [
