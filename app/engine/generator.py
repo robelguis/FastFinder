@@ -2081,7 +2081,29 @@ class PF2eGenerator:
                     sk.rank = 2
                     sk.rank_letter = "T"
                     sk.modifier += (2 + level)
-
+        # Ensure Archer 3rd weapon bow is present if level >= 2
+        active_arch = clean_arch_input or (archetype_data["name"] if archetype_data else "")
+        if level >= 2 and "archer" in active_arch.lower() and equipment_loadout and equipment_loadout.strikes:
+            bow_keywords = ["bow", "shortbow", "longbow"]
+            if not any(any(kw in (st.name or "").lower() for kw in bow_keywords) for st in equipment_loadout.strikes):
+                bow_pool = ["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"]
+                chosen_bow = random.choice(bow_pool)
+                is_long = "longbow" in chosen_bow.lower()
+                potency = 2 if level >= 10 else (1 if level >= 2 else 0)
+                dice_mult = 3 if level >= 12 else (2 if level >= 4 else 1)
+                striking_label = "Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else "")
+                prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
+                atk = level + 2 + mods.get("dex", 0) + potency
+                equipment_loadout.strikes.append(Strike(
+                    name=f"{prefix}{chosen_bow}",
+                    attack_bonus=str(atk),
+                    map_second=str(atk - 5),
+                    map_third=str(atk - 10),
+                    damage_dice=f"{dice_mult}d8" if is_long else f"{dice_mult}d6",
+                    damage_type="Piercing",
+                    traits=["Deadly d10", f"Range {'100' if is_long else '60'} ft"]
+                ))
+                
         return self._finalize_sheet(
             name=resolved_name,
             level=level,
@@ -2953,7 +2975,29 @@ class PF2eGenerator:
             for p in raw_extra_partners
         ]
         combined_partners = ([companion_data] if companion_data else []) + existing_extra_partners
-
+       
+        # Ensure Archer 3rd weapon bow is present on level up to 2+
+        if target_level >= 2 and resolved_arch_name and "archer" in resolved_arch_name.lower() and equipment_loadout and equipment_loadout.strikes:
+            bow_keywords = ["bow", "shortbow", "longbow"]
+            if not any(any(kw in (st.name or "").lower() for kw in bow_keywords) for st in equipment_loadout.strikes):
+                bow_pool = ["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"]
+                chosen_bow = random.choice(bow_pool)
+                is_long = "longbow" in chosen_bow.lower()
+                potency = 2 if target_level >= 10 else (1 if target_level >= 2 else 0)
+                dice_mult = 3 if target_level >= 12 else (2 if target_level >= 4 else 1)
+                striking_label = "Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else "")
+                prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
+                atk = target_level + 2 + mods.get("dex", 0) + potency
+                equipment_loadout.strikes.append(Strike(
+                    name=f"{prefix}{chosen_bow}",
+                    attack_bonus=str(atk),
+                    map_second=str(atk - 5),
+                    map_third=str(atk - 10),
+                    damage_dice=f"{dice_mult}d8" if is_long else f"{dice_mult}d6",
+                    damage_type="Piercing",
+                    traits=["Deadly d10", f"Range {'100' if is_long else '60'} ft"]
+                ))
+        
         return self._finalize_sheet(
             name=current_char["name"],
             level=target_level,
