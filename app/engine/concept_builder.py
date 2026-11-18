@@ -428,15 +428,28 @@ USER CONCEPT: "{concept_text}"
         spec = self.extract_requirements(concept_text)
         min_level, reqs = self.compute_minimum_level(spec)
 
-        # NOTE: generator.generate() must accept `concept_text` and forward it to resolve_companion().
+        # Sanitize archetype name if it picked up compound phrases or companion types
+        archetype_to_use = spec.archetype
+        if spec.requested_feats:
+            for feat in spec.requested_feats:
+                if "dedication" in feat.lower():
+                    archetype_to_use = feat
+                    break
+        elif archetype_to_use and not any(k in archetype_to_use.lower() for k in ["dedication", "archetype"]):
+            # If it's a raw phrase like "Vigilante" or "Beastmaster", ensure it's formatted cleanly
+            archetype_to_use = archetype_to_use.title()
+            if not archetype_to_use.endswith("Dedication") and archetype_to_use not in ["Familiar Master", "Clockwork Reanimator", "Undead Master"]:
+                archetype_to_use += " Dedication"
+
+        # NOTE: generator.generate() must accept \`concept_text\` and forward it to resolve_companion().
         sheet = self.generator.generate(
             ancestry_name=spec.ancestry,
             class_name=spec.character_class,
             background_name=spec.background,
-            archetype_name=spec.archetype if min_level >= 2 else None,
+            archetype_name=archetype_to_use if min_level >= 2 else None,
             char_name=spec.char_name,
             level=min_level,
-            use_dedication=bool(spec.archetype) and min_level >= 2,
+            use_dedication=bool(archetype_to_use) and min_level >= 2,
             heritage_name=spec.heritage,
             subclass_name=spec.subclass,
             concept_text=spec.raw_text,
