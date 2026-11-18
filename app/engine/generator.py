@@ -292,6 +292,8 @@ def clean_pf2e_text(text: str) -> str:
     text = re.sub(r"\(ceil\(@actor\.level/2\)\)d(\d+)(?:\[[^\]]*\])?", r"1d\1 per 2 levels", text)
     text = re.sub(r"@actor\.level", "your level", text)
     text = re.sub(r"\[[^\]]*options:[^\]]*\]", "", text)
+    text = re.sub(r"/act\s+([a-zA-Z\-]+)(?:\s+skill=([a-zA-Z]+))?", lambda m: f"{m.group(1).replace('-', ' ').title()}" + (f" ({m.group(2).title()})" if m.group(2) else ""), text)
+    text = re.sub(r"(\d+d\d+(?:\+\d+)?)\[([a-zA-Z]+)\]", r"\1 \2", text)
     text = text.replace("[[", "").replace("]]", "")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n+", "\n\n", text)
