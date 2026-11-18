@@ -1350,6 +1350,7 @@ class PF2eGenerator:
             clean_arch_input = raw_arch
         archetype_data = None
         if clean_arch_input:
+            clean_arch_input = clean_arch_input.replace("-multiclass", "").replace("-", " ").strip()
             archetype_data = resolve_dynamic_archetype(clean_arch_input, self.feats)
 
         mods = {attr: 0 for attr in ATTRIBUTES}
@@ -1642,7 +1643,7 @@ class PF2eGenerator:
             ))
 
         if level >= 2:
-            if archetype_data:
+            if archetype_data and archetype_data.get("level_2_dedication"):
                 ded = archetype_data["level_2_dedication"]
                 chosen_feats.append(FeatSummary(
                     id=ded["id"],
@@ -2081,20 +2082,19 @@ class PF2eGenerator:
                     sk.rank = 2
                     sk.rank_letter = "T"
                     sk.modifier += (2 + level)
+
         # Ensure Archer 3rd weapon bow is present if level >= 2
-        active_arch = clean_arch_input or (archetype_data["name"] if archetype_data else "")
-        if level >= 2 and "archer" in active_arch.lower() and equipment_loadout and equipment_loadout.strikes:
-            bow_keywords = ["bow", "shortbow", "longbow"]
-            if not any(any(kw in (st.name or "").lower() for kw in bow_keywords) for st in equipment_loadout.strikes):
-                bow_pool = ["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"]
-                chosen_bow = random.choice(bow_pool)
+        _arch_gen = f"{clean_arch_input or ''} {archetype_data.get('name', '') if archetype_data else ''}".lower()
+        if level >= 2 and "archer" in _arch_gen and equipment_loadout and equipment_loadout.strikes:
+            if not any(any(kw in (st.name or "").lower() for kw in ("bow", "shortbow", "longbow")) for st in equipment_loadout.strikes):
+                chosen_bow = random.choice(["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"])
                 is_long = "longbow" in chosen_bow.lower()
-                potency = 2 if level >= 10 else (1 if level >= 2 else 0)
-                dice_mult = 3 if level >= 12 else (2 if level >= 4 else 1)
-                striking_label = "Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else "")
+                potency = 3 if level >= 16 else (2 if level >= 10 else (1 if level >= 2 else 0))
+                dice_mult = 4 if level >= 19 else (3 if level >= 12 else (2 if level >= 4 else 1))
+                striking_label = "Major Striking " if dice_mult == 4 else ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
                 prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
                 atk = level + 2 + mods.get("dex", 0) + potency
-                equipment_loadout.strikes.append(Strike(
+                new_bow = Strike(
                     name=f"{prefix}{chosen_bow}",
                     attack_bonus=str(atk),
                     map_second=str(atk - 5),
@@ -2102,8 +2102,16 @@ class PF2eGenerator:
                     damage_dice=f"{dice_mult}d8" if is_long else f"{dice_mult}d6",
                     damage_type="Piercing",
                     traits=["Deadly d10", f"Range {'100' if is_long else '60'} ft"]
-                ))
-                
+                )
+                phys = [s for s in equipment_loadout.strikes if not any(k in (s.name or "").lower() for k in ("elemental blast", "rage strike", "alchemist's fire"))]
+                if len(phys) >= 3:
+                    # Replace the last physical backup weapon (e.g., Sling/Dart) with the Archer's Bow
+                    last_phys = phys[-1]
+                    idx = equipment_loadout.strikes.index(last_phys)
+                    equipment_loadout.strikes[idx] = new_bow
+                else:
+                    equipment_loadout.strikes.append(new_bow)
+
         return self._finalize_sheet(
             name=resolved_name,
             level=level,
@@ -2115,7 +2123,7 @@ class PF2eGenerator:
             cls=cls,
             subclass_data=subclass_data,
             subclass_obj=SubclassSummary(**subclass_data) if subclass_data else None,
-            archetype_name=clean_arch_input or (archetype_data["name"] if archetype_data and level >= 2 else None),
+            archetype_name=(clean_arch_input or (archetype_data["name"] if archetype_data else None)) if level >= 2 else None,
             archetype_description=clean_pf2e_text(archetype_data.get("level_2_dedication", {}).get("description", "")) if archetype_data else None,
             size=anc.get("size", "med"),
             speed=anc.get("speed", 25) + bonus_speed,
@@ -2409,11 +2417,13 @@ class PF2eGenerator:
         clean_target_arch = archetype_name.strip() if archetype_name and archetype_name.strip().lower() not in ["", "any", "any archetype", "none"] else None
 
         if existing_arch_name and existing_arch_name.lower() not in ["any", "any archetype", "none"]:
-            archetype_data = resolve_dynamic_archetype(existing_arch_name, self.feats)
-            resolved_arch_name = existing_arch_name
+            norm_existing = existing_arch_name.replace("-multiclass", "").replace("-", " ").strip()
+            archetype_data = resolve_dynamic_archetype(norm_existing, self.feats)
+            resolved_arch_name = archetype_data["name"] if archetype_data and archetype_data.get("name") else norm_existing.title()
         elif clean_target_arch:
-            archetype_data = resolve_dynamic_archetype(clean_target_arch, self.feats)
-            resolved_arch_name = clean_target_arch
+            norm_target = clean_target_arch.replace("-multiclass", "").replace("-", " ").strip()
+            archetype_data = resolve_dynamic_archetype(norm_target, self.feats)
+            resolved_arch_name = archetype_data["name"] if archetype_data and archetype_data.get("name") else norm_target.title()
         elif use_dedication and target_level >= 2:
             archetype_data = pick_archetype(cls["name"], {}, mods, getattr(self, "feats", None))
             resolved_arch_name = archetype_data["name"] if archetype_data else None
@@ -2460,7 +2470,7 @@ class PF2eGenerator:
 
         for lvl in range(old_level + 1, target_level + 1):
             if lvl == 2:
-                if archetype_data and archetype_data["level_2_dedication"]["name"] not in existing_feat_names:
+                if archetype_data and archetype_data.get("level_2_dedication") and archetype_data["level_2_dedication"]["name"] not in existing_feat_names:
                     ded = archetype_data["level_2_dedication"]
                     chosen_feats.append(FeatSummary(
                         id=ded["id"],
@@ -2975,20 +2985,18 @@ class PF2eGenerator:
             for p in raw_extra_partners
         ]
         combined_partners = ([companion_data] if companion_data else []) + existing_extra_partners
-       
+
         # Ensure Archer 3rd weapon bow is present on level up to 2+
         if target_level >= 2 and resolved_arch_name and "archer" in resolved_arch_name.lower() and equipment_loadout and equipment_loadout.strikes:
-            bow_keywords = ["bow", "shortbow", "longbow"]
-            if not any(any(kw in (st.name or "").lower() for kw in bow_keywords) for st in equipment_loadout.strikes):
-                bow_pool = ["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"]
-                chosen_bow = random.choice(bow_pool)
+            if not any(any(kw in (st.name or "").lower() for kw in ("bow", "shortbow", "longbow")) for st in equipment_loadout.strikes):
+                chosen_bow = random.choice(["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"])
                 is_long = "longbow" in chosen_bow.lower()
-                potency = 2 if target_level >= 10 else (1 if target_level >= 2 else 0)
-                dice_mult = 3 if target_level >= 12 else (2 if target_level >= 4 else 1)
-                striking_label = "Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else "")
+                potency = 3 if target_level >= 16 else (2 if target_level >= 10 else (1 if target_level >= 2 else 0))
+                dice_mult = 4 if target_level >= 19 else (3 if target_level >= 12 else (2 if target_level >= 4 else 1))
+                striking_label = "Major Striking " if dice_mult == 4 else ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
                 prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
                 atk = target_level + 2 + mods.get("dex", 0) + potency
-                equipment_loadout.strikes.append(Strike(
+                new_bow = Strike(
                     name=f"{prefix}{chosen_bow}",
                     attack_bonus=str(atk),
                     map_second=str(atk - 5),
@@ -2996,8 +3004,16 @@ class PF2eGenerator:
                     damage_dice=f"{dice_mult}d8" if is_long else f"{dice_mult}d6",
                     damage_type="Piercing",
                     traits=["Deadly d10", f"Range {'100' if is_long else '60'} ft"]
-                ))
-        
+                )
+                phys = [s for s in equipment_loadout.strikes if not any(k in (s.name or "").lower() for k in ("elemental blast", "rage strike", "alchemist's fire"))]
+                if len(phys) >= 3:
+                    # Replace the last physical backup weapon (e.g., Sling/Dart) with the Archer's Bow
+                    last_phys = phys[-1]
+                    idx = equipment_loadout.strikes.index(last_phys)
+                    equipment_loadout.strikes[idx] = new_bow
+                else:
+                    equipment_loadout.strikes.append(new_bow)
+
         return self._finalize_sheet(
             name=current_char["name"],
             level=target_level,
