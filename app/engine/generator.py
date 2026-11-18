@@ -286,6 +286,12 @@ def clean_pf2e_text(text: str) -> str:
     text = re.sub(r"@Damage\[([^\]]+)\]", r"\1", text)
     text = re.sub(r"@[A-Za-z]+\[[^\]]+\]\{([^}]+)\}", r"\1", text)
     text = re.sub(r"@[A-Za-z]+\[[^\]]+\]", "", text)
+    text = re.sub(r"\[\[/r\s+[^\]{]+\{([^}]+)\}\]\]", r"\1", text)
+    text = re.sub(r"/r\s+[^\s{]+(?:\s+#[^{]+)?\{([^}]+)\}", r"\1", text)
+    text = re.sub(r"/r\s+([0-9d+\-]+)", r"\1", text)
+    text = re.sub(r"\(ceil\(@actor\.level/2\)\)d(\d+)(?:\[[^\]]*\])?", r"1d\1 per 2 levels", text)
+    text = re.sub(r"@actor\.level", "your level", text)
+    text = re.sub(r"\[[^\]]*options:[^\]]*\]", "", text)
     text = text.replace("[[", "").replace("]]", "")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n+", "\n\n", text)
@@ -1910,7 +1916,7 @@ class PF2eGenerator:
                 if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
                 and f.get("level") in [1, 2, 4, 6]
              and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_names, cls["name"]))]
-            sf6 = pick_weighted_feat(skill_feats_6, cls["name"], owned_names, {}, mods, 6)
+            sf6 = pick_weighted_feat(skill_feats_6, cls["name"], owned_names, {}, mods, 6) or (random.choice(skill_feats_6) if skill_feats_6 else None)
             if sf6:
                 resolved_name6 = resolve_feat_subchoices(sf6["name"], owned_names)
                 chosen_feats.append(FeatSummary(
@@ -2134,6 +2140,34 @@ class PF2eGenerator:
                     sk.rank = 2
                     sk.rank_letter = "T"
                     sk.modifier += (2 + level)
+
+        # Ensure every even level (2..level) has its allotted Skill Feat
+        existing_skill_cats = {f.category for f in chosen_feats}
+        owned_all = {f.name for f in chosen_feats}
+        for ev_lvl in range(2, level + 1, 2):
+            cat_label = f"Skill (Level {ev_lvl})"
+            if cat_label not in existing_skill_cats:
+                ev_pool = [
+                    f for f in self.feats
+                    if f.get("category") == "skill"
+                    and f.get("name", "").lower() != "cushion landing"
+                    and f.get("level", 1) <= ev_lvl
+                    and f["name"] not in owned_all
+                    and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_all, cls["name"]))
+                ]
+                if ev_pool:
+                    ev_sf = pick_weighted_feat(ev_pool, cls["name"], owned_all, {}, mods, ev_lvl) or random.choice(ev_pool)
+                    ev_sf_name = resolve_feat_subchoices(ev_sf["name"], owned_all)
+                    chosen_feats.append(FeatSummary(
+                        id=ev_sf["id"],
+                        name=ev_sf_name,
+                        category=cat_label,
+                        action_cost=safe_action_cost(ev_sf.get("action_cost")),
+                        traits=ev_sf.get("traits", ["skill"]),
+                        description=enrich_feat_description(ev_sf_name, ev_sf.get("description", ""))
+                    ))
+                    owned_all.add(ev_sf_name)
+                    existing_skill_cats.add(cat_label)
 
         # Ensure Archer 3rd weapon bow is present if level >= 2
         _arch_gen = f"{clean_arch_input or ''} {archetype_data.get('name', '') if archetype_data else ''}".lower()
