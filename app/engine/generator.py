@@ -1,4 +1,4 @@
-twc_blank_log
+
 ANCESTRY_BG_MAP = {
     "dwarf": ["dwarf", "dwarven"],
     "elf": ["elf", "elven"],
@@ -214,20 +214,20 @@ ARCHETYPE_GRANTED_FEATURES = {
         description="Roll a d20. You must use that result for the attack roll of your next Strike this round against the designated creature, substituting your Intelligence modifier for your Strength or Dexterity modifier on the attack roll."
     )
 }     
-   # Example snippet for archer dedication feat data
-   ARCHER_DEDICATION = {
-       "feat": "Archer Dedication",
-       "level": 2,
-       "prerequisites": ["Trained in Martial Weapons"],
-       "benefit": (
-           "You become trained in all simple and martial ranged weapons. "
-           "Whenever you gain a class feature that grants you expert or greater "
-           "proficiency in a given weapon, you also gain that proficiency in "
-           "bows and your choice of a 3rd designated ranged weapon (e.g., Composite Shortbow, "
-           "Heavy Crossbow, or Blowgun)."
-       ),
-       "weapon_slots": 3
-   }
+  # app/engine/generator.py (around line 218)
+
+ARCHER_DEDICATION = {
+    "feat": "Archer Dedication",
+    "level": 2,
+    "prerequisites": ["Trained in Martial Weapons"],
+    "weapons": ["Shortbow", "Longbow", "Composite Shortbow"],
+    "benefit": (
+        "You become trained in all simple and martial ranged weapons. "
+        "Whenever you gain a class feature that grants you expert or greater "
+        "proficiency in a given weapon, you also gain that proficiency in "
+        "bows and your choice of a 3rd designated ranged weapon."
+    )
+}
 
 CURATED_ANCESTRY_FEATS_LVL5 = {
     "dwarf": {"name": "Dwarven Reinforcement", "description": "You can strengthen mundane materials, increasing their Hardness and HP, and gain a +1 bonus to Crafting checks."},
