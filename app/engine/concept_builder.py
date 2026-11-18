@@ -221,6 +221,10 @@ USER CONCEPT: "{concept_text}"
         llm_data = self._parse_with_gemini(text)
 
         spec = ConceptSpec(raw_text=text)
+        if not spec.heritage and "tiefling" in text_lower:
+            spec.heritage = "Tiefling"
+        if not spec.archetype and "assassin" in text_lower:
+            spec.archetype = "Assassin Dedication"
         spec.char_name = llm_data.get("char_name") or None
 
         # 1. Explicit level extraction ("level 6", "lvl 5", "L4")
