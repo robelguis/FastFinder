@@ -335,7 +335,7 @@ def select_class_weapons(
 
     # 2. Integrate Ancestral Weapons
     anc_key = (ancestry_name or "").strip().title()
-    anc_weapons = list(ANCESTRAL_WEAPONS.get(anc_key, []))
+    [] = list(ANCESTRAL_WEAPONS.get(anc_key, []))
 
     eligible_primary: List[Dict[str, Any]] = []
     eligible_secondary: List[Dict[str, Any]] = []
@@ -344,30 +344,30 @@ def select_class_weapons(
     ranged_martial_pool = list(MARTIAL_RANGED + SIMPLE_RANGED)
     if cls_key == "ranger":
         finesse_melee = [
-            w for w in (MARTIAL_FINESSE + SIMPLE_MELEE + anc_weapons)
+            w for w in (MARTIAL_FINESSE + SIMPLE_MELEE)
             if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
         ]
         if dex_mod > str_mod:
             eligible_primary = list(MARTIAL_RANGED) if MARTIAL_RANGED else ranged_martial_pool
             eligible_secondary = finesse_melee if finesse_melee else list(SIMPLE_MELEE)
         else:
-            eligible_primary = [w for w in (martial_pool + simple_pool + anc_weapons) if w not in ranged_martial_pool]
+            eligible_primary = [w for w in (martial_pool + simple_pool) if w not in ranged_martial_pool]
             eligible_secondary = list(MARTIAL_RANGED) if MARTIAL_RANGED else ranged_martial_pool
     elif is_full_martial:
-        eligible_primary = martial_pool + simple_pool + anc_weapons
-        eligible_secondary = martial_pool + simple_pool + anc_weapons
+        eligible_primary = martial_pool + simple_pool
+        eligible_secondary = martial_pool + simple_pool
     elif cls_key == "gunslinger":
         firearms = ONE_HANDED_FIREARMS + TWO_HANDED_SNIPER_FIREARMS + VANGUARD_FIREARMS
         eligible_primary = list(firearms) if firearms else martial_pool
         eligible_secondary = list(SECONDARY_BACKUPS + simple_pool)
     elif cls_key == "thaumaturge":
         # 1-handed weapons only to keep a hand free for implements
-        thaum_pool = [w for w in (MARTIAL_ONE_HANDED + MARTIAL_FINESSE + SIMPLE_MELEE + anc_weapons) if w.get("hands", 1) == 1]
+        thaum_pool = [w for w in (MARTIAL_ONE_HANDED + MARTIAL_FINESSE + SIMPLE_MELEE) if w.get("hands", 1) == 1]
         eligible_primary = thaum_pool if thaum_pool else simple_pool
         eligible_secondary = [w for w in (SIMPLE_RANGED + SECONDARY_BACKUPS) if w.get("hands", 1) == 1]
     elif cls_key == "swashbuckler":
         eligible_primary = [
-            w for w in (MARTIAL_FINESSE + anc_weapons) 
+            w for w in (MARTIAL_FINESSE) 
             if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
         ]
         eligible_secondary = [
@@ -376,7 +376,7 @@ def select_class_weapons(
         ]
     elif cls_key == "rogue":
         eligible_primary = [
-            w for w in (martial_pool + simple_pool + anc_weapons)
+            w for w in (martial_pool + simple_pool)
             if w["name"].lower() in ROGUE_MARTIAL_WEAPONS or w in simple_pool or any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
         ]
         eligible_secondary = [
@@ -385,7 +385,7 @@ def select_class_weapons(
         ]
     elif cls_key == "monk":
         monk_traits = {"monk", "agile", "finesse"}
-        monk_pool = [w for w in (simple_pool + martial_pool + anc_weapons) if any(t.lower() in monk_traits for t in w.get("traits", []))]
+        monk_pool = [w for w in (simple_pool + martial_pool) if any(t.lower() in monk_traits for t in w.get("traits", []))]
         eligible_primary = monk_pool if monk_pool else simple_pool
         eligible_secondary = simple_pool
     elif cls_key == "bard":
@@ -437,7 +437,7 @@ def select_class_weapons(
         "ranger", "fighter", "rogue", "barbarian", "swashbuckler", "champion", "guardian", "commander"
     }:
         one_hand_melee = [
-            w for w in (MARTIAL_ONE_HANDED + MARTIAL_FINESSE + SIMPLE_MELEE + anc_weapons)
+            w for w in (MARTIAL_ONE_HANDED + MARTIAL_FINESSE + SIMPLE_MELEE)
             if w.get("hands", 1) == 1 and w not in ranged_martial_pool
         ]
         if dex_mod > str_mod:
@@ -555,6 +555,51 @@ def resolve_equipment(
             traits=w.get("traits", [])
         ))
 
+
+    # Append ancestry-granted natural attacks / weapons (e.g. Automaton Armament claws/pincers, Surki claws, goblin jaws) as supplemental strikes
+    ancestry_search_blob = " ".join([
+        ancestry_name or "",
+        heritage_name or "",
+        " ".join((f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))) for f in (feats or []))
+    ]).lower()
+
+    ancestry_strikes_to_add = []
+    if "automaton armament" in ancestry_search_blob or "claw" in ancestry_search_blob:
+        if "pincer" in ancestry_search_blob:
+            ancestry_strikes_to_add.append(Strike(
+                name="Pincer (Automaton Armament)",
+                attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + str_mod),
+                map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + str_mod)) - 5),
+                map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + str_mod)) - 10),
+                damage_dice="1d6",
+                damage_type="Piercing",
+                traits=["brawling", "grapple", "unarmed"]
+            ))
+        else:
+            ancestry_strikes_to_add.append(Strike(
+                name="Claw (Automaton Armament / Natural)",
+                attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod)),
+                map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 4),
+                map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 8),
+                damage_dice="1d4",
+                damage_type="Slashing",
+                traits=["agile", "finesse", "unarmed", "brawling"]
+            ))
+    if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob or "tengu" in ancestry_search_blob:
+        ancestry_strikes_to_add.append(Strike(
+            name="Natural Ancestry Attack (Claws/Jaws/Talons)",
+            attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod)),
+            map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 4),
+            map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 8),
+            damage_dice="1d4",
+            damage_type="Slashing",
+            traits=["agile", "finesse", "unarmed"]
+        ))
+
+    for ast in ancestry_strikes_to_add:
+        if not any(ast.name.lower() in s.name.lower() for s in strikes):
+            strikes.append(ast)
+
     if cls_key == "alchemist":
         bomb_tier = "greater" if lvl >= 11 else ("moderate" if lvl >= 3 else "lesser")
         tier_list = ALCHEMICAL_BOMBS.get(bomb_tier, ALCHEMICAL_BOMBS["moderate"])
@@ -628,6 +673,51 @@ def resolve_equipment(
             gear.append(f"{item['name']} ({item['description']})")
 
     consumables: List[ConsumableItem] = []
+
+    # Append ancestry-granted natural attacks / weapons (e.g. Automaton Armament claws/pincers, Surki claws, goblin jaws) as supplemental strikes
+    ancestry_search_blob = " ".join([
+        ancestry_name or "",
+        heritage_name or "",
+        " ".join((f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))) for f in (feats or []))
+    ]).lower()
+
+    ancestry_strikes_to_add = []
+    if "automaton armament" in ancestry_search_blob or "claw" in ancestry_search_blob:
+        if "pincer" in ancestry_search_blob:
+            ancestry_strikes_to_add.append(Strike(
+                name="Pincer (Automaton Armament)",
+                attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + str_mod),
+                map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + str_mod)) - 5),
+                map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + str_mod)) - 10),
+                damage_dice="1d6",
+                damage_type="Piercing",
+                traits=["brawling", "grapple", "unarmed"]
+            ))
+        else:
+            ancestry_strikes_to_add.append(Strike(
+                name="Claw (Automaton Armament / Natural)",
+                attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod)),
+                map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 4),
+                map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 8),
+                damage_dice="1d4",
+                damage_type="Slashing",
+                traits=["agile", "finesse", "unarmed", "brawling"]
+            ))
+    if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob or "tengu" in ancestry_search_blob:
+        ancestry_strikes_to_add.append(Strike(
+            name="Natural Ancestry Attack (Claws/Jaws/Talons)",
+            attack_bonus=total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod)),
+            map_second=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 4),
+            map_third=str((total_atk if 'total_atk' in locals() else (2 + lvl + max(str_mod, dex_mod))) - 8),
+            damage_dice="1d4",
+            damage_type="Slashing",
+            traits=["agile", "finesse", "unarmed"]
+        ))
+
+    for ast in ancestry_strikes_to_add:
+        if not any(ast.name.lower() in s.name.lower() for s in strikes):
+            strikes.append(ast)
+
     if cls_key == "alchemist":
         bomb_tier = "greater" if lvl >= 11 else ("moderate" if lvl >= 3 else "lesser")
         tier_bombs = ALCHEMICAL_BOMBS.get(bomb_tier, ALCHEMICAL_BOMBS["moderate"])
