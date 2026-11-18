@@ -565,7 +565,7 @@ def resolve_equipment(
 
     base_anc_atk = 2 + lvl + max(str_mod, dex_mod)
     ancestry_strikes_to_add = []
-    if "automaton armament" in ancestry_search_blob or "claw" in ancestry_search_blob or "pincer" in ancestry_search_blob:
+    if "automaton" in ancestry_search_blob or "armament" in ancestry_search_blob or "claw" in ancestry_search_blob or "pincer" in ancestry_search_blob or "natural attack" in ancestry_search_blob:
         if "pincer" in ancestry_search_blob:
             ancestry_strikes_to_add.append(Strike(
                 name="Pincer (Automaton Armament)",
@@ -684,7 +684,7 @@ def resolve_equipment(
 
     base_anc_atk = 2 + lvl + max(str_mod, dex_mod)
     ancestry_strikes_to_add = []
-    if "automaton armament" in ancestry_search_blob or "claw" in ancestry_search_blob or "pincer" in ancestry_search_blob:
+    if "automaton" in ancestry_search_blob or "armament" in ancestry_search_blob or "claw" in ancestry_search_blob or "pincer" in ancestry_search_blob or "natural attack" in ancestry_search_blob:
         if "pincer" in ancestry_search_blob:
             ancestry_strikes_to_add.append(Strike(
                 name="Pincer (Automaton Armament)",
