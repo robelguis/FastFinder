@@ -103,6 +103,26 @@ FAMILIAR_ABILITIES_POOL = [
 
 FAMILIAR_NAMES = ["Corvus", "Pippin", "Hecate", "Mallow", "Barnaby", "Nyx", "Bramble", "Zephyr", "Grimm", "Soot", "Riptide", "Brine"]
 
+
+import re
+
+KNOWN_SPECIES_WORDS = [
+    "hawk", "falcon", "eagle", "owl", "raven", "crow", "viper", "snake", "serpent",
+    "cat", "toad", "frog", "lizard", "octopus", "crab", "leshy", "fox", "wolf",
+    "badger", "weasel", "ferret", "rat", "bat", "spider", "beetle", "stag", "horse"
+]
+
+
+def _extract_species_from_text(desc: Optional[str]) -> Optional[str]:
+    if not desc or not isinstance(desc, str):
+        return None
+    low = desc.lower()
+    for word in KNOWN_SPECIES_WORDS:
+        if re.search(rf"\b{re.escape(word)}\b", low):
+            return word.title()
+    return None
+
+
 def resolve_familiar(
     master_ac: int,
     master_fort: int,
@@ -113,7 +133,8 @@ def resolve_familiar(
     level: int = 1,
     aquatic_only: bool = False,
     is_pet: bool = False,
-    forced_species: Optional[str] = None
+    forced_species: Optional[str] = None,
+    description_text: Optional[str] = None
 ) -> PartnerCreatureData:
     if forced_species == "elemental":
         pool = [k for k, v in FAMILIAR_SPECIES.items() if v.get("elemental")]
@@ -127,6 +148,12 @@ def resolve_familiar(
     key = random.choice(pool)
     cfg = FAMILIAR_SPECIES[key]
     name = random.choice(FAMILIAR_NAMES)
+    extracted_species = _extract_species_from_text(description_text)
+    if extracted_species:
+        species_label = extracted_species
+        sub_label = f"{species_label} Pet" if is_pet else f"{species_label} Familiar"
+    else:
+        species_label = cfg["species"]
 
     # Remaster rules: HP = 5 * Master Level
     hp = 5 * level
@@ -137,7 +164,7 @@ def resolve_familiar(
         primary_text = f"Pet Abilities: {ability_summary}. Tiny animal companion with non-combat utility."
         secondary_text = cfg["description"]
         stage_label = "Bonded Pet"
-        sub_label = f"{cfg['species']} Pet"
+        sub_label = f"{species_label} Pet"
     else:
         chosen_pool_abilities = random.sample(FAMILIAR_ABILITIES_POOL, 2)
         ability_tags = list(cfg["innate_abilities"]) + [a["name"] for a in chosen_pool_abilities]
@@ -145,11 +172,11 @@ def resolve_familiar(
         primary_text = f"Familiar Abilities: {ability_summary}. {chosen_pool_abilities[0]['name']}: {chosen_pool_abilities[0]['desc']}"
         secondary_text = f"{chosen_pool_abilities[1]['name']}: {chosen_pool_abilities[1]['desc']}"
         stage_label = "Patron Conduit" if class_name.lower() == "witch" else ("Marine Bond" if aquatic_only else "Mystical Bond")
-        sub_label = f"{cfg['species']} Familiar"
+        sub_label = f"{species_label} Familiar"
 
     eff_perception = (3 + level) if is_pet else master_perception
     return PartnerCreatureData(
-        name=f"{name} ({cfg['species']})",
+        name=f"{name} ({species_label})",
         creature_type="Pet" if is_pet else "Familiar",
         sub_type=sub_label,
         stage=stage_label,

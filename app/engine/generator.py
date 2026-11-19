@@ -433,6 +433,7 @@ def sync_feat_partners(
                     master_will=master_will, master_perception=master_perception,
                     class_name=class_name, level=level, aquatic_only=False,
                     is_pet=False, forced_species="elemental",
+                    description_text=concept_text,
                 )
                 if fam and (fam.name or "").lower() not in existing_names:
                     partners.append(fam)
@@ -444,6 +445,7 @@ def sync_feat_partners(
                     master_will=master_will, master_perception=master_perception,
                     class_name=class_name, level=level, aquatic_only=has_marine_ally,
                     is_pet=False, forced_species="leshy" if is_leaf_leshy else ("elemental" if has_elemental_familiar else None),
+                    description_text=concept_text,
                 )
                 if fam and (fam.name or "").lower() not in existing_names:
                     partners.append(fam)
@@ -453,6 +455,7 @@ def sync_feat_partners(
                     master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
                     master_will=master_will, master_perception=3 + level,
                     class_name=class_name, level=level, aquatic_only=False, is_pet=True,
+                    description_text=concept_text,
                 )
                 if fam and (fam.name or "").lower() not in existing_names:
                     partners.append(fam)
@@ -1210,6 +1213,7 @@ class PF2eGenerator:
                     master_perception=perception_prof.modifier,
                     class_name=cls["name"],
                     level=level,
+                    description_text=concept_text,
                 ))
 
         # Sync feat/archetype partners using collected_partners
