@@ -326,23 +326,37 @@ def select_class_weapons(
     
     # 1. Determine Allowed Categories & Base Pools
     is_full_martial = cls_key in {
-        "barbarian", "champion", "fighter", "ranger", "inventor", 
-        "guardian", "commander", "magus"
+        "barbarian", "champion", "fighter", "ranger", "inventor",
+        "guardian", "commander", "magus", "exemplar", "runesmith"
     }
-    
+
     simple_pool = list(SIMPLE_MELEE + SIMPLE_RANGED)
     martial_pool = list(MARTIAL_ONE_HANDED + MARTIAL_TWO_HANDED + MARTIAL_FINESSE + MARTIAL_RANGED)
 
     # 2. Integrate Ancestral Weapons
-    anc_key = (ancestry_name or "").strip().title()
-    [] = list(ANCESTRAL_WEAPONS.get(anc_key, []))
+    anc_key = (ancestry_name or "").strip().lower()
+    ancestral_pool = list(ANCESTRAL_WEAPONS.get(anc_key, []))
+
+    feat_str = " ".join(
+        (f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))).lower()
+        for f in (feats or [])
+    )
+    sub_lower = (subclass_name or "").lower()
+    arch_lower = (archetype_name or "").lower()
 
     eligible_primary: List[Dict[str, Any]] = []
     eligible_secondary: List[Dict[str, Any]] = []
-
-    # 3. Filter by Class Weapon Proficiency
     ranged_martial_pool = list(MARTIAL_RANGED + SIMPLE_RANGED)
-    if cls_key == "ranger":
+
+    # 3. Filter by Class & Subclass Weapon Proficiency / Combat Style
+    if cls_key == "magus" and "laughing shadow" in sub_lower:
+        # Laughing Shadow requires a free hand and thrives with 1H Finesse weapons
+        eligible_primary = list(MARTIAL_FINESSE)
+        eligible_secondary = [w for w in SIMPLE_RANGED if w["name"].lower() in ("dart", "javelin", "sling")]
+    elif cls_key == "magus" and "starlit span" in sub_lower:
+        eligible_primary = list(MARTIAL_RANGED)
+        eligible_secondary = list(MARTIAL_FINESSE) if dex_mod >= str_mod else list(MARTIAL_ONE_HANDED)
+    elif cls_key == "ranger":
         finesse_melee = [
             w for w in (MARTIAL_FINESSE + SIMPLE_MELEE)
             if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
@@ -354,8 +368,10 @@ def select_class_weapons(
             eligible_primary = [w for w in (martial_pool + simple_pool) if w not in ranged_martial_pool]
             eligible_secondary = list(MARTIAL_RANGED) if MARTIAL_RANGED else ranged_martial_pool
     elif is_full_martial:
-        eligible_primary = martial_pool + simple_pool
-        eligible_secondary = martial_pool + simple_pool
+        eligible_primary = list(martial_pool)
+        if ancestral_pool and ("weapon familiarity" in feat_str or random.random() < 0.35):
+            eligible_primary.extend(ancestral_pool)
+        eligible_secondary = list(MARTIAL_RANGED + SECONDARY_BACKUPS)
     elif cls_key == "gunslinger":
         firearms = ONE_HANDED_FIREARMS + TWO_HANDED_SNIPER_FIREARMS + VANGUARD_FIREARMS
         eligible_primary = list(firearms) if firearms else martial_pool
@@ -367,21 +383,21 @@ def select_class_weapons(
         eligible_secondary = [w for w in (SIMPLE_RANGED + SECONDARY_BACKUPS) if w.get("hands", 1) == 1]
     elif cls_key == "swashbuckler":
         eligible_primary = [
-            w for w in (MARTIAL_FINESSE) 
+            w for w in MARTIAL_FINESSE
             if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
         ]
         eligible_secondary = [
-            w for w in (simple_pool + SECONDARY_BACKUPS) 
+            w for w in (simple_pool + SECONDARY_BACKUPS)
             if any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile", "thrown"]) or w.get("hands", 1) == 1
         ]
     elif cls_key == "rogue":
         eligible_primary = [
-            w for w in (martial_pool + simple_pool)
-            if w["name"].lower() in ROGUE_MARTIAL_WEAPONS or w in simple_pool or any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
+            w for w in (MARTIAL_FINESSE + SIMPLE_MELEE)
+            if w["name"].lower() in ROGUE_MARTIAL_WEAPONS or any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile"])
         ]
         eligible_secondary = [
-            w for w in simple_pool 
-            if w.get("name", "").lower() in ["shortbow", "hand crossbow", "dagger", "dart", "sling"]
+            w for w in (MARTIAL_RANGED + simple_pool)
+            if w.get("name", "").lower() in ["shortbow", "composite shortbow", "hand crossbow", "dagger", "dart", "sling"]
         ]
     elif cls_key == "monk":
         monk_traits = {"monk", "agile", "finesse"}
@@ -391,27 +407,43 @@ def select_class_weapons(
     elif cls_key == "bard":
         eligible_primary = [
             w for w in (simple_pool + martial_pool)
-            if w["name"].lower() in BARD_MARTIAL_WEAPONS or w in simple_pool
+            if w["name"].lower() in BARD_MARTIAL_WEAPONS or w in SIMPLE_MELEE
         ]
-        eligible_secondary = [w for w in simple_pool if w["name"].lower() in ["shortbow", "sling", "hand crossbow", "whip"]]
+        eligible_secondary = [w for w in (MARTIAL_RANGED + simple_pool) if w["name"].lower() in ["shortbow", "sling", "hand crossbow", "whip"]]
     elif cls_key == "cleric":
-        eligible_primary = simple_pool
-        eligible_secondary = [w for w in simple_pool if "ranged" in w.get("type", "").lower() or w.get("hands", 1) == 1]
+        eligible_primary = list(SIMPLE_MELEE)
+        eligible_secondary = [w for w in simple_pool if w in SIMPLE_RANGED or w.get("hands", 1) == 1]
+    elif cls_key == "druid":
+        druid_melee = [w for w in SIMPLE_MELEE if w["name"].lower() in ["spear", "sickle", "club", "longspear", "hatchet"]]
+        eligible_primary = druid_melee if druid_melee else list(SIMPLE_MELEE)
+        eligible_secondary = [w for w in SIMPLE_RANGED if w["name"].lower() in ["sling", "dart", "javelin"]]
     else:
-        # Full Casters (Wizard, Witch, Sorcerer, Druid, Oracle, Psychic, Summoner, Animist)
-        caster_melee = [w for w in SIMPLE_MELEE if w["name"].lower() in ["staff", "dagger", "club", "sickle"]]
-        caster_ranged = [w for w in SIMPLE_RANGED if w["name"].lower() in ["light crossbow", "sling", "dart"]]
+        # Dedicated Casters (Wizard, Witch, Sorcerer, Oracle, Psychic, Necromancer, Summoner, Animist)
+        caster_melee = [w for w in SIMPLE_MELEE if w["name"].lower() in ["club", "sickle", "spear"]] + [
+            w for w in SECONDARY_BACKUPS if w["name"].lower() == "dagger"
+        ]
+        caster_ranged = [w for w in SIMPLE_RANGED if w["name"].lower() in ["crossbow", "sling", "dart"]]
         eligible_primary = caster_melee if caster_melee else simple_pool
         eligible_secondary = caster_ranged if caster_ranged else simple_pool
 
-    # 4. Ability Score Priority Filtering
-    if dex_mod > str_mod and dex_mod >= 2 and cls_key != "ranger":
-        finesse_primary = [
-            w for w in eligible_primary 
+    # 4. Ability Score & Archetype Priority Filtering
+    if "archer" in arch_lower and MARTIAL_RANGED:
+        eligible_primary = list(MARTIAL_RANGED)
+    elif dex_mod > str_mod and cls_key not in ("ranger", "gunslinger"):
+        finesse_or_ranged = [
+            w for w in eligible_primary
             if w in ranged_martial_pool or any(t in [tr.lower() for tr in w.get("traits", [])] for t in ["finesse", "agile", "ranged"])
         ]
-        if finesse_primary:
-            eligible_primary = finesse_primary
+        if finesse_or_ranged:
+            eligible_primary = finesse_or_ranged
+    elif str_mod >= dex_mod and is_full_martial and cls_key not in ("ranger", "gunslinger"):
+        # STR martials favor heavy 2H or sturdy 1H martial melee over light finesse weapons
+        str_melee = [
+            w for w in eligible_primary
+            if w not in ranged_martial_pool and "Finesse" not in w.get("traits", [])
+        ]
+        if str_melee:
+            eligible_primary = str_melee
 
     if str_mod < 1:
         no_heavy = [w for w in eligible_primary if str(w.get("bulk", "1")) not in ["2", "3"]]
@@ -423,10 +455,6 @@ def select_class_weapons(
     if not eligible_secondary:
         eligible_secondary = list(SIMPLE_RANGED)
 
-    feat_str = " ".join(
-        (f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))).lower()
-        for f in (feats or [])
-    )
     dual_wield_triggers = (
         "twin takedown", "second sting", "impossible flurry", "twin parry",
         "twin riposte", "double slice", "two-weapon flurry", "twin feint", "dual-weapon"
@@ -434,11 +462,12 @@ def select_class_weapons(
     is_dual_wielder = any(t in feat_str for t in dual_wield_triggers)
 
     if is_dual_wielder and cls_key in {
-        "ranger", "fighter", "rogue", "barbarian", "swashbuckler", "champion", "guardian", "commander"
+        "ranger", "fighter", "rogue", "barbarian", "swashbuckler", "champion", "guardian", "commander", "exemplar"
     }:
+        two_hand_names = {w["name"].lower() for w in MARTIAL_TWO_HANDED} | {"longspear", "elven curve blade", "elven branched spear"}
         one_hand_melee = [
             w for w in (MARTIAL_ONE_HANDED + MARTIAL_FINESSE + SIMPLE_MELEE)
-            if w.get("hands", 1) == 1 and w not in ranged_martial_pool
+            if w.get("hands", 1) == 1 and w["name"].lower() not in two_hand_names
         ]
         if dex_mod > str_mod:
             finesse_1h = [
@@ -459,10 +488,90 @@ def select_class_weapons(
         return [main_hand, off_hand, ranged_backup]
 
     primary_wep = random.choice(eligible_primary)
-    backup_candidates = [w for w in eligible_secondary if w.get("name") != primary_wep.get("name")]
-    secondary_wep = random.choice(backup_candidates) if backup_candidates else random.choice(eligible_secondary)
+    # Keep secondary backup distinct (prefer ranged backup if primary is melee, or 1H melee if primary is ranged)
+    primary_is_ranged = "Range" in " ".join(primary_wep.get("traits", []))
+    if primary_is_ranged:
+        melee_backups = [w for w in eligible_secondary if "Range" not in " ".join(w.get("traits", [])) and w.get("name") != primary_wep.get("name")]
+        backup_candidates = melee_backups or [w for w in eligible_secondary if w.get("name") != primary_wep.get("name")]
+    else:
+        ranged_backups = [w for w in eligible_secondary if "Range" in " ".join(w.get("traits", [])) and w.get("name") != primary_wep.get("name")]
+        backup_candidates = ranged_backups or [w for w in eligible_secondary if w.get("name") != primary_wep.get("name")]
 
+    secondary_wep = random.choice(backup_candidates) if backup_candidates else random.choice(eligible_secondary)
     return [primary_wep, secondary_wep]
+
+
+def _should_equip_shield(
+    cls_key: str,
+    raw_weps: List[Dict[str, Any]],
+    subclass_name: str = "",
+    archetype_name: str = "",
+    feats: Optional[List[Any]] = None,
+) -> bool:
+    """Determine if a shield fits the character's hand economy, class, and build."""
+    feat_str = " ".join(
+        (f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))).lower()
+        for f in (feats or [])
+    )
+    sub_lower = (subclass_name or "").lower()
+    arch_lower = (archetype_name or "").lower()
+
+    # Explicit shield builds always get a shield if hands allow
+    explicit_shield_build = (
+        "shield block" in feat_str
+        or "bastion" in arch_lower
+        or "viking" in arch_lower
+        or "everstand" in feat_str
+        or "reactive shield" in feat_str
+    )
+
+    # Free-hand classes/subclasses never equip a shield unless explicitly a shield build
+    if cls_key in ("thaumaturge", "monk", "gunslinger"):
+        return False
+    if cls_key == "magus" and ("laughing shadow" in sub_lower or "starlit span" in sub_lower):
+        return False
+
+    # Check if primary weapon occupies both hands or is a bow/crossbow/firearm
+    two_hand_names = (
+        {w["name"].lower() for w in MARTIAL_TWO_HANDED}
+        | {w["name"].lower() for w in TWO_HANDED_SNIPER_FIREARMS}
+        | {w["name"].lower() for w in VANGUARD_FIREARMS}
+        | {"longspear", "elven curve blade", "elven branched spear", "halfling sling staff", "crossbow"}
+    )
+    if raw_weps:
+        p_wep = raw_weps[0]
+        p_name = p_wep.get("name", "").lower()
+        p_traits = " ".join(p_wep.get("traits", [])).lower()
+        if (
+            p_name in two_hand_names
+            or "bow" in p_name
+            or "crossbow" in p_name
+            or "range " in p_traits
+            or p_wep.get("hands", 1) == 2
+        ):
+            return False
+
+    # Dual-wielders (2 melee weapons in raw_weps) have both hands full
+    melee_count = sum(1 for w in raw_weps if "Range" not in " ".join(w.get("traits", [])))
+    if melee_count >= 2:
+        return False
+
+    if explicit_shield_build:
+        return True
+
+    # Dedicated shield/frontline classes get a shield ~65% of the time when holding a 1H melee weapon
+    if cls_key in ("champion", "guardian", "fighter", "commander", "exemplar"):
+        return random.random() < 0.65
+    if cls_key == "cleric" and "cloistered" not in sub_lower:
+        return random.random() < 0.65
+    # Other 1H-capable martials/hybrids (barbarian, runesmith, druid, magus, ranger, swashbuckler) only occasionally (~25%)
+    if cls_key in ("barbarian", "runesmith", "druid", "magus", "ranger", "swashbuckler", "inventor"):
+        return random.random() < 0.25
+
+    # Pure casters (wizard, witch, sorcerer, oracle, psychic, necromancer, summoner, animist, bard, rogue, alchemist, investigator)
+    return False
+
+
 def get_all_registered_weapons() -> List[Dict[str, Any]]:
     pool = []
     pool_lists = [
@@ -619,24 +728,35 @@ def resolve_equipment(
         ))
 
     shield_bonus = 0
+    shield_item = None
     armor_pot = tiers["armor_potency"]
     is_cloistered = cls_key == "cleric" and "cloistered" in (subclass_name or "").lower()
+    use_shield = _should_equip_shield(
+        cls_key=cls_key,
+        raw_weps=raw_weps,
+        subclass_name=subclass_name,
+        archetype_name=archetype_name,
+        feats=feats,
+    )
+
     if is_cloistered:
         armor_name = format_runed_armor_name("Explorer's Clothing", lvl)
         armor_item = Item(name=armor_name, bulk="L", cost_sp=1)
         calculated_ac = 10 + 0 + min(dex_mod, 5) + (2 + lvl) + armor_pot
-        shield_item = None
     elif cls_key in ["champion", "fighter", "cleric", "guardian"]:
         armor_name = format_runed_armor_name("Breastplate", lvl)
         armor_item = Item(name=armor_name, bulk="2", cost_sp=80)
         calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + armor_pot
-        shield_item = Item(name=format_scaled_shield_name("Steel Shield", lvl), bulk="1", cost_sp=20)
-        shield_bonus = 2
+        if use_shield:
+            shield_item = Item(name=format_scaled_shield_name("Steel Shield", lvl), bulk="1", cost_sp=20)
+            shield_bonus = 2
     elif cls_key in ["rogue", "ranger", "bard", "swashbuckler", "investigator", "gunslinger", "alchemist", "animist"]:
         armor_name = format_runed_armor_name("Leather Armor", lvl)
         armor_item = Item(name=armor_name, bulk="1", cost_sp=20)
         calculated_ac = 10 + 1 + min(dex_mod, 4) + (2 + lvl) + armor_pot
-        shield_item = None
+        if use_shield:
+            shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
+            shield_bonus = 2
     elif cls_key in ["wizard", "witch", "sorcerer", "oracle", "psychic", "necromancer", "monk"]:
         armor_name = format_runed_armor_name("Explorer's Clothing", lvl)
         armor_item = Item(name=armor_name, bulk="L", cost_sp=1)
@@ -645,14 +765,17 @@ def resolve_equipment(
         else:
             unarm_prof = (2 + lvl)
         calculated_ac = 10 + 0 + min(dex_mod, 5) + unarm_prof + armor_pot
-        shield_item = None
+        if use_shield:
+            shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
+            shield_bonus = 2
     else:
         armor_name = format_runed_armor_name("Hide Armor", lvl)
         armor_item = Item(name=armor_name, bulk="2", cost_sp=20)
         arm_prof = (4 + lvl) if (cls_key == "thaumaturge" and lvl >= 11) else (2 + lvl)
         calculated_ac = 10 + 3 + min(dex_mod, 2) + arm_prof + armor_pot
-        shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
-        shield_bonus = 2
+        if use_shield:
+            shield_item = Item(name=format_scaled_shield_name("Steel Shield" if cls_key in ("commander", "exemplar", "barbarian") else "Wooden Shield", lvl), bulk="1", cost_sp=10)
+            shield_bonus = 2
 
     if "hardshell" in (heritage_name or "").lower() and (ancestry_name or "").lower() in ("surki", "sukri"):
         armor_name = format_runed_armor_name("Hardshell Surki Carapace", lvl)
