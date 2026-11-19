@@ -799,7 +799,7 @@ function updateHeritageDropdown() {
     const ancestryVal = ancestrySelect.value.toLowerCase().trim();
     
     // Reset dropdown options to default
-    heritageSelect.innerHTML = '<option value="">-- Random / Default Heritage --</option>';
+    heritageSelect.innerHTML = '<option value="">Any Heritage</option>';
     
     // Populate matching official heritages if available
     if (ancestryHeritagesMap[ancestryVal]) {
