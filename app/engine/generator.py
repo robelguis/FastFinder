@@ -816,11 +816,11 @@ def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
     return cleaned
 
 
-def pick_weighted_feat(candidates, class_name, owned_names, skill_ranks, mods, char_level):
+def pick_weighted_feat(candidates, class_name, owned_names, skill_ranks, mods, char_level, subclass_name="", archetype_name=""):
     valid = [
         f for f in candidates
         if f["name"] not in owned_names
-        and check_feat_prerequisites(f, skill_ranks, owned_names, mods, char_level)
+        and check_feat_prerequisites(f, skill_ranks, owned_names, mods, char_level, subclass_name=subclass_name, archetype_name=archetype_name)
     ]
     if not valid:
         valid = [f for f in candidates if f["name"] not in owned_names]
@@ -1137,7 +1137,7 @@ class PF2eGenerator:
                 and f.get("level", 1) <= lvl
                 and f["name"] not in existing_feat_names
                 and can_take_dedication(f["name"], chosen_feats, existing_feat_names)
-                and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl)
+                and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl, subclass_name=subclass_name or "", archetype_name=(archetype_data.get("name", "") if archetype_data else ""))
             ]
             if gen_pool:
                 gf = random.choice(gen_pool)
@@ -1181,10 +1181,10 @@ class PF2eGenerator:
                     and cls_lower in [t.lower() for t in f.get("traits", [])]
                     and (cls_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements))
                     and f["name"] not in existing_feat_names
-                    and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl)
+                    and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl, subclass_name=subclass_name or "", archetype_name=(archetype_data.get("name", "") if archetype_data else ""))
                 ]
                 if cls_pool:
-                    cf = pick_weighted_feat(cls_pool, cls_name, existing_feat_names, {}, mods, lvl) or random.choice(cls_pool)
+                    cf = pick_weighted_feat(cls_pool, cls_name, existing_feat_names, {}, mods, lvl, subclass_name=subclass_name or "", archetype_name=(archetype_data.get("name", "") if archetype_data else "")) or random.choice(cls_pool)
                     chosen_feats.append(FeatSummary(
                         id=cf["id"],
                         name=cf["name"],
@@ -1203,7 +1203,7 @@ class PF2eGenerator:
                 and anc_lower in [t.lower() for t in f.get("traits", [])]
                 and f["name"] not in existing_feat_names
                 and can_take_dedication(f["name"], chosen_feats, existing_feat_names)
-                and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl)
+                and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl, subclass_name=subclass_name or "", archetype_name=(archetype_data.get("name", "") if archetype_data else ""))
             ]
             if anc_pool:
                 af13 = random.choice(anc_pool)
@@ -1225,7 +1225,7 @@ class PF2eGenerator:
                 and f.get("level", 1) <= lvl
                 and f["name"] not in existing_feat_names
                 and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls_name, archetype_data.get("name", "") if archetype_data else ""))
-                and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl)
+                and check_feat_prerequisites(f, {}, existing_feat_names, mods, lvl, subclass_name=subclass_name or "", archetype_name=(archetype_data.get("name", "") if archetype_data else ""))
             ]
             if sk_pool:
                 sf = pick_weighted_feat(sk_pool, cls_name, existing_feat_names, {}, mods, lvl) or random.choice(sk_pool)

@@ -94,12 +94,126 @@ def is_kineticist_feat_allowed(feat: Dict[str, Any], gate_elements: set) -> bool
     # All elemental traits on the feat/impulse must be in the Kineticist's gate
     return required_elements.issubset(gate_elements)
 
+
+_HOLY_POLARITY_TERMS = ("redeemer", "paladin", "liberator", "holy")
+_UNHOLY_POLARITY_TERMS = ("desecrator", "tyrant", "antipaladin", "unholy")
+
+_UNHOLY_EXCLUDED_IN_HOLY = (
+    "selfish shield",
+    "ongoing selfishness",
+    "unholy",
+    "desecrator",
+    "tyrant",
+    "antipaladin",
+)
+
+_HOLY_EXCLUDED_IN_UNHOLY = (
+    "glimpse of redemption",
+    "retributive strike",
+    "liberate",
+    "paladin",
+    "redeemer",
+    "liberator",
+    "holy",
+)
+
+
+def _collect_all_known_subclasses() -> Set[str]:
+    """Collects all known subclass names from app.engine.subclasses dynamically."""
+    names: Set[str] = set()
+    try:
+        from app.engine.subclasses import CLASS_SUBCLASSES
+        for _cls, sub_list in (CLASS_SUBCLASSES or {}).items():
+            if isinstance(sub_list, (list, tuple, set)):
+                for item in sub_list:
+                    if isinstance(item, dict):
+                        for k in ("name", "title", "label"):
+                            v = item.get(k)
+                            if isinstance(v, str) and len(v.strip()) >= 3:
+                                names.add(v.strip().lower())
+                    elif isinstance(item, str) and len(item.strip()) >= 3:
+                        names.add(item.strip().lower())
+    except Exception:
+        pass
+    return names
+
+
+_KNOWN_SUBCLASSES: Set[str] = _collect_all_known_subclasses()
+
+
+def _extract_prereq_text(feat: Dict[str, Any], prereqs: List[str]) -> str:
+    """Combines structured prerequisites with any 'Prerequisites ...' clause in description."""
+    parts = [str(p) for p in prereqs if p]
+    desc = str(feat.get("description") or "")
+    m = re.search(r"\bprerequisites?\s*:?\s*([^.\n]+)", desc, re.IGNORECASE)
+    if m:
+        parts.append(m.group(1))
+    return " ".join(parts).lower()
+
+
+def _check_subclass_compatibility(
+    feat: Dict[str, Any],
+    prereqs: List[str],
+    owned_lower: Set[str],
+    subclass_name: str = "",
+    archetype_name: str = "",
+) -> bool:
+    """Returns False if feat conflicts with active subclass/cause/instinct/order/style."""
+    sub_lower = (subclass_name or "").lower().strip()
+    arch_lower = (archetype_name or "").lower().strip()
+    active_blob = f"{sub_lower} {arch_lower}".strip()
+
+    f_name = str(feat.get("name") or "").lower().strip()
+    f_desc = str(feat.get("description") or "").lower()
+    traits_list = feat.get("traits") or []
+    f_traits = " ".join(str(t).lower() for t in traits_list) if isinstance(traits_list, (list, tuple, set)) else str(traits_list).lower()
+    prereq_blob = _extract_prereq_text(feat, prereqs)
+
+    # 1. Sanctification / cause polarity check across all subclasses/causes
+    has_holy_active = any(t in active_blob for t in _HOLY_POLARITY_TERMS) and not any(t in active_blob for t in _UNHOLY_POLARITY_TERMS)
+    has_unholy_active = any(t in active_blob for t in _UNHOLY_POLARITY_TERMS) and not any(t in active_blob for t in _HOLY_POLARITY_TERMS)
+
+    if has_holy_active:
+        # Check feat name, traits, and prerequisite clause for unholy-locked terms
+        unholy_check_blob = f"{f_name} {f_traits} {prereq_blob}"
+        if any(term in unholy_check_blob for term in _UNHOLY_EXCLUDED_IN_HOLY):
+            return False
+
+    if has_unholy_active:
+        holy_check_blob = f"{f_name} {f_traits} {prereq_blob}"
+        if any(term in holy_check_blob for term in _HOLY_EXCLUDED_IN_UNHOLY):
+            return False
+
+    # 2. Explicit subclass / instinct / style / order / racket name in prerequisites
+    if _KNOWN_SUBCLASSES and prereq_blob:
+        for known_sub in _KNOWN_SUBCLASSES:
+            # Skip single/short words that might collide with generic English words
+            if len(known_sub) < 4:
+                continue
+            # Clean parenthetical tags like "(holy)" or "(unholy)" when matching core subclass name
+            core_sub = re.sub(r"\s*\([^)]*\)", "", known_sub).strip()
+            candidates = {known_sub}
+            if core_sub and len(core_sub) >= 4:
+                candidates.add(core_sub)
+
+            for cand in candidates:
+                if re.search(rf"\b{re.escape(cand)}\b", prereq_blob):
+                    # Allowed if this subclass is active or owned via feat/archetype
+                    matches_active = (cand in active_blob) or any(cand in o for o in owned_lower)
+                    if not matches_active:
+                        return False
+
+    return True
+
+
 def check_feat_prerequisites(
     feat: Dict[str, Any],
     skill_ranks: Dict[str, int],
     owned_feat_names: Set[str],
     attribute_mods: Dict[str, int],
-    character_level: int
+    character_level: int,
+    subclass_name: str = "",
+    archetype_name: str = ""
 ) -> bool:
     """Validates whether a character meets all prerequisites for a feat."""
     prereqs = feat.get("prerequisites") or feat.get("prerequisite") or []
@@ -107,6 +221,15 @@ def check_feat_prerequisites(
         prereqs = [prereqs]
 
     owned_lower = {f.lower().strip() for f in owned_feat_names}
+
+    if not _check_subclass_compatibility(
+        feat=feat,
+        prereqs=prereqs,
+        owned_lower=owned_lower,
+        subclass_name=subclass_name,
+        archetype_name=archetype_name,
+    ):
+        return False
 
     for p in prereqs:
         p_clean = p.strip()
