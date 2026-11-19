@@ -260,6 +260,23 @@ USER CONCEPT: "{concept_text}"
 
         spec.subclass = llm_data.get("subclass") or None
 
+        # 2b. Deterministic Champion cause extraction so holy/redeemer/etc. never fall back randomly
+        if (spec.character_class or "").lower() == "champion" and not spec.subclass:
+            cause_patterns = [
+                (r"\bredeemer\b", "Redeemer (Holy)"),
+                (r"\bpaladin\b", "Paladin (Holy)"),
+                (r"\bliberator\b", "Liberator (Holy)"),
+                (r"\btyrant\b", "Tyrant (Unholy)"),
+                (r"\bdesecrator\b", "Desecrator (Unholy)"),
+                (r"\bantipaladin\b", "Antipaladin (Unholy)"),
+                (r"\bholy\b", "Redeemer (Holy)"),
+                (r"\bunholy\b", "Desecrator (Unholy)"),
+            ]
+            for pat, cause_name in cause_patterns:
+                if re.search(pat, text_lower):
+                    spec.subclass = cause_name
+                    break
+
         # 3. Archetype / Multiclass detection
         llm_arch = (llm_data.get("archetype") or "").lower()
         if llm_arch and llm_arch != "none":

@@ -565,6 +565,20 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
         chosen = random.choice(available) if available else random.choice(TERRAIN_TYPES)
         return f"{feat_name} ({chosen})"
 
+    if ("deity's domain" in fn_lower or "deitys domain" in fn_lower or "domain initiate" in fn_lower) and "(" not in feat_name:
+        domain_pool = [
+            "Zeal", "Protection", "Sun", "Might", "Moon",
+            "Nature", "Healing", "Truth", "Family", "Travel"
+        ]
+        taken_domains = [
+            fn.split("(")[-1].replace(")", "").strip().title()
+            for fn in existing_feat_names
+            if ("domain" in fn.lower()) and "(" in fn
+        ]
+        avail_domains = [d for d in domain_pool if d not in taken_domains]
+        chosen_domain = random.choice(avail_domains) if avail_domains else random.choice(domain_pool)
+        return f"{feat_name} ({chosen_domain})"
+
     if "terrain stalker" in fn_lower and "(" not in feat_name:
         stalker_opts = ["Rubble", "Snow", "Underbrush"]
         return f"{feat_name} ({random.choice(stalker_opts)})"
@@ -642,6 +656,10 @@ def can_take_dedication(feat_name: str, existing_feats: list, existing_feat_name
 
 
 def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
+    if "(" in feat_name and ")" in feat_name and any(k in feat_name.lower() for k in ("domain", "deity")):
+        sub_val = feat_name.split("(", 1)[1].rsplit(")", 1)[0].strip()
+        if sub_val and sub_val.lower() not in (desc or "").lower():
+            desc = f"{desc} Chosen Domain: {sub_val}." if desc else f"Chosen Domain: {sub_val}."
     cleaned = clean_pf2e_text(raw_desc or "")
     if "(" in feat_name and ")" in feat_name:
         subchoice = feat_name.split("(", 1)[1].rstrip(")")

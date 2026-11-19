@@ -633,6 +633,18 @@ def resolve_equipment(
             feats=feats,
         )
 
+    # Enforce Level 2 (and low-level) weapon wealth budget (Level 2 lump sum = 30 gp)
+    if lvl <= 2:
+        max_gp = float(wealth_cfg.get("lump_gp", 15 if lvl == 1 else 30))
+        spent_gp = 0.0
+        affordable_weps = []
+        for w in raw_weps:
+            w_cost_gp = float(w.get("cost_gp", w.get("price_gp", 2)))
+            if spent_gp + w_cost_gp <= max_gp or not affordable_weps:
+                affordable_weps.append(w)
+                spent_gp += w_cost_gp
+        raw_weps = affordable_weps
+
     weapons: List[Item] = []
     strikes: List[Strike] = []
 
