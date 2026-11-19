@@ -374,10 +374,12 @@ def sync_feat_partners(
     is_kineticist = cls_lower == "kineticist"
     has_steed_feat = any(st in all_feat_str for st in steed_triggers) or cls_lower == "champion"
 
-    if (not is_kineticist or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))) and (
+    is_druid_animal_order = (cls_lower == "druid" or (level >= 2 and "druid" in arch_str)) and "selected druidic order: animal" in all_feat_str
+    if (not is_kineticist or is_druid_animal_order or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))) and (
         any(tr in all_feat_str for tr in animal_triggers)
         or any(st in all_feat_str for st in steed_triggers)
         or cls_lower == "ranger"
+        or is_druid_animal_order
         or (level >= 2 and any(ar in arch_str for ar in animal_arch_triggers))
     ):
         if not any(is_animal_partner(p) for p in partners):
