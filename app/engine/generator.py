@@ -326,6 +326,10 @@ def sync_feat_partners(
     master_perception: int,
     master_hp: int = 20,
     concept_text: Optional[str] = None,
+    ancestry_name: str = "",
+    heritage_name: str = "",
+    background_name: str = "",
+    subclass_name: str = "",
 ) -> list:
     partners = list(existing_partners)
     feat_names = [f.name.lower() for f in chosen_feats]
@@ -1143,15 +1147,35 @@ class PF2eGenerator:
         # 3. Druid Animal Order
         is_animal_druid = cls_name_lower == "druid" and "animal" in sub_combined
         if is_animal_druid and not any(is_animal_partner(p) for p in collected_partners):
-            comp = resolve_companion(class_name=cls["name"], feats=chosen_feats or [], archetype=None,
-                                     level=level, force_qualify=True, concept_text=concept_text)
+            comp = resolve_companion(
+                class_name=cls["name"],
+                feats=chosen_feats or [],
+                archetype=None,
+                level=level,
+                force_qualify=True,
+                concept_text=concept_text,
+                ancestry_name=anc["name"] if isinstance(anc, dict) else str(anc or ""),
+                heritage_name=heritage_name or "",
+                background_name=(background["name"] if isinstance(background, dict) else str(background or "")) if "background" in locals() else "",
+                subclass_name=sub_name or "",
+            )
             if comp:
                 collected_partners.append(comp)
 
         # 4. Ranger Animal Companion
         if cls_name_lower == "ranger" and not any(is_animal_partner(p) for p in collected_partners):
-            comp = resolve_companion(class_name=cls["name"], feats=chosen_feats or [], archetype=None,
-                                     level=level, force_qualify=True, concept_text=concept_text)
+            comp = resolve_companion(
+                class_name=cls["name"],
+                feats=chosen_feats or [],
+                archetype=None,
+                level=level,
+                force_qualify=True,
+                concept_text=concept_text,
+                ancestry_name=anc["name"] if isinstance(anc, dict) else str(anc or ""),
+                heritage_name=heritage_name or "",
+                background_name=(background["name"] if isinstance(background, dict) else str(background or "")) if "background" in locals() else "",
+                subclass_name=sub_name or "",
+            )
             if comp:
                 collected_partners.append(comp)
 
@@ -1199,10 +1223,10 @@ class PF2eGenerator:
             master_perception=perception_prof.modifier,
             master_hp=total_hp,
             concept_text=concept_text,
-            ancestry_name=anc.get('name', '') if isinstance(anc, dict) else str(anc or ''),
-            heritage_name=heritage_name or '',
-            background_name=bg.get('name', '') if isinstance(bg, dict) else str(bg or ''),
-            subclass_name=subclass_name or '',
+            ancestry_name=anc["name"] if isinstance(anc, dict) else str(anc or ""),
+            heritage_name=heritage_name or "",
+            background_name=(background["name"] if isinstance(background, dict) else str(background or "")) if "background" in locals() else "",
+            subclass_name=sub_name or "",
         )
 
         primary_companion = collected_partners[0] if collected_partners else None
@@ -2340,10 +2364,6 @@ class PF2eGenerator:
             chosen_feats=locals().get("chosen_feats"),
             traits=[anc["name"].lower(), cls["name"].lower()],
             concept_text=concept_text,
-            ancestry_name=anc.get('name', '') if isinstance(anc, dict) else str(anc or ''),
-            heritage_name=heritage_name or '',
-            background_name=bg.get('name', '') if isinstance(bg, dict) else str(bg or ''),
-            subclass_name=subclass_name or '',
         )
 
     def level_up(
