@@ -474,9 +474,13 @@ def _attach_multiclass_subclass(arch_dict: Dict[str, Any]) -> Dict[str, Any]:
         arch_copy["subclass"] = sub
         ded = dict(arch_copy.get("level_2_dedication", {}))
         if ded:
+            import re
+            clean_desc = re.sub(r"@UUID\[[^\]]+\]\{([^}]+)\}", r"", ded.get("description", ""))
             sub_note = f" Selected {sub['title']}: {sub['name']} ({sub['description']})"
-            if sub["name"] not in ded.get("description", ""):
-                ded["description"] = (ded.get("description", "").rstrip() + sub_note).strip()
+            if sub["name"] not in clean_desc:
+                ded["description"] = (clean_desc.rstrip() + sub_note).strip()
+            else:
+                ded["description"] = clean_desc.strip()
             arch_copy["level_2_dedication"] = ded
     return arch_copy
 
