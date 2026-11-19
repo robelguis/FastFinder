@@ -552,6 +552,135 @@ def _attach_named_artillery_strike(chosen_feats: List[FeatSummary], equipment_lo
     )
     equipment_loadout.strikes.append(siege_strike)
 
+
+_LORE_BLOCKLIST_WORDS = {
+    "a", "an", "the", "and", "or", "for", "of", "in", "to", "with", "from",
+    "your", "my", "our", "their", "this", "that", "any", "each", "either", "both",
+    "gain", "gained", "gains", "grant", "grants", "granted", "also", "feat",
+    "general", "skill", "subcategory", "trained", "additional", "lore"
+}
+
+
+def _clean_lore_candidate(raw: str) -> str:
+    """Extracts a clean '<Topic> Lore' name from a candidate phrase without glue words."""
+    if not raw or not isinstance(raw, str):
+        return ""
+    # Trim at common clause boundaries
+    trimmed = re.split(r"\b(?:for|or|and|with|from|in|to|gain|gained|grants|granted|feat|general|skill|either|both|your|the|a|an)\b", raw.strip(), flags=re.IGNORECASE)
+    # Walk backwards or inspect segments containing 'lore'
+    words = re.findall(r"[A-Za-z][A-Za-z'\-]*", raw)
+    if not words:
+        return ""
+    # Find last occurrence of 'lore'
+    lore_indices = [i for i, w in enumerate(words) if w.lower() == "lore"]
+    if not lore_indices:
+        return ""
+    last_lore = lore_indices[-1]
+    # Take up to 3 words immediately preceding 'Lore' that aren't blocklisted glue words
+    topic_tokens = []
+    for w in reversed(words[:last_lore]):
+        wl = w.lower()
+        if wl in _LORE_BLOCKLIST_WORDS:
+            break
+        topic_tokens.append(w.capitalize())
+        if len(topic_tokens) == 3:
+            break
+    if not topic_tokens:
+        return ""
+    topic_tokens.reverse()
+    return " ".join(topic_tokens) + " Lore"
+
+
+def extract_lores_from_feat(feat_name: str, feat_desc: str = "") -> List[str]:
+    """Generically extracts Lore skill names (e.g., 'Yaoguai Lore') granted by any feat."""
+    found: List[str] = []
+    seen = set()
+
+    def _add(raw: str) -> None:
+        cand = _clean_lore_candidate(raw)
+        if not cand:
+            return
+        key = cand.lower()
+        if key in seen or key == "lore":
+            return
+        seen.add(key)
+        found.append(cand)
+
+    # 1. Parenthetical choice in feat name, e.g., "Additional Lore (Architecture Lore)"
+    for pm in re.findall(r"\(([^)]+)\)", feat_name or ""):
+        if "lore" in pm.lower():
+            _add(pm)
+
+    # 2. Explicit "<Topic> Lore" matches in feat name or description
+    blob = f"{feat_name or ''}\n{feat_desc or ''}"
+    for m in re.finditer(r"\b(?:[A-Za-z][A-Za-z'\-]*\s+){1,4}Lore\b", blob):
+        _add(m.group(0))
+
+    return found
+
+
+def apply_feat_granted_lores(all_skills: list, chosen_feats: list, level: int, int_mod: int) -> None:
+    """Ensures any Lore skill referenced as granted by a feat is present and at least Trained."""
+    if not isinstance(all_skills, list) or not chosen_feats:
+        return
+
+    t_bonus = level + 2 + int_mod
+    existing_by_low = {}
+    for sk in all_skills:
+        sk_name = ((getattr(sk, "name", None) if not isinstance(sk, dict) else sk.get("name", "")) or "").strip()
+        if sk_name:
+            existing_by_low[sk_name.lower()] = sk
+
+    for feat in chosen_feats:
+        f_name = (getattr(feat, "name", None) if not isinstance(feat, dict) else feat.get("name", "")) or ""
+        f_desc = (getattr(feat, "description", None) if not isinstance(feat, dict) else feat.get("description", "")) or ""
+        # Only auto-grant lore from text when the feat actually mentions granting/gaining/additional lore
+        if not re.search(r"\b(gain|grants?|additional)\b.*\blore\b|\blore\b.*\b(trained|lore feat)\b", f"{f_name} {f_desc}", re.IGNORECASE | re.DOTALL):
+            continue
+
+        for lore_name in extract_lores_from_feat(f_name, f_desc):
+            l_low = lore_name.lower()
+            sk = existing_by_low.get(l_low)
+            if sk is not None:
+                cur_rank = ((getattr(sk, "rank_letter", None) if not isinstance(sk, dict) else sk.get("rank_letter", "U")) or "U").upper()
+                if cur_rank == "U":
+                    if isinstance(sk, dict):
+                        sk["rank_letter"] = "T"
+                        sk["rank"] = 2
+                        sk["modifier"] = max(int(sk.get("modifier", 0)), t_bonus)
+                    else:
+                        sk.rank_letter = "T"
+                        if hasattr(sk, "rank"):
+                            sk.rank = 2
+                        sk.modifier = max(int(getattr(sk, "modifier", 0)), t_bonus)
+            else:
+                sample = all_skills[0] if all_skills else None
+                if isinstance(sample, dict):
+                    new_sk = {
+                        "name": lore_name,
+                        "attribute": "INT",
+                        "rank_letter": "T",
+                        "rank": 2,
+                        "modifier": t_bonus,
+                        "is_lore": True,
+                    }
+                    all_skills.append(new_sk)
+                    existing_by_low[l_low] = new_sk
+                elif sample is not None:
+                    try:
+                        new_sk = type(sample)(
+                            name=lore_name,
+                            attribute="INT",
+                            rank_letter="T",
+                            rank=2,
+                            modifier=t_bonus,
+                        )
+                        all_skills.append(new_sk)
+                        existing_by_low[l_low] = new_sk
+                    except Exception:
+                        pass
+
+
 def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
     fn_lower = feat_name.lower()
 
