@@ -702,7 +702,8 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
         chosen_four = random.sample(domain_pool, 4)
         return f"{feat_name} ({', '.join(chosen_four)})"
 
-    if ("deity's domain" in fn_lower or "deitys domain" in fn_lower or "domain initiate" in fn_lower) and "(" not in feat_name:
+    norm_fn = fn_lower.replace("’", "'")
+    if ("deity's domain" in norm_fn or "deitys domain" in norm_fn or "domain initiate" in norm_fn) and "(" not in feat_name:
         domain_pool = [
             "Zeal", "Protection", "Sun", "Might", "Moon",
             "Nature", "Healing", "Truth", "Family", "Travel"
@@ -1588,6 +1589,19 @@ class PF2eGenerator:
                         ))
                     except Exception:
                         pass
+
+
+        # Final pass: ensure any feat with unresolved subchoices (e.g., Deity's Domain) gets its chosen value
+        all_feat_names_final = {getattr(f, "name", str(f)) for f in (chosen_feats or [])}
+        for f_obj in (chosen_feats or []):
+            orig_n = getattr(f_obj, "name", None)
+            if isinstance(orig_n, str) and "(" not in orig_n:
+                updated_n = resolve_feat_subchoices(orig_n, all_feat_names_final)
+                if updated_n != orig_n:
+                    f_obj.name = updated_n
+                    all_feat_names_final.add(updated_n)
+                    if hasattr(f_obj, "description"):
+                        f_obj.description = enrich_feat_description(updated_n, getattr(f_obj, "description", "") or "")
 
         raw_sheet = CharacterSheet(
             name=name,
