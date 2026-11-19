@@ -390,6 +390,10 @@ def sync_feat_partners(
                 level=level,
                 force_qualify=is_druid_animal_order,
                 concept_text=concept_text,
+                ancestry_name=ancestry_name,
+                heritage_name=heritage_name,
+                background_name=background_name,
+                subclass_name=subclass_name,
             )
             if comp:
                 if has_steed_feat:
@@ -1195,6 +1199,10 @@ class PF2eGenerator:
             master_perception=perception_prof.modifier,
             master_hp=total_hp,
             concept_text=concept_text,
+            ancestry_name=anc.get('name', '') if isinstance(anc, dict) else str(anc or ''),
+            heritage_name=heritage_name or '',
+            background_name=bg.get('name', '') if isinstance(bg, dict) else str(bg or ''),
+            subclass_name=subclass_name or '',
         )
 
         primary_companion = collected_partners[0] if collected_partners else None
@@ -2332,6 +2340,10 @@ class PF2eGenerator:
             chosen_feats=locals().get("chosen_feats"),
             traits=[anc["name"].lower(), cls["name"].lower()],
             concept_text=concept_text,
+            ancestry_name=anc.get('name', '') if isinstance(anc, dict) else str(anc or ''),
+            heritage_name=heritage_name or '',
+            background_name=bg.get('name', '') if isinstance(bg, dict) else str(bg or ''),
+            subclass_name=subclass_name or '',
         )
 
     def level_up(

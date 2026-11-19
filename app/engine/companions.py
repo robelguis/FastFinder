@@ -282,13 +282,91 @@ COMPANION_SPECIES: Dict[str, Dict[str, Any]] = {
     }
 }
 
+def _pick_contextual_species(
+    cls_lower: str,
+    ancestry_name: str = "",
+    heritage_name: str = "",
+    background_name: str = "",
+    subclass_name: str = "",
+    feat_names: Optional[List[str]] = None,
+) -> str:
+    """Select a thematic PF2e animal companion species based on character context."""
+    if cls_lower == "champion":
+        return "horse"
+
+    context_blob = " ".join([
+        cls_lower,
+        ancestry_name or "",
+        heritage_name or "",
+        background_name or "",
+        subclass_name or "",
+        " ".join(feat_names or []),
+    ]).lower()
+
+    weights: Dict[str, float] = {
+        "wolf": 2.0,
+        "bear": 2.0,
+        "cat": 2.0,
+        "badger": 1.5,
+        "owl": 1.5,
+        "dog": 1.5,
+        "horse": 1.0,
+        "deinonychus": 1.0,
+        "crocodile": 1.0,
+        "beetle": 1.0,
+        "spider": 0.8,
+        "flamingo": 0.4,
+        "shark": 0.1,
+        "octopus": 0.1,
+        "bat": 1.0,
+    }
+
+    if any(k in context_blob for k in ("ride", "cavalier", "mount", "joust", "outrider")):
+        weights["horse"] += 8.0
+    if any(k in context_blob for k in ("goloma", "mwangi", "bright lion", "savannah", "jungle", "lion", "catfolk", "amurrun")):
+        weights["cat"] += 6.0
+        weights["crocodile"] += 3.0
+        weights["deinonychus"] += 2.5
+        weights["flamingo"] += 1.5
+    if any(k in context_blob for k in ("fleshwarp", "underground", "cavern", "deep vision", "dark", "anadi", "spider", "bat")):
+        weights["bat"] += 4.5
+        weights["spider"] += 4.5
+        weights["beetle"] += 3.5
+    if any(k in context_blob for k in ("dwarf", "orc", "mountain", "stone", "earth", "miner", "smith")):
+        weights["bear"] += 5.0
+        weights["badger"] += 5.0
+        weights["beetle"] += 2.5
+    if any(k in context_blob for k in ("elf", "leshy", "gnome", "forest", "leaf", "stealth", "scouting", "snare", "hunter", "warden")):
+        weights["wolf"] += 5.0
+        weights["owl"] += 4.5
+        weights["cat"] += 3.0
+        weights["badger"] += 2.5
+    if any(k in context_blob for k in ("kobold", "lizardfolk", "iruxi", "flame", "dragon", "dino", "swamp", "marsh")):
+        weights["deinonychus"] += 5.5
+        weights["crocodile"] += 5.5
+    if any(k in context_blob for k in ("aquatic", "wave", "ocean", "sailor", "pirate", "coast", "azarketi", "athamaru")):
+        weights["shark"] += 6.0
+        weights["octopus"] += 6.0
+        weights["crocodile"] += 4.0
+    if any(k in context_blob for k in ("bounty", "guard", "investigator", "detective", "city", "halfling", "human")):
+        weights["dog"] += 4.0
+        weights["wolf"] += 2.5
+
+    keys = list(weights.keys())
+    return random.choices(keys, weights=[weights[k] for k in keys], k=1)[0]
+
+
 def resolve_companion(
     class_name: str,
     feats: List[FeatSummary],
     archetype: Optional[str],
     level: int = 1,
     force_qualify: bool = False,
-    concept_text: Optional[str] = None
+    concept_text: Optional[str] = None,
+    ancestry_name: str = "",
+    heritage_name: str = "",
+    background_name: str = "",
+    subclass_name: str = "",
 ) -> Optional[AnimalCompanionData]:
     cls_lower = class_name.lower()
     feat_names = [f.name.lower() for f in feats]
@@ -341,27 +419,33 @@ def resolve_companion(
                             custom_animal_name = words[next_idx].strip(".,!?:;")
                         break
 
-        name_lower = custom_animal_name.lower()
-        if name_lower == "beast" and "mouse" in search_corpus:
-            custom_animal_name = "Mouse"
-            name_lower = "mouse"
-
-        cfg = {
-            "species": custom_animal_name.capitalize(),
-            "young_size": "Small",
-            "mature_size": "Medium",
-            "speed": "30 ft",
-            "base_hp": 6,
-            "con_mod": 2,
-            "str_mod": 2,
-            "dex_mod": 2,
-            "wis_mod": 1,
-            "strikes": [
-                {"name": "Natural Attack", "dice": "1d6", "type": "Piercing", "traits": ["Unarmed"], "finesse": False}
-            ],
-            "support_benefit": f"Your {custom_animal_name.lower()} harries and distracts your foes, granting you an opening. Enemies in its reach are off-guard to your strikes.",
-            "advanced_maneuver": f"Feral Surge: The {custom_animal_name.lower()} unleashes a coordinated assault."
-        }
+        if custom_animal_name.lower() == "beast":
+            picked_key = _pick_contextual_species(
+                cls_lower=cls_lower,
+                ancestry_name=ancestry_name,
+                heritage_name=heritage_name,
+                background_name=background_name,
+                subclass_name=subclass_name,
+                feat_names=feat_names,
+            )
+            cfg = COMPANION_SPECIES[picked_key]
+        else:
+            cfg = {
+                "species": custom_animal_name.capitalize(),
+                "young_size": "Small",
+                "mature_size": "Medium",
+                "speed": "30 ft",
+                "base_hp": 6,
+                "con_mod": 2,
+                "str_mod": 2,
+                "dex_mod": 2,
+                "wis_mod": 1,
+                "strikes": [
+                    {"name": "Natural Attack", "dice": "1d6", "type": "Piercing", "traits": ["Unarmed"], "finesse": False}
+                ],
+                "support_benefit": f"Your {custom_animal_name.lower()} harries and distracts your foes, granting you an opening. Enemies in its reach are off-guard to your strikes.",
+                "advanced_maneuver": f"Feral Surge: The {custom_animal_name.lower()} unleashes a coordinated assault."
+            }
 
     is_mature = level >= 4 or any("mature" in fn for fn in feat_names)
     stage = "Mature" if is_mature else "Young"
@@ -426,7 +510,7 @@ def resolve_companion(
         comp_traits.append("Mature")
 
     return AnimalCompanionData(
-        name=f"Companion ({cfg['species']})",
+        name=f"{c_name} ({cfg['species']})",
         creature_type=cfg['species'],
         sub_type="Animal Companion",  
         primary_ability=cfg.get("support_benefit", ""),
