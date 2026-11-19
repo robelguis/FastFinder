@@ -1235,10 +1235,10 @@ function updateHeritageDropdown() {
 
           const strikesHtml = (comp.strikes || []).map(st => `
             <tr>
-              <td><span class="w-name">${st.name}</span></td>
-              <td class="w-map">${formatMod(st.attack_bonus)} / ${formatMod(st.map_second)} / ${formatMod(st.map_third)}</td>
-              <td class="w-dmg">${st.damage_dice} ${st.damage_type}</td>
-              <td class="w-traits">${(st.traits || []).join(", ")}</td>
+              <td style="padding: 0.25rem 0.45rem; vertical-align: top;"><span class="w-name">${st.name}</span></td>
+              <td class="w-map" style="padding: 0.25rem 0.45rem; white-space: nowrap; vertical-align: top;">${formatMod(st.attack_bonus)} / ${formatMod(st.map_second)} / ${formatMod(st.map_third)}</td>
+              <td class="w-dmg" style="padding: 0.25rem 0.45rem; vertical-align: top;">${st.damage_dice} ${st.damage_type}</td>
+              <td class="w-traits" style="padding: 0.25rem 0.45rem; vertical-align: top;">${(st.traits || []).join(", ")}</td>
             </tr>
           `).join("");
 
@@ -1301,8 +1301,15 @@ function updateHeritageDropdown() {
               </div>
               <div style="margin-top: 0.4rem;">
                 <div class="table-caption-bar">COMPANION STRIKES</div>
-                <table class="fast-table">
-                  <thead><tr><th>Action</th><th>Attack</th><th>Damage</th><th>Traits</th></tr></thead>
+                <table class="fast-table" style="width: 100%; border-collapse: collapse; table-layout: auto;">
+                  <thead>
+                    <tr>
+                      <th style="text-align: left; padding: 0.25rem 0.45rem;">Action</th>
+                      <th style="text-align: left; padding: 0.25rem 0.45rem; white-space: nowrap;">Attack</th>
+                      <th style="text-align: left; padding: 0.25rem 0.45rem;">Damage</th>
+                      <th style="text-align: left; padding: 0.25rem 0.45rem;">Traits</th>
+                    </tr>
+                  </thead>
                   <tbody>${strikesHtml}</tbody>
                 </table>
               </div>
