@@ -212,6 +212,83 @@ CLASS_FOCUS_SPELLS: Dict[str, Dict[str, Any]] = {
     }
 }
 
+DRUID_ORDER_FOCUS_SPELLS: Dict[str, Dict[str, Any]] = {
+    "wild": {
+        "name": "Wild Shape (Untamed Form)",
+        "actions": "2 actions",
+        "traits": ["Focus", "Manipulate", "Polymorph", "Primal"],
+        "range": "Self",
+        "defense": "None",
+        "description": "You infuse yourself with primal essence and transform into a pest, animal, or battle form (Pest Form, Animal Form, Insect Form, Elemental Form, Plant Form, Dragon Form, or Monstrosity Form as heightened)."
+    },
+    "untamed": {
+        "name": "Wild Shape (Untamed Form)",
+        "actions": "2 actions",
+        "traits": ["Focus", "Manipulate", "Polymorph", "Primal"],
+        "range": "Self",
+        "defense": "None",
+        "description": "You infuse yourself with primal essence and transform into a pest, animal, or battle form (Pest Form, Animal Form, Insect Form, Elemental Form, Plant Form, Dragon Form, or Monstrosity Form as heightened)."
+    },
+    "leaf": {
+        "name": "Goodberry (Cornucopia)",
+        "actions": "2 actions",
+        "traits": ["Focus", "Healing", "Manipulate", "Primal", "Vitality"],
+        "range": "Touch",
+        "defense": "None",
+        "description": "You imbue a ripe berry with primal life force; eating it restores 1d6+4 HP (+1d6+4 per spell rank)."
+    },
+    "storm": {
+        "name": "Tempest Surge",
+        "actions": "2 actions",
+        "traits": ["Air", "Electricity", "Focus", "Manipulate", "Primal"],
+        "range": "30 feet",
+        "defense": "Basic Reflex",
+        "description": "You surround a foe in a spinning vortex of wind and lightning dealing 1d12 electricity damage per rank and imposing clumsy 2 on a failed save."
+    },
+    "animal": {
+        "name": "Heal Animal",
+        "actions": "1 action",
+        "traits": ["Focus", "Healing", "Manipulate", "Primal", "Vitality"],
+        "range": "Touch",
+        "defense": "None",
+        "description": "You heal your companion animal for 1d8 HP per rank and grant them a +2 status bonus to AC for 1 round."
+    },
+    "flame": {
+        "name": "Wildfire",
+        "actions": "2 actions",
+        "traits": ["Fire", "Focus", "Manipulate", "Primal"],
+        "range": "30 feet",
+        "defense": "Basic Reflex",
+        "description": "You ignite a 10-foot burst of primal flames dealing 1d6 fire damage plus persistent fire damage."
+    },
+    "stone": {
+        "name": "Crushing Ground",
+        "actions": "2 actions",
+        "traits": ["Earth", "Focus", "Manipulate", "Primal"],
+        "range": "30 feet",
+        "defense": "Reflex",
+        "description": "Slabs of rock slam into a target dealing 2d6 bludgeoning damage per rank and knocking it prone on a failed save."
+    },
+    "wave": {
+        "name": "Rising Surf",
+        "actions": "1 action",
+        "traits": ["Focus", "Manipulate", "Primal", "Water"],
+        "range": "Self",
+        "defense": "None",
+        "description": "You ride a cresting wave up to 35 feet across ground or water, ignoring difficult terrain."
+    },
+}
+
+def _get_druid_order_spell(subclass_name: Optional[str], feats: List[FeatSummary]) -> Dict[str, Any]:
+    blob = " ".join([
+        subclass_name or "",
+        " ".join(f"{getattr(f, 'name', '')} {getattr(f, 'description', '')}" for f in (feats or []))
+    ]).lower()
+    for order_key, sp in DRUID_ORDER_FOCUS_SPELLS.items():
+        if f"{order_key} order" in blob or f"{order_key} instinct" in blob or (order_key in ("wild", "untamed") and ("wild shape" in blob or "untamed form" in blob)):
+            return sp
+    return DRUID_ORDER_FOCUS_SPELLS["animal"]
+
 def resolve_focus_spells(
     class_name: str,
     feats: List[FeatSummary],
@@ -399,6 +476,23 @@ def resolve_focus_spells(
             spells=ki_spells
         )
 
+    # Check Druid Dedication (e.g., Wild Order -> Wild Shape / Untamed Form) for non-focus classes
+    has_druid_ded = any("druid dedication" in getattr(f, "name", "").lower() for f in (feats or []))
+    if cls_key not in CLASS_FOCUS_SPELLS and has_druid_ded:
+        attr_mod = attribute_mods.get("wis", 0)
+        prof_bonus = 2 + level
+        curr_rank = max(1, (level + 1) // 2)
+        order_sp = _get_druid_order_spell(subclass_name, feats)
+        return FocusSpellData(
+            focus_points=1,
+            max_focus_points=1,
+            tradition="Primal (Druid Dedication)",
+            casting_attribute="WIS",
+            spell_dc=10 + prof_bonus + attr_mod,
+            spell_attack=prof_bonus + attr_mod,
+            spells=[SpellSummary(rank=curr_rank, **order_sp)]
+        )
+
     # Standard classes
     if cls_key not in CLASS_FOCUS_SPELLS:
         return None
@@ -414,7 +508,14 @@ def resolve_focus_spells(
     spell_attack = prof_bonus + attr_mod
 
     curr_rank = max(1, (level + 1) // 2)
-    spells = [SpellSummary(rank=curr_rank, **s) for s in cfg["spells"]]
+    if cls_key == "druid":
+        spells = [SpellSummary(rank=curr_rank, **_get_druid_order_spell(subclass_name, feats))]
+    else:
+        spells = [SpellSummary(rank=curr_rank, **s) for s in cfg["spells"]]
+        if has_druid_ded:
+            d_sp = _get_druid_order_spell(subclass_name, feats)
+            if not any(s.name.lower() == d_sp["name"].lower() for s in spells):
+                spells.append(SpellSummary(rank=curr_rank, **d_sp))
 
     # Dynamically discover additional focus spells gained via feats
     feat_names_lower = [f.name.lower() for f in feats]

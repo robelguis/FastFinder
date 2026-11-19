@@ -506,6 +506,35 @@ TERRAIN_TYPES = [
 ]
 
 
+def _attach_named_artillery_strike(chosen_feats: List[FeatSummary], equipment_loadout, level: int, mods: dict):
+    if not equipment_loadout or not hasattr(equipment_loadout, "strikes") or not chosen_feats:
+        return
+    art_feat = next((f for f in chosen_feats if "named artillery" in (f.name or "").lower()), None)
+    if not art_feat:
+        return
+    if any("siege" in " ".join(st.traits or []).lower() or "artillery" in (st.name or "").lower() for st in equipment_loadout.strikes):
+        return
+    weapon_label = "Named Artillery"
+    if "(" in art_feat.name and ")" in art_feat.name:
+        weapon_label = art_feat.name.split("(", 1)[1].rstrip(")").strip()
+    # Siege weapon attack scales with level + trained/expert proficiency + best of DEX/INT + +1 Named Artillery circumstance bonus
+    prof = 4 if level >= 5 else 2
+    stat_mod = max(mods.get("dex", 0), mods.get("int", 0))
+    atk = level + prof + stat_mod + 1
+    dice_count = 4 if level >= 15 else (3 if level >= 9 else (2 if level >= 4 else 1))
+    dmg_die = "d10" if any(k in weapon_label.lower() for k in ("bombard", "cannon", "trebuchet")) else "d8"
+    dmg_type = "Fire / Bludgeoning" if any(k in weapon_label.lower() for k in ("bombard", "cannon", "dragon")) else "Piercing / Bludgeoning"
+    siege_strike = Strike(
+        name=f"{weapon_label} (Artillery)",
+        attack_bonus=str(atk),
+        map_second=str(atk - 5),
+        map_third=str(atk - 10),
+        damage_dice=f"{dice_count}{dmg_die}+{max(0, mods.get('int', 0))}",
+        damage_type=dmg_type,
+        traits=["Siege", "Artillery", "Range 120 ft", "+1 Named Bonus"],
+    )
+    equipment_loadout.strikes.append(siege_strike)
+
 def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
     fn_lower = feat_name.lower()
 
@@ -540,6 +569,29 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
         available_lores = [l for l in lore_pool if l.lower() not in taken_lores]
         chosen = random.choice(available_lores) if available_lores else random.choice(lore_pool)
         return f"{feat_name} ({chosen})"
+
+    if "arcane tattoos" in fn_lower and "(" not in feat_name:
+        tattoo_schools = [
+            "Abjuration — Shield",
+            "Conjuration — Tangle Vine",
+            "Enchantment — Daze",
+            "Evocation — Electric Arc",
+            "Illusion — Figment",
+            "Necromancy — Void Warp",
+            "Transmutation — Sigil",
+        ]
+        return f"{feat_name} ({random.choice(tattoo_schools)})"
+
+    if "named artillery" in fn_lower and "(" not in feat_name:
+        artillery_names = [
+            '"Thunderclap" Bombard',
+            '"Old Ironsides" Ballista',
+            '"Dragons Breath" Catapult',
+            '"Skybreaker" Trebuchet',
+            '"Iron Sovereign" Cannon',
+            '"Stormcaller" Springald',
+        ]
+        return f"{feat_name} ({random.choice(artillery_names)})"
 
     return feat_name
 
@@ -581,6 +633,12 @@ def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
             return prefix + cleaned
         elif "spotter" in feat_name.lower() or "stalker" in feat_name.lower():
             prefix = f"Selected Environment: {subchoice}.\n\n"
+            return prefix + cleaned
+        elif "arcane tattoos" in feat_name.lower():
+            prefix = f"Chosen Thassilonian School & Innate Arcane Cantrip: {subchoice}.\n\n"
+            return prefix + cleaned
+        elif "named artillery" in feat_name.lower():
+            prefix = f"Named Siege Weapon: {subchoice}.\n\n"
             return prefix + cleaned
     return cleaned
 
@@ -2010,11 +2068,11 @@ class PF2eGenerator:
                 af8 = random.choice(arch_feats_8)
                 chosen_feats.append(FeatSummary(
                     id=af8["id"],
-                    name=af8["name"],
+                    name=resolve_feat_subchoices(af8["name"], {f.name for f in chosen_feats}),
                     category=f"Archetype Feat (Level 8 - {archetype_data['name']})",
                     action_cost=None,
                     traits=["archetype"],
-                    description=clean_pf2e_text(af8["description"])
+                    description=enrich_feat_description(resolve_feat_subchoices(af8["name"], {f.name for f in chosen_feats}), af8.get("description", ""))
                 ))
             else:
                 lvl8_class_feats = [
@@ -2240,6 +2298,8 @@ class PF2eGenerator:
                     equipment_loadout.strikes[idx] = new_bow
                 else:
                     equipment_loadout.strikes.append(new_bow)
+
+        _attach_named_artillery_strike(locals().get('chosen_feats'), equipment_loadout, level, mods)
 
         return self._finalize_sheet(
             name=resolved_name,
@@ -2850,11 +2910,11 @@ class PF2eGenerator:
                     af10 = random.choice(arch_feats_10)
                     chosen_feats.append(FeatSummary(
                         id=af10["id"],
-                        name=af10["name"],
-                        category=f"Archetype Feat (Level 10 - {archetype_data['name']})",
-                        action_cost=None,
-                        traits=["archetype"],
-                        description=clean_pf2e_text(af10["description"])
+                        name=resolve_feat_subchoices(af10["name"], {f.name for f in chosen_feats}),
+                    category=f"Archetype Feat (Level 10 - {archetype_data['name']})",
+                    action_cost=None,
+                    traits=["archetype"],
+                    description=enrich_feat_description(resolve_feat_subchoices(af10["name"], {f.name for f in chosen_feats}), af10.get("description", ""))
                     ))
                     existing_feat_names.add(af10["name"])
                 else:
@@ -2944,11 +3004,11 @@ class PF2eGenerator:
                     af8 = random.choice(arch_feats_8)
                     chosen_feats.append(FeatSummary(
                         id=af8["id"],
-                        name=af8["name"],
-                        category=f"Archetype Feat (Level 8 - {archetype_data['name']})",
-                        action_cost=None,
-                        traits=["archetype"],
-                        description=clean_pf2e_text(af8["description"])
+                        name=resolve_feat_subchoices(af8["name"], {f.name for f in chosen_feats}),
+                    category=f"Archetype Feat (Level 8 - {archetype_data['name']})",
+                    action_cost=None,
+                    traits=["archetype"],
+                    description=enrich_feat_description(resolve_feat_subchoices(af8["name"], {f.name for f in chosen_feats}), af8.get("description", ""))
                     ))
                     existing_feat_names.add(af8["name"])
                 else:
@@ -3172,6 +3232,8 @@ class PF2eGenerator:
                     equipment_loadout.strikes[idx] = new_bow
                 else:
                     equipment_loadout.strikes.append(new_bow)
+
+        _attach_named_artillery_strike(locals().get('chosen_feats'), equipment_loadout, level, mods)
 
         return self._finalize_sheet(
             name=current_char["name"],
