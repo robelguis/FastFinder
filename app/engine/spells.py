@@ -262,68 +262,147 @@ def _apply_dedication_cantrips(
         (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else "")).lower()
         for f in feats
     ]
-    if not any("bloodrager dedication" in fn for fn in feat_names):
-        return sc
 
-    extra_candidates = [
-        SpellSummary(
-            rank=0,
-            name="Gouging Claw (Bloodrager)",
-            actions="2 actions",
-            traits=["Arcane", "Attack", "Cantrip", "Concentrate", "Manipulate", "Morph"],
-            range="Touch",
-            defense="AC",
-            description="Granted by Bloodrager Dedication (CHA-based): You morph your hand into a wicked claw and make a melee spell attack dealing 2d6 slashing or piercing damage plus 2 bleed on a critical hit."
-        ),
-        SpellSummary(
-            rank=0,
-            name="Ignition (Bloodrager)",
-            actions="2 actions",
-            traits=["Arcane", "Attack", "Cantrip", "Concentrate", "Fire", "Manipulate"],
-            range="30 feet",
-            defense="AC",
-            description="Granted by Bloodrager Dedication (CHA-based): You hurl boiling arcane fire at a foe for 2d4 fire damage (critical hit deals persistent fire)."
-        ),
-        SpellSummary(
-            rank=0,
-            name="Divine Lance (Bloodrager)",
-            actions="2 actions",
-            traits=["Attack", "Cantrip", "Concentrate", "Divine", "Sanctified"],
-            range="30 feet",
-            defense="AC",
-            description="Granted by Bloodrager Dedication (CHA-based): You launch a lance of visceral spirit energy dealing 2d4 spirit damage."
-        ),
-    ]
+    # 1. Bloodrager Dedication cantrips
+    if any("bloodrager dedication" in fn for fn in feat_names):
+        extra_candidates = [
+            SpellSummary(
+                rank=0,
+                name="Gouging Claw (Bloodrager)",
+                actions="2 actions",
+                traits=["Arcane", "Attack", "Cantrip", "Concentrate", "Manipulate", "Morph"],
+                range="Touch",
+                defense="AC",
+                description="Granted by Bloodrager Dedication (CHA-based): You morph your hand into a wicked claw and make a melee spell attack dealing 2d6 slashing or piercing damage plus 2 bleed on a critical hit."
+            ),
+            SpellSummary(
+                rank=0,
+                name="Ignition (Bloodrager)",
+                actions="2 actions",
+                traits=["Arcane", "Attack", "Cantrip", "Concentrate", "Fire", "Manipulate"],
+                range="30 feet",
+                defense="AC",
+                description="Granted by Bloodrager Dedication (CHA-based): You hurl boiling arcane fire at a foe for 2d4 fire damage (critical hit deals persistent fire)."
+            ),
+            SpellSummary(
+                rank=0,
+                name="Divine Lance (Bloodrager)",
+                actions="2 actions",
+                traits=["Attack", "Cantrip", "Concentrate", "Divine", "Sanctified"],
+                range="30 feet",
+                defense="AC",
+                description="Granted by Bloodrager Dedication (CHA-based): You launch a lance of visceral spirit energy dealing 2d4 spirit damage."
+            ),
+        ]
+        if sc is None:
+            cha_mod = attribute_mods.get("cha", 2)
+            prof_bonus = 2 + level
+            sc = SpellcastingData(
+                tradition="Arcane / Divine (Bloodrager)",
+                casting_attribute="CHA",
+                spell_dc=10 + prof_bonus + cha_mod,
+                spell_attack=prof_bonus + cha_mod,
+                cantrips=extra_candidates[:2],
+                slots=[],
+            )
+        else:
+            existing_cantrip_bases = {c.name.split("(")[0].strip().lower() for c in sc.cantrips}
+            added = 0
+            for cand in extra_candidates:
+                base = cand.name.split("(")[0].strip().lower()
+                if base not in existing_cantrip_bases:
+                    sc.cantrips.append(cand)
+                    existing_cantrip_bases.add(base)
+                    added += 1
+                if added >= 2:
+                    break
 
-    if sc is None:
-        cha_mod = attribute_mods.get("cha", 2)
-        prof_bonus = 2 + level
-        return SpellcastingData(
-            tradition="Arcane / Divine (Bloodrager)",
-            casting_attribute="CHA",
-            spell_dc=10 + prof_bonus + cha_mod,
-            spell_attack=prof_bonus + cha_mod,
-            cantrips=extra_candidates[:2],
-            slots=[],
-        )
+    # 2. Spellcasting Multiclass Dedications (Druid, Wizard, Cleric, Bard, Witch, Sorcerer, Oracle, Animist, Psychic, Magus)
+    for cls_key, cfg in CLASS_TRADITION_MAP.items():
+        ded_trigger = f"{cls_key} dedication"
+        if any(ded_trigger in fn for fn in feat_names):
+            trad_label = cfg["tradition"]
+            cat_key = cfg["catalog"]
+            attr_key = cfg["attr"]
+            attr_mod = attribute_mods.get(attr_key, 2)
+            # Proficiency scales if Expert/Master Spellcasting archetype feats are present
+            cast_rank = 6 if any(f"master {cls_key} spellcasting" in fn for fn in feat_names) else (
+                4 if any(f"expert {cls_key} spellcasting" in fn for fn in feat_names) else 2
+            )
+            prof_bonus = cast_rank + level
+            cat_data = SPELL_CATALOG.get(cat_key, SPELL_CATALOG["arcane"])
+            ded_cantrips = [
+                SpellSummary(
+                    rank=0,
+                    name=f"{s['name']} ({cls_key.title()})",
+                    actions=s["actions"],
+                    traits=s["traits"],
+                    range=s["range"],
+                    defense=s["defense"],
+                    description=f"Granted by {cls_key.title()} Dedication ({attr_key.upper()}-based): {s['description']}"
+                )
+                for s in cat_data.get("cantrips", [])[:2]
+            ]
 
-    existing_cantrip_bases = {c.name.split("(")[0].strip().lower() for c in sc.cantrips}
-    added = 0
-    for cand in extra_candidates:
-        base = cand.name.split("(")[0].strip().lower()
-        if base not in existing_cantrip_bases:
-            sc.cantrips.append(cand)
-            existing_cantrip_bases.add(base)
-            added += 1
-        if added >= 2:
-            break
-    if added < 2:
-        for cand in extra_candidates:
-            if cand.name not in {c.name for c in sc.cantrips}:
-                sc.cantrips.append(cand)
-                added += 1
-            if added >= 2:
-                break
+            # Check for Basic / Expert / Master Spellcasting archetype feats for slotted spells
+            has_basic = any(f"basic {cls_key} spellcasting" in fn or "basic spellcasting" in fn for fn in feat_names)
+            has_expert = any(f"expert {cls_key} spellcasting" in fn for fn in feat_names)
+            has_master = any(f"master {cls_key} spellcasting" in fn for fn in feat_names)
+            arch_slots: List[SpellSlotTracker] = []
+            r1, r2, r3, r4, r5, r6, r7, r8 = [], [], [], [], [], [], [], []
+            if has_basic:
+                if level >= 4:
+                    arch_slots.append(SpellSlotTracker(rank=1, max_slots=1))
+                    r1 = [SpellSummary(rank=1, **s) for s in cat_data.get("rank_1", [])[:1]]
+                if level >= 6:
+                    arch_slots.append(SpellSlotTracker(rank=2, max_slots=1))
+                    r2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])[:1]]
+                if level >= 8:
+                    arch_slots.append(SpellSlotTracker(rank=3, max_slots=1))
+                    r3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])[:1]]
+            if has_expert:
+                if level >= 12:
+                    arch_slots.append(SpellSlotTracker(rank=4, max_slots=1))
+                    r4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])[:1]]
+                if level >= 14:
+                    arch_slots.append(SpellSlotTracker(rank=5, max_slots=1))
+                    r5 = [SpellSummary(rank=5, **s) for s in cat_data.get("rank_5", [])[:1]]
+                if level >= 16:
+                    arch_slots.append(SpellSlotTracker(rank=6, max_slots=1))
+                    r6 = [SpellSummary(rank=6, **s) for s in cat_data.get("rank_6", [])[:1]]
+            if has_master:
+                if level >= 18:
+                    arch_slots.append(SpellSlotTracker(rank=7, max_slots=1))
+                    r7 = [SpellSummary(rank=7, **s) for s in cat_data.get("rank_7", [])[:1]]
+                if level >= 20:
+                    arch_slots.append(SpellSlotTracker(rank=8, max_slots=1))
+                    r8 = [SpellSummary(rank=8, **s) for s in cat_data.get("rank_8", [])[:1]]
+
+            if sc is None:
+                sc = SpellcastingData(
+                    tradition=f"{trad_label} ({cls_key.title()} Dedication)",
+                    casting_attribute=attr_key.upper(),
+                    spell_dc=10 + prof_bonus + attr_mod,
+                    spell_attack=prof_bonus + attr_mod,
+                    cantrips=ded_cantrips,
+                    rank_1_spells=r1,
+                    rank_2_spells=r2,
+                    rank_3_spells=r3,
+                    rank_4_spells=r4,
+                    rank_5_spells=r5,
+                    rank_6_spells=r6,
+                    rank_7_spells=r7,
+                    rank_8_spells=r8,
+                    slots=arch_slots,
+                )
+            else:
+                existing_bases = {c.name.split("(")[0].strip().lower() for c in sc.cantrips}
+                for dc in ded_cantrips:
+                    base = dc.name.split("(")[0].strip().lower()
+                    if base not in existing_bases:
+                        sc.cantrips.append(dc)
+                        existing_bases.add(base)
+
     return sc
 
 
