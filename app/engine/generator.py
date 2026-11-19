@@ -2339,7 +2339,7 @@ class PF2eGenerator:
         archetype_name: Optional[str] = None
     ) -> CharacterSheet:
         target_level = max(1, min(20, int(target_level)))
-        old_level = int(current_char.get("level", 1))
+        old_level = int(current_char.get("target_level", 1))
 
         # 1. Recover base info and core data
         anc_name = (current_char.get("ancestry") or "").strip().lower()
@@ -2421,7 +2421,7 @@ class PF2eGenerator:
         for idx, attr in enumerate(boost_priority[:4]):
             mods[attr] = _milestone_gains(old_level, target_level, mods[attr], idx == 0)
 
-        # Enforce hard PF2e Remaster caps per level bracket and minimum Level 1 baseline sum
+        # Enforce hard PF2e Remaster caps per target_level bracket and minimum Level 1 baseline sum
         hard_cap = 6 if target_level >= 20 else (5 if target_level >= 10 else 4)
         for a in ATTRIBUTES:
             if mods[a] > hard_cap:
@@ -2630,8 +2630,8 @@ class PF2eGenerator:
                 cat = (f.category or "").lower()
                 fid = (f.id or "").lower()
                 
-                # Check level tags in category or ID (e.g. "Level 9", "-9", "level-8")
-                m = re.search(r"level\s*(\d+)", cat)
+                # Check target_level tags in category or ID (e.g. "Level 9", "-9", "target_level-8")
+                m = re.search(r"target_level\s*(\d+)", cat)
                 m_id = re.search(r"-(\d+)$", fid) or re.search(r"lvl(\d+)", fid)
                 
                 f_lvl = None
@@ -2692,7 +2692,7 @@ class PF2eGenerator:
                     lvl2_feats = [
                         f for f in self.feats
                         if f.get("category") == "class"
-                        and f.get("level") == 2
+                        and f.get("target_level") == 2
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
                     and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                         and f["name"] not in existing_feat_names
@@ -2712,7 +2712,7 @@ class PF2eGenerator:
                 skill_feats_2 = [
                     f for f in self.feats
                     if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
-                    and f.get("level") in [1, 2]
+                    and f.get("target_level") in [1, 2]
                     and f["name"] not in existing_feat_names
                  and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
                 if skill_feats_2:
@@ -2773,7 +2773,7 @@ class PF2eGenerator:
                     lvl4_feats = [
                         f for f in self.feats
                         if f.get("category") == "class"
-                        and f.get("level") in [1, 2, 4]
+                        and f.get("target_level") in [1, 2, 4]
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
                     and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                         and f["name"] not in existing_feat_names
@@ -2793,7 +2793,7 @@ class PF2eGenerator:
                 skill_feats_4 = [
                     f for f in self.feats
                     if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
-                    and f.get("level") in [1, 2, 4]
+                    and f.get("target_level") in [1, 2, 4]
                     and f["name"] not in existing_feat_names
                  and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
                 if skill_feats_4:
@@ -2814,7 +2814,7 @@ class PF2eGenerator:
                 lvl5_anc_feats = [
                     f for f in self.feats
                     if f.get("category") == "ancestry"
-                    and f.get("level") == 5
+                    and f.get("target_level") == 5
                     and anc_name_lower in [t.lower() for t in f.get("traits", [])]
                     and f["name"] not in existing_feat_names
                 ]
@@ -2871,7 +2871,7 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add("Weapon Specialization")
                 
-                gen_feats_7 = [f for f in self.feats if f.get("category") == "general" and f.get("level", 1) <= 7 and f["name"] not in existing_feat_names]
+                gen_feats_7 = [f for f in self.feats if f.get("category") == "general" and f.get("target_level", 1) <= 7 and f["name"] not in existing_feat_names]
                 if gen_feats_7:
                     gf7 = random.choice(gen_feats_7)
                     chosen_feats.append(FeatSummary(
@@ -2921,7 +2921,7 @@ class PF2eGenerator:
                     lvl10_class_feats = [
                         f for f in self.feats
                         if f.get("category") == "class"
-                        and f.get("level") in (8, 10)
+                        and f.get("target_level") in (8, 10)
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
                         and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                         and f["name"] not in existing_feat_names
@@ -2943,7 +2943,7 @@ class PF2eGenerator:
                 skill_feats_10 = [
                     f for f in self.feats
                     if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
-                    and f.get("level", 1) <= 10
+                    and f.get("target_level", 1) <= 10
                     and f["name"] not in existing_feat_names
                 ]
                 if skill_feats_10:
@@ -2964,7 +2964,7 @@ class PF2eGenerator:
                 lvl9_anc_feats = [
                     f for f in self.feats
                     if f.get("category") == "ancestry"
-                    and f.get("level") in (1, 5, 9)
+                    and f.get("target_level") in (1, 5, 9)
                     and (not anc_name_lower or anc_name_lower in [t.lower() for t in f.get("traits", [])])
                     and f["name"] not in existing_feat_names
                 ]
@@ -3015,7 +3015,7 @@ class PF2eGenerator:
                     lvl8_class_feats = [
                         f for f in self.feats
                         if f.get("category") == "class"
-                        and f.get("level") in (6, 8)
+                        and f.get("target_level") in (6, 8)
                         and cls_name_lower in [t.lower() for t in f.get("traits", [])]
                         and f["name"] not in existing_feat_names
                     ]
@@ -3035,7 +3035,7 @@ class PF2eGenerator:
                 lvl6_class_feats = [
                     f for f in self.feats
                     if f.get("category") == "class"
-                    and f.get("level") in (4, 6)
+                    and f.get("target_level") in (4, 6)
                     and cls_name_lower in [t.lower() for t in f.get("traits", [])]
                 and (cls_name_lower != "kineticist" or is_kineticist_feat_allowed(f, gate_elements)) and ("sepulchral sublimation" not in f.get("name", "").lower() or cls_name_lower == "necromancer") and ("ascended dragonet heritage" not in f.get("name", "").lower() or "versatile" not in heritage_data.get("name", "").lower())
                     and f["name"] not in existing_feat_names
@@ -3081,7 +3081,7 @@ class PF2eGenerator:
                 skill_feats_6 = [
                     f for f in self.feats
                     if f.get("category") == "skill" and f.get("name", "").lower() != "cushion landing"
-                    and f.get("level") in [1, 2, 4, 6]
+                    and f.get("target_level") in [1, 2, 4, 6]
                  and ("additional lore" not in f["name"].lower() or can_take_additional_lore(existing_feat_names, cls["name"]))]
                 sf6 = pick_weighted_feat(skill_feats_6, cls["name"], existing_feat_names, {}, mods, 6)
                 if sf6:
@@ -3096,7 +3096,7 @@ class PF2eGenerator:
                     ))
                     existing_feat_names.add(resolved_name6)
 
-        # Ensure every even level (2..target_level) in level_up has its allotted Skill Feat
+        # Ensure every even target_level (2..target_level) in level_up has its allotted Skill Feat
         existing_skill_cats_lu = {f.category for f in chosen_feats}
         owned_all_lu = {f.name for f in chosen_feats}
         sk_step_lu = 1 if cls["name"].lower() in ("rogue", "investigator") else 2
@@ -3107,7 +3107,7 @@ class PF2eGenerator:
                     f for f in self.feats
                     if f.get("category") == "skill"
                     and f.get("name", "").lower() != "cushion landing"
-                    and f.get("level", 1) <= ev_lvl
+                    and f.get("target_level", 1) <= ev_lvl
                     and f["name"] not in owned_all_lu
                     and ("additional lore" not in f["name"].lower() or can_take_additional_lore(owned_all_lu, cls["name"]))
                 ]
@@ -3205,7 +3205,7 @@ class PF2eGenerator:
         ]
         combined_partners = ([companion_data] if companion_data else []) + existing_extra_partners
 
-        # Ensure Archer 3rd weapon bow is present on level up to 2+
+        # Ensure Archer 3rd weapon bow is present on target_level up to 2+
         if target_level >= 2 and resolved_arch_name and "archer" in resolved_arch_name.lower() and equipment_loadout and equipment_loadout.strikes:
             if not any(any(kw in (st.name or "").lower() for kw in ("bow", "shortbow", "longbow")) for st in equipment_loadout.strikes):
                 chosen_bow = random.choice(["Shortbow", "Longbow", "Composite Shortbow", "Composite Longbow"])
@@ -3233,7 +3233,7 @@ class PF2eGenerator:
                 else:
                     equipment_loadout.strikes.append(new_bow)
 
-        _attach_named_artillery_strike(locals().get('chosen_feats'), equipment_loadout, level, mods)
+        _attach_named_artillery_strike(locals().get('chosen_feats'), equipment_loadout, target_level, mods)
 
         return self._finalize_sheet(
             name=current_char["name"],
