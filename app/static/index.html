@@ -582,6 +582,9 @@
                 <div class="defense-metric"><span class="lbl">Speed</span><span class="val" id="vitalSpeed">25 ft</span></div>
                 <div class="defense-metric"><span class="lbl">Perception</span><span class="val" id="vitalPerception">+6</span></div>
               </div>
+              <div class="defense-row" style="margin-top: 6px; font-size: 0.85em;">
+                <div class="defense-metric" style="width: 100%;"><span class="lbl">Senses</span><span class="val" id="vitalSenses">Normal</span></div>
+              </div>
             </div>
           </div>
 
@@ -1069,6 +1072,28 @@ function updateHeritageDropdown() {
       document.getElementById('vitalAc').textContent = shieldBonus > 0 ? `${acBase} (+${shieldBonus} Shield)` : acBase;
       document.getElementById('vitalSpeed').textContent = `${data.speed ?? 25} ft`;
       document.getElementById('vitalPerception').textContent = formatMod(data.perception?.modifier);
+
+      const sensesList = [];
+      const rawSenses = data.senses || data.perception?.senses || '';
+      if (Array.isArray(rawSenses)) {
+        rawSenses.forEach(s => { if (s && !sensesList.includes(String(s))) sensesList.push(String(s)); });
+      } else if (typeof rawSenses === 'string' && rawSenses.trim()) {
+        rawSenses.split(',').forEach(s => { const t = s.trim(); if (t && !sensesList.includes(t)) sensesList.push(t); });
+      }
+      const featNames = (data.feats || []).map(f => (typeof f === 'string' ? f : (f.name || '')).toLowerCase());
+      const twilightCount = featNames.filter(n => n.includes('twilight dweller')).length;
+      if (twilightCount >= 2) {
+        if (!sensesList.some(s => s.toLowerCase().includes('darkvision'))) sensesList.push('Darkvision');
+      } else if (twilightCount === 1) {
+        const hasLowLight = sensesList.some(s => s.toLowerCase().includes('low-light vision'));
+        const hasDarkvision = sensesList.some(s => s.toLowerCase().includes('darkvision'));
+        if (hasLowLight && !hasDarkvision) {
+          sensesList.push('Darkvision');
+        } else if (!hasLowLight && !hasDarkvision) {
+          sensesList.push('Low-Light Vision');
+        }
+      }
+      document.getElementById('vitalSenses').textContent = sensesList.length ? sensesList.join(', ') : 'Normal';
 
       document.getElementById('vitalFort').textContent = formatMod(data.defenses?.fortitude?.modifier);
       const rankLabel = (r) => ({ L: 'Legendary', M: 'Master', E: 'Expert', T: 'Trained' }[r] || 'Trained');
