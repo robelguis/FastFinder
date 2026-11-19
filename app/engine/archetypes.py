@@ -457,10 +457,29 @@ def pick_archetype(
     elif chosen_key == "rogue-multiclass":
         arch["level_4_feats"] = list(ROGUE_FEATS_POOL) + arch["level_4_feats"]
 
-    return arch
+    return _attach_multiclass_subclass(arch)
 
 
 # --- DYNAMIC COMPENDIUM ARCHETYPES ---
+from app.engine.subclasses import resolve_subclass
+
+def _attach_multiclass_subclass(arch_dict: Dict[str, Any]) -> Dict[str, Any]:
+    if not arch_dict:
+        return arch_dict
+    arch_copy = dict(arch_dict)
+    raw_name = arch_copy.get("name", "")
+    base_cls = raw_name.replace("Multiclass", "").replace("Dedication", "").strip().lower()
+    sub = resolve_subclass(base_cls)
+    if sub:
+        arch_copy["subclass"] = sub
+        ded = dict(arch_copy.get("level_2_dedication", {}))
+        if ded:
+            sub_note = f" Selected {sub['title']}: {sub['name']} ({sub['description']})"
+            if sub["name"] not in ded.get("description", ""):
+                ded["description"] = (ded.get("description", "").rstrip() + sub_note).strip()
+            arch_copy["level_2_dedication"] = ded
+    return arch_copy
+
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
 
@@ -492,7 +511,7 @@ def resolve_dynamic_archetype(archetype_name: str, feats_list: List[Dict[str, An
     # Check curated catalog first
     for k, v in ARCHETYPES_CATALOG.items():
         if k.lower() == target or v.get("name", "").lower() == target:
-            return v
+            return _attach_multiclass_subclass(v)
 
     # Find the Dedication feat
     dedication_feat = None
@@ -520,9 +539,9 @@ def resolve_dynamic_archetype(archetype_name: str, feats_list: List[Dict[str, An
         # Fallback if no specific lvl4 feat trait match
         lvl4_feats = [dedication_feat]
 
-    return {
+    return _attach_multiclass_subclass({
         "id": dedication_feat["id"],
         "name": dedication_feat["name"].replace(" Dedication", "").strip(),
         "level_2_dedication": dedication_feat,
         "level_4_feats": lvl4_feats
-    }
+    })
