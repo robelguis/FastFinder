@@ -142,6 +142,8 @@ def get_fundamental_rune_tiers(level: int) -> Dict[str, Any]:
 
 
 def format_runed_weapon_name(base_name: str, level: int) -> str:
+    if level <= 2:
+        return base_name
     tiers = get_fundamental_rune_tiers(level)
     parts = []
     if tiers["wep_potency"]:
@@ -678,7 +680,7 @@ def resolve_equipment(
     weapons: List[Item] = []
     strikes: List[Strike] = []
 
-    potency_bonus = tiers["wep_potency"]
+    potency_bonus = 0 if lvl <= 2 else tiers["wep_potency"]
     dice_count = tiers["dice_count"]
 
     for w in raw_weps:

@@ -565,6 +565,14 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
         chosen = random.choice(available) if available else random.choice(TERRAIN_TYPES)
         return f"{feat_name} ({chosen})"
 
+    if "splinter faith" in fn_lower and "(" not in feat_name:
+        domain_pool = [
+            "Protection", "Zeal", "Sun", "Might", "Moon",
+            "Nature", "Healing", "Truth", "Family", "Travel"
+        ]
+        chosen_four = random.sample(domain_pool, 4)
+        return f"{feat_name} ({', '.join(chosen_four)})"
+
     if ("deity's domain" in fn_lower or "deitys domain" in fn_lower or "domain initiate" in fn_lower) and "(" not in feat_name:
         domain_pool = [
             "Zeal", "Protection", "Sun", "Might", "Moon",

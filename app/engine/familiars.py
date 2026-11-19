@@ -155,6 +155,16 @@ def resolve_familiar(
     else:
         species_label = cfg["species"]
 
+
+    FLYING_BIRDS = {"hawk", "falcon", "eagle", "owl", "raven", "crow"}
+    if extracted_species:
+        ext_low = extracted_species.lower()
+        if ext_low in FLYING_BIRDS:
+            cfg = dict(cfg)
+            cfg["speed"] = "10 ft, fly 60 ft" if ext_low in ("hawk", "falcon", "eagle") else "10 ft, fly 30 ft"
+            cfg["innate_abilities"] = ["Flier", "Keen Eyes"]
+            cfg["aquatic"] = False
+
     # Remaster rules: HP = 5 * Master Level
     hp = 5 * level
 
