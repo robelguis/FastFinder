@@ -1403,6 +1403,63 @@ class PF2eGenerator:
                                 sk.rank = 2
                             sk.modifier = max(int(getattr(sk, "modifier", 0)), level + 2 + int(mods.get("cha", 0)))
 
+
+        # If Yaoguai Historian is present, ensure Occultism and Yaoguai Lore are Trained (T)
+        if any("yaoguai historian" in (getattr(f, "name", "") or str(f)).lower() for f in (chosen_feats or [])):
+            int_mod = int(mods.get("int", 0))
+            t_bonus = level + 2 + int_mod
+            has_yaoguai_lore = False
+            for sk in (all_skills or []):
+                sk_name = ((getattr(sk, "name", None) if not isinstance(sk, dict) else sk.get("name", "")) or "").strip()
+                sk_low = sk_name.lower()
+                if sk_low == "occultism":
+                    cur_rank = (getattr(sk, "rank_letter", None) if not isinstance(sk, dict) else sk.get("rank_letter", "U")) or "U"
+                    if cur_rank.upper() == "U":
+                        if isinstance(sk, dict):
+                            sk["rank_letter"] = "T"
+                            sk["rank"] = 2
+                            sk["modifier"] = max(int(sk.get("modifier", 0)), t_bonus)
+                        else:
+                            sk.rank_letter = "T"
+                            if hasattr(sk, "rank"):
+                                sk.rank = 2
+                            sk.modifier = max(int(getattr(sk, "modifier", 0)), t_bonus)
+                elif sk_low == "yaoguai lore":
+                    has_yaoguai_lore = True
+                    cur_rank = (getattr(sk, "rank_letter", None) if not isinstance(sk, dict) else sk.get("rank_letter", "U")) or "U"
+                    if cur_rank.upper() == "U":
+                        if isinstance(sk, dict):
+                            sk["rank_letter"] = "T"
+                            sk["rank"] = 2
+                            sk["modifier"] = max(int(sk.get("modifier", 0)), t_bonus)
+                        else:
+                            sk.rank_letter = "T"
+                            if hasattr(sk, "rank"):
+                                sk.rank = 2
+                            sk.modifier = max(int(getattr(sk, "modifier", 0)), t_bonus)
+            if not has_yaoguai_lore and isinstance(all_skills, list):
+                sample = all_skills[0] if all_skills else None
+                if isinstance(sample, dict):
+                    all_skills.append({
+                        "name": "Yaoguai Lore",
+                        "attribute": "INT",
+                        "rank_letter": "T",
+                        "rank": 2,
+                        "modifier": t_bonus,
+                        "is_lore": True,
+                    })
+                elif sample is not None:
+                    try:
+                        all_skills.append(type(sample)(
+                            name="Yaoguai Lore",
+                            attribute="INT",
+                            rank_letter="T",
+                            rank=2,
+                            modifier=t_bonus,
+                        ))
+                    except Exception:
+                        pass
+
         raw_sheet = CharacterSheet(
             name=name,
             level=level,

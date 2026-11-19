@@ -675,6 +675,8 @@ def resolve_equipment(
             if spent_gp + w_cost_gp <= max_gp or not affordable_weps:
                 affordable_weps.append(w)
                 spent_gp += w_cost_gp
+    if lvl <= 2 and len(affordable_weps) > 2:
+        affordable_weps = affordable_weps[:2]
         raw_weps = affordable_weps
 
     weapons: List[Item] = []
