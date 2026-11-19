@@ -96,6 +96,9 @@ from app.engine.eidolons import resolve_eidolon
 from app.engine.familiars import resolve_familiar
 from app.engine.constructs_undead import resolve_construct_companion, resolve_undead_companion
 from app.engine.plants_familiars_summons import resolve_plant_companion, resolve_specific_familiar
+from app.engine.plants_familiars_summons import resolve_plant_companion, resolve_specific_familiar
+from app.engine.validator import sanitize_and_validate_sheet
+
 
 
 def get_sneak_attack_dice(level: int, is_archetype: bool = False) -> str:
@@ -1352,7 +1355,7 @@ class PF2eGenerator:
                 _deduped_f.append(_f)
         chosen_feats = _deduped_f
 
-        return CharacterSheet(
+       raw_sheet = CharacterSheet(
             name=name,
             level=level,
             ancestry=anc["name"],
@@ -1382,10 +1385,18 @@ class PF2eGenerator:
             focus_spells=focus_data,
             companion=primary_companion,
             additional_partners=extra_partners,
-            feats=locals().get("chosen_feats"),
+            feats=chosen_feats,
             languages=assigned_langs,
             traits=traits,
         )
+
+        try:
+            validated_dict = sanitize_and_validate_sheet(raw_sheet.model_dump())
+            validated_dict.pop("validation_warnings", None)
+            return CharacterSheet.model_validate(validated_dict)
+        except Exception as exc:
+            print(f"Pre-export validator warning (falling back to raw sheet): {exc}")
+            return raw_sheet
 
     def generate(
         self,
