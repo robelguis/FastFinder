@@ -1355,7 +1355,7 @@ class PF2eGenerator:
                 _deduped_f.append(_f)
         chosen_feats = _deduped_f
 
-       raw_sheet = CharacterSheet(
+        raw_sheet = CharacterSheet(
             name=name,
             level=level,
             ancestry=anc["name"],
@@ -1371,12 +1371,12 @@ class PF2eGenerator:
             speed=speed,
             attributes=AttributeModifiers(**mods),
             defenses=Defenses(
-                ac=calculated_ac,
-                shield_bonus=shield_bonus,
-                hp=total_hp,
-                fortitude=fort_prof,
-                reflex=ref_prof,
-                will=will_prof,
+            ac=calculated_ac,
+            shield_bonus=shield_bonus,
+            hp=total_hp,
+            fortitude=fort_prof,
+            reflex=ref_prof,
+            will=will_prof,
             ),
             perception=perception_prof,
             all_skills=all_skills,
@@ -1397,7 +1397,6 @@ class PF2eGenerator:
         except Exception as exc:
             print(f"Pre-export validator warning (falling back to raw sheet): {exc}")
             return raw_sheet
-
     def generate(
         self,
         ancestry_name: Optional[str] = None,
