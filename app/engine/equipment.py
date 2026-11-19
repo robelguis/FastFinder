@@ -598,6 +598,36 @@ def find_base_weapon(name: str) -> Optional[Dict[str, Any]]:
             return dict(w)
     return None
 
+
+LEVEL2_WEAPON_COSTS_GP = {
+    "longbow": 6.0,
+    "composite longbow": 20.0,
+    "shortbow": 3.0,
+    "composite shortbow": 14.0,
+    "glaive": 2.0,
+    "scimitar": 1.0,
+    "longsword": 1.0,
+    "greatsword": 2.0,
+    "rapier": 2.0,
+    "dagger": 0.2,
+    "spear": 0.1,
+}
+
+def _estimate_weapon_gp(w: Dict[str, Any]) -> float:
+    for k in ("cost_gp", "price_gp"):
+        if k in w and w[k] is not None:
+            try:
+                return float(w[k])
+            except (TypeError, ValueError):
+                pass
+    w_low = str(w.get("name", "")).strip().lower()
+    if w_low in LEVEL2_WEAPON_COSTS_GP:
+        return LEVEL2_WEAPON_COSTS_GP[w_low]
+    for k, v in LEVEL2_WEAPON_COSTS_GP.items():
+        if k in w_low:
+            return v
+    return 2.0
+
 def resolve_equipment(
     class_name: str,
     str_mod: int,
@@ -639,7 +669,7 @@ def resolve_equipment(
         spent_gp = 0.0
         affordable_weps = []
         for w in raw_weps:
-            w_cost_gp = float(w.get("cost_gp", w.get("price_gp", 2)))
+            w_cost_gp = _estimate_weapon_gp(w)
             if spent_gp + w_cost_gp <= max_gp or not affordable_weps:
                 affordable_weps.append(w)
                 spent_gp += w_cost_gp

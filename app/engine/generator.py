@@ -1377,6 +1377,24 @@ class PF2eGenerator:
                 _deduped_f.append(_f)
         chosen_feats = _deduped_f
 
+
+        # If Hobnobber is present, ensure Diplomacy is at least Trained (T)
+        if any("hobnobber" in (getattr(f, "name", "") or str(f)).lower() for f in (chosen_feats or [])):
+            for sk in (all_skills or []):
+                sk_name = (getattr(sk, "name", None) if not isinstance(sk, dict) else sk.get("name", "")) or ""
+                if sk_name.lower() == "diplomacy":
+                    cur_rank = getattr(sk, "rank_letter", None) if not isinstance(sk, dict) else sk.get("rank_letter", "U")
+                    if (cur_rank or "U").upper() == "U":
+                        if isinstance(sk, dict):
+                            sk["rank_letter"] = "T"
+                            sk["rank"] = 2
+                            sk["modifier"] = max(int(sk.get("modifier", 0)), level + 2 + int(mods.get("cha", 0)))
+                        else:
+                            sk.rank_letter = "T"
+                            if hasattr(sk, "rank"):
+                                sk.rank = 2
+                            sk.modifier = max(int(getattr(sk, "modifier", 0)), level + 2 + int(mods.get("cha", 0)))
+
         raw_sheet = CharacterSheet(
             name=name,
             level=level,
