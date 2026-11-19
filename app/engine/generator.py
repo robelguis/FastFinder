@@ -395,9 +395,12 @@ def sync_feat_partners(
                     partners.append(comp)
                     existing_names.add((comp.name or "").lower())
 
-    # 5. Familiars & Pets (Including Kineticist Elemental Familiar)
+    # 5. Familiars & Pets (Including Druid Leaf Order Dedication, Witch Dedication, Familiar Master, & Kineticist Elemental Familiar)
     has_marine_ally = "marine ally" in feat_names
-    is_leaf_leshy = ("leshy familiar" in all_feat_str) or (cls_lower == "druid" and "leaf" in all_feat_str)
+    is_druid_leaf = (cls_lower == "druid" or (level >= 2 and "druid" in arch_str)) and ("leaf order" in all_feat_str or "leaf" in feat_names)
+    is_leaf_leshy = ("leshy familiar" in all_feat_str) or is_druid_leaf
+    has_witch_dedication = (level >= 2 and "witch" in arch_str)
+    has_familiar_arch = (level >= 2 and any(k in arch_str for k in ("familiar master", "witch"))) or is_druid_leaf
     has_elemental_familiar = "elemental familiar" in all_feat_str
 
     familiar_triggers = (
@@ -407,8 +410,8 @@ def sync_feat_partners(
     has_pet_feat = "pet" in feat_names
     is_animal_partner_class = cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names))
 
-    if cls_lower != "witch" and (not is_animal_partner_class or (level >= 2 and "familiar master" in arch_str) or has_marine_ally or is_leaf_leshy) and not any("familiar" in (p.creature_type or "").lower() for p in partners):
-        if is_kineticist and not (has_marine_ally or is_leaf_leshy or (level >= 2 and any(k in arch_str for k in ("familiar master", "beastmaster", "clockwork reanimator")))):
+    if cls_lower != "witch" and (not is_animal_partner_class or has_familiar_arch or has_marine_ally or is_leaf_leshy) and not any("familiar" in (p.creature_type or "").lower() for p in partners):
+        if is_kineticist and not (has_marine_ally or is_leaf_leshy or has_familiar_arch or (level >= 2 and any(k in arch_str for k in ("beastmaster", "clockwork reanimator")))):
             if has_elemental_familiar:
                 fam = resolve_familiar(
                     master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
@@ -420,7 +423,7 @@ def sync_feat_partners(
                     partners.append(fam)
                     existing_names.add((fam.name or "").lower())
         else:
-            if has_marine_ally or is_leaf_leshy or any(tr in all_feat_str for tr in familiar_triggers) or (level >= 2 and "familiar master" in arch_str):
+            if has_marine_ally or is_leaf_leshy or has_witch_dedication or any(tr in all_feat_str for tr in familiar_triggers) or has_familiar_arch:
                 fam = resolve_familiar(
                     master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
                     master_will=master_will, master_perception=master_perception,
