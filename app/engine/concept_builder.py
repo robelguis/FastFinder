@@ -73,6 +73,8 @@ class ConceptSpec:
     requested_spells: List[str] = field(default_factory=list)
     requested_skills: Dict[str, str] = field(default_factory=dict)  # skill -> rank ("T","E","M","L")
     wants_companion: bool = False
+    companion_kind: Optional[str] = None
+    wants_secondary_pet: bool = False
     requirements: List[LevelRequirement] = field(default_factory=list)
 
 
@@ -235,8 +237,18 @@ USER CONCEPT: "{concept_text}"
             spec.explicit_level = max(1, min(20, llm_data["explicit_level"]))
 
         # 2. Ancestry, Heritage, Background, Class, Subclass
-        llm_anc = (llm_data.get("ancestry") or "").lower()
-        spec.ancestry = self.ancestry_map.get(llm_anc) or self._match_longest_phrase(text_lower, self.ancestry_map)
+        anc_aliases = {
+            "yaoguia": "yaoguai",
+            "kashiri": "kashrishi",
+            "kitsuni": "kitsune",
+            "tengu": "tengu",
+            "leshi": "leshy",
+        }
+        norm_text_for_anc = text_lower
+        for typo, correct in anc_aliases.items():
+            norm_text_for_anc = re.sub(rf"\b{typo}\b", correct, norm_text_for_anc)
+        llm_anc = anc_aliases.get((llm_data.get("ancestry") or "").lower(), (llm_data.get("ancestry") or "").lower())
+        spec.ancestry = self.ancestry_map.get(llm_anc) or self._match_longest_phrase(norm_text_for_anc, self.ancestry_map)
 
         spec.heritage = llm_data.get("heritage") or None
 
@@ -276,7 +288,9 @@ USER CONCEPT: "{concept_text}"
         # 4. Companion / Familiar / Eidolon detection
         # Word-boundary matching so "pet" doesn't hit "carpet" and "mount" doesn't hit "mountain".
         # "leshy" is intentionally NOT a companion keyword (it is an ancestry).
-        companion_keywords = ("companion", "familiar", "eidolon", "mount", "steed", "pet")
+        companion_keywords = ("companion", "familiar", "eidolon", "mount", "steed", "pet", "horseback")
+        has_mount_term = bool(re.search(r"\b(?:mount|steed|horseback|warhorse)\b", text_lower))
+        has_pet_term = bool(re.search(r"\b(?:pet|familiar)\b", text_lower))
         if llm_data.get("wants_companion") or any(
             re.search(rf"\b{kw}\b", text_lower) for kw in companion_keywords
         ):
@@ -315,8 +329,13 @@ USER CONCEPT: "{concept_text}"
                     spec.character_class = "Summoner"
                 elif cls_l != "summoner" and not spec.archetype:
                     spec.archetype = "Summoner"
+            # If BOTH a mount/steed AND a separate pet/familiar are requested, unlock the secondary pet via archetype
+            if has_mount_term and has_pet_term:
+                spec.wants_secondary_pet = True
+                if not spec.archetype:
+                    spec.archetype = "Familiar Master"
             elif not spec.archetype and cls_l not in NATIVE_COMPANION_CLASSES:
-                if spec.companion_kind == "familiar":
+                if spec.companion_kind == "familiar" or has_pet_term:
                     spec.archetype = "Familiar Master"
                 elif spec.companion_kind == "construct":
                     spec.archetype = "Clockwork Reanimator"
@@ -380,7 +399,10 @@ USER CONCEPT: "{concept_text}"
         if spec.wants_companion:
             cls_l = (spec.character_class or "").lower()
             arch_l = (spec.archetype or "").lower()
-            if cls_l in NATIVE_COMPANION_CLASSES and not any(a in arch_l for a in COMPANION_ARCHETYPES):
+            if spec.wants_secondary_pet and cls_l in NATIVE_COMPANION_CLASSES:
+                reqs.append(LevelRequirement(f"Native {spec.character_class} mount/steed", 1))
+                reqs.append(LevelRequirement("Secondary pet/familiar (Familiar Master Dedication)", 2))
+            elif cls_l in NATIVE_COMPANION_CLASSES and not any(a in arch_l for a in COMPANION_ARCHETYPES):
                 reqs.append(LevelRequirement(f"Native {spec.character_class} {spec.companion_kind or 'companion'}", 1))
             else:
                 reqs.append(LevelRequirement(f"Archetype {spec.companion_kind or 'companion'} dedication", 2))
@@ -559,6 +581,8 @@ USER CONCEPT: "{concept_text}"
                 sheet.defenses.ac_notes = "+2 Shield"
 
         weapon_presets = [
+            ("glaive", "Glaive", "1d8", "Slashing", ["Deadly d8", "Forceful", "Reach"]),
+            ("laive", "Glaive", "1d8", "Slashing", ["Deadly d8", "Forceful", "Reach"]),
             ("greatsword", "Greatsword", "1d12", "Slashing", ["Versatile P"]),
             ("bastard sword", "Bastard Sword", "1d8", "Slashing", ["Two-Hand d12"]),
             ("shortsword", "Shortsword", "1d6", "Piercing", ["Agile", "Finesse", "Versatile S"]),
@@ -573,12 +597,19 @@ USER CONCEPT: "{concept_text}"
             ("spear", "Spear", "1d6", "Piercing", ["Thrown 20 ft"]),
             ("staff", "Staff", "1d4", "Bludgeoning", ["Two-Hand d8"]),
         ]
+        added_weapons = set()
         for kw, wname, wdice, wtype, wtraits in weapon_presets:
+            if wname in added_weapons:
+                continue
+            if kw in ("sword", "bow", "axe") and any(w in added_weapons for w in ("Greatsword", "Bastard Sword", "Shortsword", "Longsword", "Longbow", "Shortbow", "Greataxe", "Battleaxe")):
+                continue
             if re.search(r"\b" + re.escape(kw) + r"\b", t_low):
-                if not any(kw in (s.name or "").lower() for s in sheet.equipment.strikes):
-                    best_mod = max(sheet.attributes.strength, sheet.attributes.dexterity) if any(t in ("Finesse", "Deadly d10") for t in wtraits) else sheet.attributes.strength
+                added_weapons.add(wname)
+                if not any(wname.lower() in (s.name or "").lower() for s in sheet.equipment.strikes):
+                    is_ranged = "bow" in wname.lower()
+                    best_mod = sheet.attributes.dexterity if is_ranged else (max(sheet.attributes.strength, sheet.attributes.dexterity) if "Finesse" in wtraits else sheet.attributes.strength)
                     atk = best_mod + sheet.level + 2
-                    dmg_mod = sheet.attributes.strength if "bow" not in kw else 0
+                    dmg_mod = 0 if is_ranged else sheet.attributes.strength
                     dmg_str = f"{wdice}+{dmg_mod}" if dmg_mod > 0 else (f"{wdice}{dmg_mod}" if dmg_mod < 0 else wdice)
                     strike_data = {
                         "name": wname,
@@ -592,7 +623,6 @@ USER CONCEPT: "{concept_text}"
                     strike_cls = type(sheet.equipment.strikes[0]) if sheet.equipment.strikes else None
                     new_entry = strike_cls.model_validate(strike_data) if hasattr(strike_cls, "model_validate") else strike_data
                     sheet.equipment.strikes.insert(0, new_entry)
-                break
 
         payload = sheet.model_dump()
         payload["concept_resolution"] = {
