@@ -794,11 +794,12 @@ def can_take_dedication(feat_name: str, existing_feats: list, existing_feat_name
 
 
 def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
+    desc = raw_desc or ""
     if "(" in feat_name and ")" in feat_name and any(k in feat_name.lower() for k in ("domain", "deity")):
         sub_val = feat_name.split("(", 1)[1].rsplit(")", 1)[0].strip()
-        if sub_val and sub_val.lower() not in (desc or "").lower():
+        if sub_val and sub_val.lower() not in desc.lower():
             desc = f"{desc} Chosen Domain: {sub_val}." if desc else f"Chosen Domain: {sub_val}."
-    cleaned = clean_pf2e_text(raw_desc or "")
+    cleaned = clean_pf2e_text(desc)
     if "(" in feat_name and ")" in feat_name:
         subchoice = feat_name.split("(", 1)[1].rstrip(")")
         if "additional lore" in feat_name.lower():

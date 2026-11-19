@@ -95,60 +95,34 @@ def is_kineticist_feat_allowed(feat: Dict[str, Any], gate_elements: set) -> bool
     return required_elements.issubset(gate_elements)
 
 
-_HOLY_POLARITY_TERMS = ("redeemer", "paladin", "liberator", "holy")
-_UNHOLY_POLARITY_TERMS = ("desecrator", "tyrant", "antipaladin", "unholy")
-
-_UNHOLY_EXCLUDED_IN_HOLY = (
-    "selfish shield",
-    "ongoing selfishness",
-    "unholy",
-    "desecrator",
-    "tyrant",
-    "antipaladin",
-)
-
-_HOLY_EXCLUDED_IN_UNHOLY = (
-    "glimpse of redemption",
-    "retributive strike",
-    "liberate",
-    "paladin",
-    "redeemer",
-    "liberator",
-    "holy",
-)
-
-
-def _collect_all_known_subclasses() -> Set[str]:
-    """Collects all known subclass names from app.engine.subclasses dynamically."""
+def _get_known_subclasses() -> Set[str]:
+    """Reads every subclass option name directly from CLASS_SUBCLASSES[cls]['options']."""
     names: Set[str] = set()
     try:
         from app.engine.subclasses import CLASS_SUBCLASSES
-        for _cls, sub_list in (CLASS_SUBCLASSES or {}).items():
-            if isinstance(sub_list, (list, tuple, set)):
-                for item in sub_list:
-                    if isinstance(item, dict):
-                        for k in ("name", "title", "label"):
-                            v = item.get(k)
-                            if isinstance(v, str) and len(v.strip()) >= 3:
-                                names.add(v.strip().lower())
-                    elif isinstance(item, str) and len(item.strip()) >= 3:
-                        names.add(item.strip().lower())
+        for cfg in (CLASS_SUBCLASSES or {}).values():
+            if isinstance(cfg, dict):
+                for opt in cfg.get("options") or []:
+                    if isinstance(opt, dict) and isinstance(opt.get("name"), str):
+                        n = opt["name"].strip().lower()
+                        if len(n) >= 4:
+                            names.add(n)
     except Exception:
         pass
     return names
 
 
-_KNOWN_SUBCLASSES: Set[str] = _collect_all_known_subclasses()
-
-
-def _extract_prereq_text(feat: Dict[str, Any], prereqs: List[str]) -> str:
-    """Combines structured prerequisites with any 'Prerequisites ...' clause in description."""
-    parts = [str(p) for p in prereqs if p]
+def _extract_prereq_clauses(feat: Dict[str, Any]) -> List[str]:
+    """Collects structured prerequisites and any 'Prerequisites ...' clause from description."""
+    raw = feat.get("prerequisites") or feat.get("prerequisite") or []
+    clauses = [str(raw)] if isinstance(raw, str) else [str(p) for p in raw if p]
     desc = str(feat.get("description") or "")
     m = re.search(r"\bprerequisites?\s*:?\s*([^.\n]+)", desc, re.IGNORECASE)
     if m:
-        parts.append(m.group(1))
-    return " ".join(parts).lower()
+        for part in re.split(r"[,;]", m.group(1)):
+            if part.strip():
+                clauses.append(part.strip())
+    return clauses
 
 
 def _check_subclass_compatibility(
@@ -158,50 +132,27 @@ def _check_subclass_compatibility(
     subclass_name: str = "",
     archetype_name: str = "",
 ) -> bool:
-    """Returns False if feat conflicts with active subclass/cause/instinct/order/style."""
-    sub_lower = (subclass_name or "").lower().strip()
-    arch_lower = (archetype_name or "").lower().strip()
-    active_blob = f"{sub_lower} {arch_lower}".strip()
+    """Universal gate: rejects feats requiring any subclass/feature the character does not have."""
+    active_blob = f"{(subclass_name or '').lower()} {(archetype_name or '').lower()}".strip()
+    prereq_blob = " ".join(p.lower() for p in prereqs if p)
+    if not prereq_blob:
+        return True
 
-    f_name = str(feat.get("name") or "").lower().strip()
-    f_desc = str(feat.get("description") or "").lower()
-    traits_list = feat.get("traits") or []
-    f_traits = " ".join(str(t).lower() for t in traits_list) if isinstance(traits_list, (list, tuple, set)) else str(traits_list).lower()
-    prereq_blob = _extract_prereq_text(feat, prereqs)
-
-    # 1. Sanctification / cause polarity check across all subclasses/causes
-    has_holy_active = any(t in active_blob for t in _HOLY_POLARITY_TERMS) and not any(t in active_blob for t in _UNHOLY_POLARITY_TERMS)
-    has_unholy_active = any(t in active_blob for t in _UNHOLY_POLARITY_TERMS) and not any(t in active_blob for t in _HOLY_POLARITY_TERMS)
-
-    if has_holy_active:
-        # Check feat name, traits, and prerequisite clause for unholy-locked terms
-        unholy_check_blob = f"{f_name} {f_traits} {prereq_blob}"
-        if any(term in unholy_check_blob for term in _UNHOLY_EXCLUDED_IN_HOLY):
+    # 1. Sanctification polarity guard (Holy vs. Unholy causes/options)
+    if "holy" in active_blob and "unholy" not in active_blob:
+        if re.search(r"\bunholy\b", prereq_blob):
+            return False
+    elif "unholy" in active_blob:
+        if re.search(r"\bholy\b", prereq_blob):
             return False
 
-    if has_unholy_active:
-        holy_check_blob = f"{f_name} {f_traits} {prereq_blob}"
-        if any(term in holy_check_blob for term in _HOLY_EXCLUDED_IN_UNHOLY):
-            return False
-
-    # 2. Explicit subclass / instinct / style / order / racket name in prerequisites
-    if _KNOWN_SUBCLASSES and prereq_blob:
-        for known_sub in _KNOWN_SUBCLASSES:
-            # Skip single/short words that might collide with generic English words
-            if len(known_sub) < 4:
-                continue
-            # Clean parenthetical tags like "(holy)" or "(unholy)" when matching core subclass name
-            core_sub = re.sub(r"\s*\([^)]*\)", "", known_sub).strip()
-            candidates = {known_sub}
-            if core_sub and len(core_sub) >= 4:
-                candidates.add(core_sub)
-
-            for cand in candidates:
-                if re.search(rf"\b{re.escape(cand)}\b", prereq_blob):
-                    # Allowed if this subclass is active or owned via feat/archetype
-                    matches_active = (cand in active_blob) or any(cand in o for o in owned_lower)
-                    if not matches_active:
-                        return False
+    # 2. Universal check against every subclass across all classes in CLASS_SUBCLASSES
+    for known_sub in _get_known_subclasses():
+        core_sub = re.sub(r"\s*\([^)]*\)", "", known_sub).strip()
+        for cand in {known_sub, core_sub}:
+            if len(cand) >= 4 and re.search(r"\b" + re.escape(cand) + r"\b", prereq_blob):
+                if cand not in active_blob and not any(cand in o for o in owned_lower):
+                    return False
 
     return True
 
@@ -216,11 +167,9 @@ def check_feat_prerequisites(
     archetype_name: str = ""
 ) -> bool:
     """Validates whether a character meets all prerequisites for a feat."""
-    prereqs = feat.get("prerequisites") or feat.get("prerequisite") or []
-    if isinstance(prereqs, str):
-        prereqs = [prereqs]
-
+    prereqs = _extract_prereq_clauses(feat)
     owned_lower = {f.lower().strip() for f in owned_feat_names}
+    active_blob = f"{(subclass_name or '').lower()} {(archetype_name or '').lower()}".strip()
 
     if not _check_subclass_compatibility(
         feat=feat,
@@ -249,47 +198,61 @@ def check_feat_prerequisites(
             if not has_eid:
                 return False
 
-
         # 1. Skill rank check: e.g. "trained in Medicine", "expert in Athletics"
         skill_match = re.search(r"(trained|expert|master|legendary)\s+in\s+([A-Za-z\s]+)", p_lower)
         if skill_match:
             req_rank_name = skill_match.group(1)
             req_skill = skill_match.group(2).strip().title()
             req_rank = RANK_MAP.get(req_rank_name, 2)
-
-            curr_rank = skill_ranks.get(req_skill, 0)
-            if curr_rank < req_rank:
+            if skill_ranks.get(req_skill, 0) < req_rank:
                 return False
             continue
 
-        # 2. Feat prerequisite check: e.g. "Nimble Dodge", "Battle Medicine"
-        # Match against owned feats (accounting for subchoice suffixes like "(Forest)")
-        feat_matched = False
-        for owned in owned_lower:
-            base_owned = re.sub(r"\s*\([^)]*\)", "", owned).strip()
-            if p_lower == owned or p_lower == base_owned or p_lower in owned:
-                feat_matched = True
-                break
-        
-        # If the requirement isn't an attribute/general rule and not matched as owned feat:
-        if not feat_matched:
-            # Check for attribute requirements like "Strength 14" (+2 mod)
-            attr_match = re.search(r"(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(\d+)", p_lower)
-            if attr_match:
-                attr_name = attr_match.group(1)[:3]
-                target_score = int(attr_match.group(2))
-                target_mod = (target_score - 10) // 2
-                if attribute_mods.get(attr_name, 0) < target_mod:
-                    return False
-                continue
+        # 2. Attribute requirement check: e.g. "Strength 14"
+        attr_match = re.search(r"(strength|dexterity|constitution|intelligence|wisdom|charisma)\s+(\d+)", p_lower)
+        if attr_match:
+            attr_name = attr_match.group(1)[:3]
+            target_mod = (int(attr_match.group(2)) - 10) // 2
+            if attribute_mods.get(attr_name, 0) < target_mod:
+                return False
+            continue
 
-            # Check if this is an explicit feat requirement
-            # Feat names in PF2e compendium prerequisites are capitalized titles
-            if p_clean and p_clean[0].isupper() and " " in p_clean and not p_lower.startswith("trained"):
-                if not feat_matched:
-                    return False
+        # 3. Owned feat or active subclass/feature match
+        feat_matched = any(
+            p_lower == owned
+            or p_lower == re.sub(r"\s*\([^)]*\)", "", owned).strip()
+            or p_lower in owned
+            for owned in owned_lower
+        )
+        subclass_matched = bool(active_blob) and (
+            p_lower in active_blob
+            or re.sub(r"\s+(cause|instinct|order|racket|muse|style|doctrine|mystery|patron|methodology|way|study)$", "", p_lower) in active_blob
+        )
+
+        # 4. Subclass-granted reactions/features (e.g., Selfish Shield for Desecrator, Glimpse of Redemption for Redeemer)
+        subclass_feature_map = {
+            "selfish shield": "desecrator",
+            "glimpse of redemption": "redeemer",
+            "retributive strike": "paladin",
+            "justice": "justice",
+            "liberating step": "liberator",
+            "iron command": "tyrant",
+            "destructive vengeance": "antipaladin",
+            "flash of grandeur": "grandeur",
+        }
+        req_sub = subclass_feature_map.get(p_lower)
+        if req_sub:
+            if req_sub in active_blob:
+                continue
+            return False
+
+        if not feat_matched and not subclass_matched:
+            # Reject any explicit named feat, subclass, or class feature requirement the character lacks
+            if p_clean and p_clean[0].isupper() and not p_lower.startswith("trained"):
+                return False
 
     return True
+
 
 def calculate_feat_weight(
     feat: Dict[str, Any],
