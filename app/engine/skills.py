@@ -201,6 +201,56 @@ def resolve_character_skills(
         needed = max(0, total_picks - len(mandatory))
         trained_skills = mandatory.union(set(available_pool[:needed]))
 
+    # Apply Multiclass Dedication skill trainings (Druid Dedication + Order skill, etc.)
+    def _grant_trained_or_substitute(preferred_skill: str):
+        if preferred_skill in ALL_PF2E_SKILLS and preferred_skill not in trained_skills:
+            trained_skills.add(preferred_skill)
+        else:
+            untrained_pool = [s for s in ALL_PF2E_SKILLS if s not in trained_skills]
+            if untrained_pool:
+                trained_skills.add(random.choice(untrained_pool))
+
+    for f in all_feats:
+        fn = (f.name if hasattr(f, "name") else (f.get("name") if isinstance(f, dict) else "")).lower()
+        fdesc = (f.description if hasattr(f, "description") else (f.get("description") if isinstance(f, dict) else "")).lower()
+        if "druid dedication" in fn:
+            _grant_trained_or_substitute("Nature")
+            order_skill = "Survival"
+            if "animal order" in fdesc:
+                order_skill = "Athletics"
+            elif "leaf order" in fdesc or "cultivation" in fdesc or "spore" in fdesc:
+                order_skill = "Diplomacy"
+            elif "storm order" in fdesc or "flame order" in fdesc:
+                order_skill = "Acrobatics"
+            elif "wild order" in fdesc or "untamed order" in fdesc:
+                order_skill = "Intimidation"
+            elif "stone order" in fdesc:
+                order_skill = "Crafting"
+            elif "wave order" in fdesc:
+                order_skill = "Medicine"
+            _grant_trained_or_substitute(order_skill)
+        elif "bard dedication" in fn:
+            _grant_trained_or_substitute("Occultism")
+            _grant_trained_or_substitute("Performance")
+        elif "cleric dedication" in fn or "oracle dedication" in fn or "champion dedication" in fn:
+            _grant_trained_or_substitute("Religion")
+        elif "wizard dedication" in fn or "magus dedication" in fn:
+            _grant_trained_or_substitute("Arcana")
+        elif "witch dedication" in fn or "psychic dedication" in fn:
+            _grant_trained_or_substitute("Occultism")
+        elif "alchemist dedication" in fn or "inventor dedication" in fn:
+            _grant_trained_or_substitute("Crafting")
+        elif "investigator dedication" in fn:
+            _grant_trained_or_substitute("Society")
+        elif "kineticist dedication" in fn:
+            _grant_trained_or_substitute("Nature")
+        elif "ranger dedication" in fn:
+            _grant_trained_or_substitute("Survival")
+        elif "rogue dedication" in fn:
+            _grant_trained_or_substitute("Stealth")
+        elif "barbarian dedication" in fn or "monk dedication" in fn or "fighter dedication" in fn or "swashbuckler dedication" in fn:
+            _grant_trained_or_substitute("Athletics")
+
     # Apply feat-granted skill trainings (Harrower Dedication, Surki Lore)
     if any("harrower dedication" in fn for fn in feat_names_lower):
         if "Occultism" not in trained_skills:

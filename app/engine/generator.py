@@ -287,6 +287,7 @@ def clean_pf2e_text(text: str) -> str:
     text = re.sub(r"@Damage\[([^\]]+)\]", r"\1", text)
     text = re.sub(r"@[A-Za-z]+\[[^\]]+\]\{([^}]+)\}", r"\1", text)
     text = re.sub(r"@[A-Za-z]+\[[^\]]+\]", "", text)
+    text = re.sub(r"\[\s*\]", "", text)
     text = re.sub(r"\[\[/r\s+[^\]{]+\{([^}]+)\}\]\]", r"\1", text)
     text = re.sub(r"/r\s+[^\s{]+(?:\s+#[^{]+)?\{([^}]+)\}", r"\1", text)
     text = re.sub(r"/r\s+([0-9d+\-]+)", r"\1", text)
@@ -397,7 +398,7 @@ def sync_feat_partners(
 
     # 5. Familiars & Pets (Including Druid Leaf Order Dedication, Witch Dedication, Familiar Master, & Kineticist Elemental Familiar)
     has_marine_ally = "marine ally" in feat_names
-    is_druid_leaf = (cls_lower == "druid" or (level >= 2 and "druid" in arch_str)) and ("leaf order" in all_feat_str or "leaf" in feat_names)
+    is_druid_leaf = (cls_lower == "druid" or (level >= 2 and "druid" in arch_str)) and ("selected druidic order: leaf" in all_feat_str or "leaf order" in feat_names)
     is_leaf_leshy = ("leshy familiar" in all_feat_str) or is_druid_leaf
     has_witch_dedication = (level >= 2 and "witch" in arch_str)
     has_familiar_arch = (level >= 2 and any(k in arch_str for k in ("familiar master", "witch"))) or is_druid_leaf
@@ -1200,6 +1201,16 @@ class PF2eGenerator:
                 chosen_bonus = random.choice(avail_pool)
                 assigned_langs.append(chosen_bonus)
                 assigned_lower.add(chosen_bonus.lower())
+
+        # Grant Wildsong language for Druids and Druid Dedication
+        if (
+            cls_name_lower == "druid"
+            or (archetype_name and "druid" in archetype_name.lower())
+            or any("druid dedication" in f.name.lower() for f in chosen_feats)
+        ):
+            if "wildsong" not in assigned_lower:
+                assigned_langs.append("Wildsong")
+                assigned_lower.add("wildsong")
 
         # Refresh Ostilli Host symbiote & Spit Ambient Magic scaling if present
         if (
