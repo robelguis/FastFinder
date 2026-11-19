@@ -388,6 +388,7 @@ def sync_feat_partners(
                 feats=chosen_feats,
                 archetype=archetype_name if (archetype_name and level >= 2) else None,
                 level=level,
+                force_qualify=is_druid_animal_order,
                 concept_text=concept_text,
             )
             if comp:
