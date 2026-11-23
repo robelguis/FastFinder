@@ -590,56 +590,204 @@ USER CONCEPT: "{concept_text}"
                 elif preferred_attr == "dexterity":
                     sheet.defenses.reflex.modifier += 1
 
-        # Honor explicit weapon/shield mentions in concept text
-        if "shield" in t_low:
-            if hasattr(sheet.equipment, "gear") and not any("shield" in str(g).lower() for g in (sheet.equipment.gear or [])):
-                sheet.equipment.gear.append("Steel Shield (+2 AC when raised)")
-            if hasattr(sheet.defenses, "ac_notes") and "shield" not in (getattr(sheet.defenses, "ac_notes", "") or "").lower():
-                sheet.defenses.ac_notes = "+2 Shield"
+        # Honor explicit weapon/shield mentions in concept text and override random default weapons within PF2e rules
+        martial_capable_classes = {
+            "alchemist", "animist", "barbarian", "bard", "champion", "commander",
+            "exemplar", "fighter", "gunslinger", "inventor", "investigator",
+            "kineticist", "magus", "monk", "ranger", "rogue", "summoner",
+            "swashbuckler", "thaumaturge", "vindicator",
+        }
+        cls_key_eq = (spec.character_class or sheet.character_class or "").strip().lower()
+        arch_key_eq = (spec.archetype or "").strip().lower()
+        has_martial_prof = cls_key_eq in martial_capable_classes or any(
+            m in arch_key_eq for m in ("fighter", "ranger", "barbarian", "champion", "monk", "rogue", "swashbuckler", "gunslinger", "archer", "mauler")
+        )
 
         weapon_presets = [
-            ("glaive", "Glaive", "1d8", "Slashing", ["Deadly d8", "Forceful", "Reach"]),
-            ("laive", "Glaive", "1d8", "Slashing", ["Deadly d8", "Forceful", "Reach"]),
-            ("greatsword", "Greatsword", "1d12", "Slashing", ["Versatile P"]),
-            ("bastard sword", "Bastard Sword", "1d8", "Slashing", ["Two-Hand d12"]),
-            ("shortsword", "Shortsword", "1d6", "Piercing", ["Agile", "Finesse", "Versatile S"]),
-            ("longsword", "Longsword", "1d8", "Slashing", ["Versatile P"]),
-            ("sword", "Longsword", "1d8", "Slashing", ["Versatile P"]),
-            ("longbow", "Longbow", "1d8", "Piercing", ["Deadly d10", "Volley 30 ft"]),
-            ("shortbow", "Shortbow", "1d6", "Piercing", ["Deadly d10"]),
-            ("bow", "Shortbow", "1d6", "Piercing", ["Deadly d10"]),
-            ("greataxe", "Greataxe", "1d12", "Slashing", ["Sweep"]),
-            ("battleaxe", "Battleaxe", "1d8", "Slashing", ["Sweep"]),
-            ("axe", "Battleaxe", "1d8", "Slashing", ["Sweep"]),
-            ("spear", "Spear", "1d6", "Piercing", ["Thrown 20 ft"]),
-            ("staff", "Staff", "1d4", "Bludgeoning", ["Two-Hand d8"]),
+            ("glaive", "Glaive", "1d8", "Slashing", ["Deadly d8", "Forceful", "Reach"], True),
+            ("laive", "Glaive", "1d8", "Slashing", ["Deadly d8", "Forceful", "Reach"], True),
+            ("greatsword", "Greatsword", "1d12", "Slashing", ["Versatile P"], True),
+            ("bastard sword", "Bastard Sword", "1d8", "Slashing", ["Two-Hand d12"], True),
+            ("shortsword", "Shortsword", "1d6", "Piercing", ["Agile", "Finesse", "Versatile S"], True),
+            ("longsword", "Longsword", "1d8", "Slashing", ["Versatile P"], True),
+            ("sword", "Longsword", "1d8", "Slashing", ["Versatile P"], True),
+            ("rapier", "Rapier", "1d6", "Piercing", ["Deadly d8", "Disarm", "Finesse"], True),
+            ("greataxe", "Greataxe", "1d12", "Slashing", ["Sweep"], True),
+            ("battleaxe", "Battleaxe", "1d8", "Slashing", ["Sweep"], True),
+            ("axe", "Battleaxe", "1d8", "Slashing", ["Sweep"], True),
+            ("maul", "Maul", "1d12", "Bludgeoning", ["Shove"], True),
+            ("warhammer", "Warhammer", "1d8", "Bludgeoning", ["Shove"], True),
+            ("longbow", "Longbow", "1d8", "Piercing", ["Deadly d10", "Volley 30 ft"], True),
+            ("shortbow", "Shortbow", "1d6", "Piercing", ["Deadly d10"], True),
+            ("bow", "Shortbow", "1d6", "Piercing", ["Deadly d10"], True),
+            ("dagger", "Dagger", "1d4", "Piercing", ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"], False),
+            ("spear", "Spear", "1d6", "Piercing", ["Thrown 20 ft"], False),
+            ("staff", "Staff", "1d4", "Bludgeoning", ["Two-Hand d8"], False),
+            ("club", "Club", "1d4", "Bludgeoning", ["Thrown 10 ft"], False),
+            ("crossbow", "Crossbow", "1d8", "Piercing", ["Range 120 ft", "Reload 1"], False),
         ]
+
+        parsed_strikes = []
         added_weapons = set()
-        for kw, wname, wdice, wtype, wtraits in weapon_presets:
+        for kw, wname, wdice, wtype, wtraits, is_martial in weapon_presets:
             if wname in added_weapons:
                 continue
             if kw in ("sword", "bow", "axe") and any(w in added_weapons for w in ("Greatsword", "Bastard Sword", "Shortsword", "Longsword", "Longbow", "Shortbow", "Greataxe", "Battleaxe")):
                 continue
             if re.search(r"\b" + re.escape(kw) + r"\b", t_low):
+                if is_martial and not has_martial_prof:
+                    continue
                 added_weapons.add(wname)
-                if not any(wname.lower() in (s.name or "").lower() for s in sheet.equipment.strikes):
-                    is_ranged = "bow" in wname.lower()
-                    best_mod = sheet.attributes.dexterity if is_ranged else (max(sheet.attributes.strength, sheet.attributes.dexterity) if "Finesse" in wtraits else sheet.attributes.strength)
-                    atk = best_mod + sheet.level + 2
-                    dmg_mod = 0 if is_ranged else sheet.attributes.strength
-                    dmg_str = f"{wdice}+{dmg_mod}" if dmg_mod > 0 else (f"{wdice}{dmg_mod}" if dmg_mod < 0 else wdice)
-                    strike_data = {
-                        "name": wname,
-                        "attack_bonus": str(atk),
-                        "map_second": str(atk - 5),
-                        "map_third": str(atk - 10),
-                        "damage_dice": dmg_str,
-                        "damage_type": wtype,
-                        "traits": wtraits,
+                is_ranged = "bow" in wname.lower() or "crossbow" in wname.lower()
+                best_mod = sheet.attributes.dexterity if is_ranged else (max(sheet.attributes.strength, sheet.attributes.dexterity) if "Finesse" in wtraits else sheet.attributes.strength)
+                prof_bonus = 4 if cls_key_eq == "fighter" else 2
+                atk = best_mod + sheet.level + prof_bonus
+                dmg_mod = 0 if is_ranged else sheet.attributes.strength
+                dmg_str = f"{wdice}+{dmg_mod}" if dmg_mod > 0 else (f"{wdice}{dmg_mod}" if dmg_mod < 0 else wdice)
+                strike_data = {
+                    "name": wname,
+                    "attack_bonus": str(atk),
+                    "map_second": str(atk - 5),
+                    "map_third": str(atk - 10),
+                    "damage_dice": dmg_str,
+                    "damage_type": wtype,
+                    "traits": wtraits,
+                }
+                strike_cls = type(sheet.equipment.strikes[0]) if sheet.equipment.strikes else None
+                new_entry = strike_cls.model_validate(strike_data) if hasattr(strike_cls, "model_validate") else strike_data
+                parsed_strikes.append(new_entry)
+
+        two_handed_weapons = {"Glaive", "Greatsword", "Greataxe", "Maul", "Longbow", "Shortbow", "Staff", "Crossbow"}
+        if parsed_strikes and hasattr(sheet.equipment, "strikes"):
+            # Keep non-weapon class/ancestry strikes (e.g. Elemental Blast / Animal Instinct), replace random weapon kit
+            preserved_non_weapons = [
+                s for s in (sheet.equipment.strikes or [])
+                if any(tok in ((s.name if hasattr(s, "name") else str(s)).lower()) for tok in ("elemental blast", "unarmed", "jaw", "claw", "talon", "horn", "fang"))
+            ]
+            sheet.equipment.strikes = parsed_strikes + preserved_non_weapons
+
+            # Sync equipment.weapons Item list so inventory matches Strikes & Attacks
+            if hasattr(sheet.equipment, "weapons"):
+                item_cls = type(sheet.equipment.weapons[0]) if sheet.equipment.weapons else None
+                new_weapon_items = []
+                for ps in parsed_strikes:
+                    w_title = ps.name if hasattr(ps, "name") else ps.get("name", "Weapon")
+                    w_traits = ps.traits if hasattr(ps, "traits") else ps.get("traits", [])
+                    item_payload = {
+                        "name": w_title,
+                        "category": "Weapon",
+                        "bulk": "2" if w_title in two_handed_weapons else "1",
+                        "traits": w_traits,
+                        "description": f"{w_title} ({', '.join(w_traits)})" if w_traits else w_title,
                     }
-                    strike_cls = type(sheet.equipment.strikes[0]) if sheet.equipment.strikes else None
-                    new_entry = strike_cls.model_validate(strike_data) if hasattr(strike_cls, "model_validate") else strike_data
-                    sheet.equipment.strikes.insert(0, new_entry)
+                    if item_cls is not None and hasattr(item_cls, "model_validate"):
+                        try:
+                            new_weapon_items.append(item_cls.model_validate(item_payload))
+                            continue
+                        except Exception:
+                            pass
+                    new_weapon_items.append(item_payload)
+                sheet.equipment.weapons = new_weapon_items
+
+        # Shield override & two-handed hand-slot legality
+        wants_shield = bool(re.search(r"\b(?:shield|buckler)\b", t_low)) and not bool(re.search(r"\bno\s+shield\b", t_low))
+        only_two_handed = bool(added_weapons) and added_weapons.issubset(two_handed_weapons)
+        if wants_shield:
+            is_buckler = "buckler" in t_low
+            sh_name = "Buckler" if is_buckler else "Steel Shield"
+            sh_bonus = 1 if is_buckler else 2
+            if hasattr(sheet.equipment, "shield"):
+                sh_payload = {"name": sh_name, "category": "Shield", "bulk": "L" if is_buckler else "1", "traits": [], "description": f"+{sh_bonus} AC when raised"}
+                if sheet.equipment.shield is not None and hasattr(type(sheet.equipment.shield), "model_validate"):
+                    try:
+                        sheet.equipment.shield = type(sheet.equipment.shield).model_validate(sh_payload)
+                    except Exception:
+                        pass
+                elif sheet.equipment.weapons and hasattr(type(sheet.equipment.weapons[0]), "model_validate"):
+                    try:
+                        sheet.equipment.shield = type(sheet.equipment.weapons[0]).model_validate(sh_payload)
+                    except Exception:
+                        pass
+            if hasattr(sheet.equipment, "gear") and not any("shield" in str(g).lower() or "buckler" in str(g).lower() for g in (sheet.equipment.gear or [])):
+                sheet.equipment.gear.append(f"{sh_name} (+{sh_bonus} AC when raised)")
+            if hasattr(sheet.defenses, "ac_notes"):
+                sheet.defenses.ac_notes = f"+{sh_bonus} Shield"
+        elif only_two_handed:
+            # Two-handed weapons occupy both hands; clear any randomly assigned shield
+            if hasattr(sheet.equipment, "shield"):
+                sheet.equipment.shield = None
+            if hasattr(sheet.equipment, "gear"):
+                sheet.equipment.gear = [g for g in (sheet.equipment.gear or []) if "shield" not in str(g).lower()]
+            if hasattr(sheet.defenses, "ac_notes") and "shield" in (getattr(sheet.defenses, "ac_notes", "") or "").lower():
+                sheet.defenses.ac_notes = None
+
+        # Explicit Armor override (within class/archetype armor proficiency rules)
+        heavy_classes = {"champion", "fighter", "guardian"}
+        medium_classes = heavy_classes | {"barbarian", "cleric", "druid", "inventor", "magus", "ranger", "thaumaturge", "vindicator", "commander"}
+        light_classes = medium_classes | {"alchemist", "animist", "bard", "gunslinger", "investigator", "kineticist", "oracle", "rogue", "summoner", "swashbuckler"}
+        has_heavy = cls_key_eq in heavy_classes or "sentinel" in arch_key_eq
+        has_medium = has_heavy or cls_key_eq in medium_classes or any(a in arch_key_eq for a in ("champion", "fighter", "guardian"))
+        has_light = has_medium or cls_key_eq in light_classes
+
+        armor_presets = [
+            ("full plate", "Full Plate", "heavy", 6, 0),
+            ("half plate", "Half Plate", "heavy", 5, 1),
+            ("splint mail", "Splint Mail", "heavy", 5, 1),
+            ("breastplate", "Breastplate", "medium", 4, 1),
+            ("chain mail", "Chain Mail", "medium", 4, 1),
+            ("scale mail", "Scale Mail", "medium", 3, 2),
+            ("hide armor", "Hide Armor", "medium", 3, 2),
+            ("studded leather", "Studded Leather Armor", "light", 2, 3),
+            ("leather armor", "Leather Armor", "light", 1, 4),
+            ("padded armor", "Padded Armor", "light", 1, 3),
+            ("unarmored", "Explorer's Clothing", "unarmored", 0, 5),
+            ("explorer's clothing", "Explorer's Clothing", "unarmored", 0, 5),
+        ]
+        for akw, aname, acat, item_ac, dex_cap in armor_presets:
+            if re.search(r"\b" + re.escape(akw) + r"\b", t_low):
+                legal_armor = (
+                    (acat == "heavy" and has_heavy)
+                    or (acat == "medium" and has_medium)
+                    or (acat == "light" and has_light)
+                    or (acat == "unarmored")
+                )
+                if legal_armor:
+                    if hasattr(sheet.equipment, "armor"):
+                        arm_payload = {"name": aname, "category": f"{acat.title()} Armor", "bulk": "3" if acat == "heavy" else ("2" if acat == "medium" else "1"), "traits": [], "description": f"+{item_ac} AC, Dex Cap +{dex_cap}"}
+                        arm_cls = type(sheet.equipment.armor) if sheet.equipment.armor is not None else (type(sheet.equipment.weapons[0]) if sheet.equipment.weapons else None)
+                        if arm_cls is not None and hasattr(arm_cls, "model_validate"):
+                            try:
+                                sheet.equipment.armor = arm_cls.model_validate(arm_payload)
+                            except Exception:
+                                pass
+                    if hasattr(sheet.defenses, "ac"):
+                        prof_ac = 4 if (cls_key_eq == "monk" and acat == "unarmored") else 2
+                        eff_dex = min(int(sheet.attributes.dexterity), dex_cap)
+                        sheet.defenses.ac = 10 + sheet.level + prof_ac + item_ac + eff_dex
+                break
+
+        # Companion species override when explicitly named in prompt (e.g., "on horseback" -> Horse)
+        if getattr(sheet, "companion", None) is not None:
+            species_hints = [
+                (r"\b(?:horseback|warhorse|horse)\b", "Horse"),
+                (r"\bwolf\b", "Wolf"),
+                (r"\bbear\b", "Bear"),
+                (r"\bboar\b", "Boar"),
+                (r"\bbadger\b", "Badger"),
+                (r"\b(?:hawk|eagle|owl|bird|falcon)\b", "Bird"),
+                (r"\b(?:panther|tiger|lion|leopard|cat)\b", "Cat"),
+                (r"\bsnake|viper|python\b", "Snake"),
+                (r"\bshark\b", "Shark"),
+                (r"\bcrocodile|alligator\b", "Crocodile"),
+            ]
+            for spat, sp_label in species_hints:
+                if re.search(spat, t_low):
+                    comp = sheet.companion
+                    if hasattr(comp, "species"):
+                        comp.species = sp_label
+                    if hasattr(comp, "creature_type") and comp.creature_type == "Animal Companion":
+                        comp.creature_type = f"Animal Companion ({sp_label})"
+                    break
 
         payload = sheet.model_dump()
         payload["concept_resolution"] = {
