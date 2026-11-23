@@ -712,12 +712,20 @@ def resolve_equipment(
         ))
 
 
-    # Robust ancestry natural attacks / weapons extraction
+    # Robust ancestry natural attacks / weapons extraction (ancestry, heritage, feats, and explicit natural-attack prompt hints)
+    feat_blobs = []
+    for f in (feats or []):
+        if isinstance(f, dict):
+            feat_blobs.append(f"{f.get('name', '')} {f.get('description', '')}")
+        else:
+            feat_blobs.append(f"{getattr(f, 'name', '')} {getattr(f, 'description', '')}")
     ancestry_search_blob = " ".join([
         ancestry_name or "",
         heritage_name or "",
-        " ".join((f.get("name") if isinstance(f, dict) else getattr(f, "name", str(f))) for f in (feats or []))
+        " ".join(feat_blobs),
     ]).lower()
+    if "minotaur" in (ancestry_name or "").lower() and "horn" not in ancestry_search_blob:
+        ancestry_search_blob += " horn"
 
     base_anc_atk = 2 + lvl + max(str_mod, dex_mod)
     ancestry_strikes_to_add = []
