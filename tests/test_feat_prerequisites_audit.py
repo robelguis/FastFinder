@@ -160,3 +160,58 @@ def test_level_up_prerequisite_audit(generator_and_catalog):
             mismatches.append((ancestry, cls_title, sub_opt, *feat_err))
 
     assert not mismatches, f"Level-up prerequisite mismatches ({len(mismatches)}): {mismatches[:10]}"
+
+
+def test_2500_build_level_1_to_20_monte_carlo_audit(generator_and_catalog):
+    """Stress-tests 2,500 builds across levels 1-20 (including level_up transitions) with zero crashes, mismatches, or fake skills."""
+    gen, feat_by_id, feat_by_name = generator_and_catalog
+    rng = random.Random(2026)
+    all_classes = sorted(CLASS_SUBCLASSES.keys())
+
+    crashes = []
+    mismatches = []
+    fake_skills = []
+
+    for i in range(1, 2501):
+        cls_key = all_classes[(i - 1) % len(all_classes)]
+        cls_title = cls_key.title()
+        options = CLASS_SUBCLASSES[cls_key].get("options") or []
+        sub_opt = rng.choice(options)["name"] if options else ""
+        ancestry = rng.choice(ANCESTRIES)
+        start_lvl = rng.randint(1, 20)
+        arch = rng.choice(ARCHETYPES) if start_lvl >= 2 and rng.random() < 0.45 else ""
+
+        try:
+            sheet = gen.generate(
+                ancestry_name=ancestry,
+                class_name=cls_title,
+                subclass_name=sub_opt,
+                archetype_name=arch,
+                use_dedication=bool(arch),
+                level=start_lvl,
+            )
+            final_lvl = start_lvl
+            if i % 5 == 0 and start_lvl < 20:
+                target_lvl = rng.randint(start_lvl + 1, 20)
+                sheet = gen.level_up(
+                    sheet.model_dump(),
+                    target_lvl,
+                    use_dedication=bool(arch),
+                    archetype_name=arch or None,
+                )
+                final_lvl = target_lvl
+        except Exception as exc:
+            crashes.append((i, ancestry, cls_title, sub_opt, arch, start_lvl, f"{type(exc).__name__}: {exc}"))
+            continue
+
+        for sk in (sheet.all_skills or []):
+            sk_low = (sk.name or "").strip().lower()
+            if any(bad in sk_low for bad in ("at least one skill", "a skill with", "recall knowledge")):
+                fake_skills.append((i, cls_title, final_lvl, sk.name))
+
+        for feat_err in _audit_sheet(sheet, final_lvl, feat_by_id, feat_by_name):
+            mismatches.append((i, ancestry, cls_title, sub_opt, arch, final_lvl, *feat_err))
+
+    assert not crashes, f"Encountered {len(crashes)} crashes; first 5: {crashes[:5]}"
+    assert not fake_skills, f"Encountered {len(fake_skills)} fake skill entries; first 5: {fake_skills[:5]}"
+    assert not mismatches, f"Encountered {len(mismatches)} prerequisite mismatches; first 10: {mismatches[:10]}"

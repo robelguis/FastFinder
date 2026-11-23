@@ -116,16 +116,17 @@ def _get_known_subclasses() -> Set[str]:
 
 
 def _extract_prereq_clauses(feat: Dict[str, Any]) -> List[str]:
-    """Collects structured prerequisites and any 'Prerequisites ...' clause from description."""
+    """Collects structured prerequisites and any explicit 'Prerequisite(s): ...' clause from description."""
     raw = feat.get("prerequisites") or feat.get("prerequisite") or []
     clauses = [str(raw)] if isinstance(raw, str) else [str(p) for p in raw if p]
     desc = str(feat.get("description") or "")
-    m = re.search(r"\bprerequisites?\s*:?\s*([^.\n]+)", desc, re.IGNORECASE)
+    m = re.search(r"\bprerequisites?\s*:\s*([^.\n]+)", desc, re.IGNORECASE)
     if m:
         for part in re.split(r"[;]", m.group(1)):
-            if part.strip():
-                clauses.append(part.strip())
-    return clauses
+            cleaned = part.strip().rstrip(".")
+            if len(cleaned) >= 2 and cleaned.lower() not in {"s", "and", "or"}:
+                clauses.append(cleaned)
+    return [c for c in clauses if len(str(c).strip()) >= 2 and str(c).strip().lower() != "s"]
 
 
 def _match_single_term(
@@ -134,6 +135,7 @@ def _match_single_term(
     owned_lower: Set[str],
     attribute_mods: Dict[str, int],
     active_blob: str,
+    perception_rank: int = 2,
 ) -> bool:
     """Evaluates a single atomic prerequisite term (skill, attribute, subclass, or owned feat/feature)."""
     t_clean = term.strip().rstrip(".")
@@ -156,6 +158,10 @@ def _match_single_term(
         return any("lore" in k.lower() and v >= req_r for k, v in skill_ranks.items())
 
     # 2. Skill rank check: "trained in Medicine", "expert in Occultism"
+    perc_match = re.search(r"\b(trained|expert|master|legendary)\s+in\s+perception\b", t_lower)
+    if perc_match:
+        return perception_rank >= RANK_MAP[perc_match.group(1)]
+
     skill_match = re.search(r"\b(trained|expert|master|legendary)\s+in\s+([A-Za-z\s]+)$", t_lower)
     if skill_match:
         req_rank = RANK_MAP.get(skill_match.group(1), 2)
@@ -246,7 +252,8 @@ def check_feat_prerequisites(
     attribute_mods: Dict[str, int],
     character_level: int,
     subclass_name: str = "",
-    archetype_name: str = ""
+    archetype_name: str = "",
+    perception_rank: int = 2,
 ) -> bool:
     skill_ranks = {str(k).strip().lower(): int(v) for k, v in (skill_ranks or {}).items()}
     """Validates whether a character meets all prerequisites for a feat (including Remaster modifiers, OR/AND lists, and subclasses)."""
@@ -310,7 +317,7 @@ def check_feat_prerequisites(
             return False
 
         # Single atomic prerequisite term (handles both capitalized and lowercase terms!)
-        if not _match_single_term(p_clean, skill_ranks, owned_lower, attribute_mods, active_blob):
+        if not _match_single_term(p_clean, skill_ranks, owned_lower, attribute_mods, active_blob, perception_rank=perception_rank):
             return False
 
     return True
@@ -358,8 +365,10 @@ def calculate_feat_weight(
                     break
             break
 
-    # 1c. Hard-depress redundant base stances if already in a stance family
-    is_candidate_stance = "stance" in clean_feat_name or "stance" in [t.lower() for t in feat.get("traits", [])]
+    # 1c. Hard-depress redundant base stances if already in a stance family (martial stance classes only)
+    is_candidate_stance = cls_key in ("monk", "fighter", "swashbuckler") and (
+        "stance" in clean_feat_name or "stance" in [t.lower() for t in feat.get("traits", [])]
+    )
     if is_candidate_stance:
         owned_stances = [o for o in owned_lower if "stance" in o]
         if owned_stances:
