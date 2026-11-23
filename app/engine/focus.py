@@ -493,8 +493,39 @@ def resolve_focus_spells(
             spells=[SpellSummary(rank=curr_rank, **order_sp)]
         )
 
+    feat_names_lower = [
+        (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else "")).lower()
+        for f in (feats or [])
+    ]
+    has_time_mage_focus = any("time mage dedication" in fn for fn in feat_names_lower)
+
     # Standard classes
     if cls_key not in CLASS_FOCUS_SPELLS:
+        if has_time_mage_focus:
+            attr_key = "int" if attribute_mods.get("int", 0) >= attribute_mods.get("cha", 0) else "cha"
+            if attr_key not in attribute_mods:
+                attr_key = "wis" if "wis" in attribute_mods else "cha"
+            attr_mod = attribute_mods.get(attr_key, 3)
+            prof_bonus = 2 + level
+            curr_rank = max(1, (level + 1) // 2)
+            delay_consequence = SpellSummary(
+                rank=curr_rank,
+                name="Delay Consequence",
+                actions="1 action",
+                traits=["Concentrate", "Focus", "Prediction"],
+                range="Self",
+                defense="None",
+                description="Granted by Time Mage Dedication: You defer immediate negative consequences of an effect until later in the encounter."
+            )
+            return FocusSpellData(
+                focus_points=1,
+                max_focus_points=1,
+                tradition="Occult / Arcane (Time Mage Dedication)",
+                casting_attribute=attr_key.upper(),
+                spell_dc=10 + prof_bonus + attr_mod,
+                spell_attack=prof_bonus + attr_mod,
+                spells=[delay_consequence],
+            )
         return None
 
     cfg = CLASS_FOCUS_SPELLS[cls_key]
