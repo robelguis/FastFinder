@@ -1798,7 +1798,8 @@ class PF2eGenerator:
         use_dedication: bool = False,
         heritage_name: Optional[str] = None,
         subclass_name: Optional[str] = None,
-        concept_text: Optional[str] = None
+        concept_text: Optional[str] = None,
+        requested_feats: Optional[List[str]] = None
     ) -> CharacterSheet:
         level = max(1, min(20, int(level)))
 
@@ -1950,6 +1951,18 @@ class PF2eGenerator:
         sub_n = subclass_data["name"] if subclass_data else ""
         arch_n = clean_arch_input or (archetype_data["name"] if archetype_data else "")
 
+        _pinned_req_feats = []
+        for _rf in (requested_feats or []):
+            _rf_low = str(_rf).strip().lower()
+            if not _rf_low:
+                continue
+            _matched = next(
+                (f for f in (self.feats or []) if isinstance(f, dict) and str(f.get("name", "")).strip().lower() == _rf_low),
+                None,
+            )
+            if _matched is not None:
+                _pinned_req_feats.append(_matched)
+
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
@@ -1959,7 +1972,7 @@ class PF2eGenerator:
             heritage_name=heritage_data["name"],
             subclass_name=sub_n,
             archetype_name=arch_n,
-            feats=locals().get("chosen_feats"))
+            feats=(locals().get("chosen_feats") or []) + _pinned_req_feats)
 
         # --- HOOK: Archer Archetype 3rd Weapon Bow Guarantee ---
         active_arch = locals().get("arch_n") or locals().get("resolved_arch_name") or ""
@@ -2153,8 +2166,10 @@ class PF2eGenerator:
             and f["name"].lower() not in added_feat_names
             and check_feat_prerequisites(f, {}, {cf.name for cf in chosen_feats}, mods, 1, subclass_name=sub_n_val)
         ]
-        if lvl1_anc_feats:
-            af1 = random.choice(lvl1_anc_feats)
+        _req_feat_names_low = {str(x).strip().lower() for x in (requested_feats or []) if str(x).strip()}
+        _pinned_lvl1 = [f for f in lvl1_anc_feats if str(f.get("name", "")).strip().lower() in _req_feat_names_low]
+        if _pinned_lvl1 or lvl1_anc_feats:
+            af1 = _pinned_lvl1[0] if _pinned_lvl1 else random.choice(lvl1_anc_feats)
             chosen_feats.append(FeatSummary(
                 id=af1["id"],
                 name=af1["name"],
@@ -2702,6 +2717,21 @@ class PF2eGenerator:
                 mods["cha"] = max(mods.get("cha", 0), 2)
             elif "rogue" in arch_lower:
                 mods["dex"] = max(mods.get("dex", 0), 2)
+
+        for _rf_obj in _pinned_req_feats:
+            _rf_name = str(_rf_obj.get("name", "")).strip()
+            _rf_lvl = int(_rf_obj.get("level") or 1)
+            if _rf_name and _rf_lvl <= level and _rf_name.lower() not in added_feat_names:
+                _rf_cat = str(_rf_obj.get("category") or "Feat").title()
+                chosen_feats.append(FeatSummary(
+                    id=_rf_obj.get("id") or f"req-feat-{_rf_name.lower().replace(' ', '-')}",
+                    name=_rf_name,
+                    category=f"{_rf_cat} (Level {_rf_lvl})",
+                    action_cost=safe_action_cost(_rf_obj.get("action_cost")),
+                    traits=_rf_obj.get("traits") or [],
+                    description=clean_pf2e_text(_rf_obj.get("description", "")),
+                ))
+                added_feat_names.add(_rf_name.lower())
 
         if level >= 11:
             owned_t3 = {f.name for f in chosen_feats}

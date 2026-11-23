@@ -375,9 +375,17 @@ USER CONCEPT: "{concept_text}"
         # 5. Requested Feats & Spell Rank / Spell Name matching
         raw_req_feats = list(llm_data.get("requested_feats") or [])
         for fname_l, (canonical_f, _) in self.feat_level_map.items():
-            if len(fname_l) >= 5 and re.search(r"\b" + re.escape(fname_l) + r"\b", text_lower):
-                if canonical_f not in raw_req_feats:
-                    raw_req_feats.append(canonical_f)
+            base_fname = re.sub(r"\s*\([^)]*\)$", "", fname_l).strip()
+            matched = False
+            if len(fname_l) >= 5:
+                if fname_l.endswith(")"):
+                    matched = bool(re.search(r"\b" + re.escape(fname_l[:-1]) + r"\)", text_lower))
+                else:
+                    matched = bool(re.search(r"\b" + re.escape(fname_l) + r"\b", text_lower))
+            if not matched and len(base_fname) >= 5 and re.search(r"\b" + re.escape(base_fname) + r"\b", text_lower):
+                matched = True
+            if matched and canonical_f not in raw_req_feats:
+                raw_req_feats.append(canonical_f)
         spec.requested_feats = raw_req_feats
 
         raw_req_spells = list(llm_data.get("requested_spells") or [])
@@ -496,6 +504,7 @@ USER CONCEPT: "{concept_text}"
             heritage_name=spec.heritage,
             subclass_name=spec.subclass,
             concept_text=spec.raw_text,
+            requested_feats=spec.requested_feats,
         )
 
         # Verify companion requirement was satisfied; bump to Level 2 if needed
@@ -715,6 +724,39 @@ USER CONCEPT: "{concept_text}"
                         seen_ranged = True
                     deduped_strikes.append(st_obj)
                 final_strikes = deduped_strikes
+
+            # If only 1 physical melee weapon is present and no 'only' restriction is specified, ensure a ranged backup strike exists
+            ranged_kw_tuple = ("bow", "crossbow", "sling", "dart", "javelin")
+            phys_after_dedup = [
+                s for s in final_strikes
+                if not any(tok in ((s.name if hasattr(s, "name") else str(s)) or "").lower() for tok in innate_tokens)
+            ]
+            has_any_ranged = any(
+                any(rk in ((s.name if hasattr(s, "name") else str(s)) or "").lower() for rk in ranged_kw_tuple)
+                for s in phys_after_dedup
+            )
+            if not strict_only_weapon and len(phys_after_dedup) == 1 and not has_any_ranged:
+                base_strike = phys_after_dedup[0]
+                strike_cls = type(base_strike) if hasattr(base_strike, "attack_bonus") else None
+                lvl_val = getattr(sheet, "level", 1) or 1
+                dex_mod = int(getattr(getattr(sheet, "mods", {}), "get", lambda k, d=0: getattr(getattr(sheet, "mods", None), k, d))("dex", 0) or 0)
+                atk_bonus = 2 + lvl_val + dex_mod
+                backup_payload = {
+                    "name": "Shortbow",
+                    "attack_bonus": str(atk_bonus),
+                    "map_second": str(atk_bonus - 5),
+                    "map_third": str(atk_bonus - 10),
+                    "damage_dice": "1d6",
+                    "damage_type": "Piercing",
+                    "traits": ["Deadly d10", "Range 60 ft"],
+                }
+                if strike_cls is not None and hasattr(strike_cls, "model_validate"):
+                    try:
+                        final_strikes.append(strike_cls.model_validate(backup_payload))
+                    except Exception:
+                        final_strikes.append(backup_payload)
+                else:
+                    final_strikes.append(backup_payload)
 
             sheet.equipment.strikes = final_strikes
 

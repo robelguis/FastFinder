@@ -712,25 +712,42 @@ def resolve_equipment(
         ))
 
 
-    # Robust ancestry natural attacks / weapons extraction (ancestry, heritage, feats, and explicit natural-attack prompt hints)
-    feat_blobs = []
+    # Broad structural rule: inspect ancestry, heritage, and feat names/descriptions for natural/unarmed strike definitions
+    feat_entries = []
     for f in (feats or []):
         if isinstance(f, dict):
-            feat_blobs.append(f"{f.get('name', '')} {f.get('description', '')}")
+            f_name = str(f.get("name", "") or "")
+            f_desc = str(f.get("description", "") or "")
         else:
-            feat_blobs.append(f"{getattr(f, 'name', '')} {getattr(f, 'description', '')}")
-    ancestry_search_blob = " ".join([
-        ancestry_name or "",
-        heritage_name or "",
-        " ".join(feat_blobs),
-    ]).lower()
-    if "minotaur" in (ancestry_name or "").lower() and "horn" not in ancestry_search_blob:
-        ancestry_search_blob += " horn"
+            f_name = str(getattr(f, "name", "") or "")
+            f_desc = str(getattr(f, "description", "") or "")
+        feat_entries.append((f_name, f_desc))
+
+    anc_her_text = f"{ancestry_name or ''} {heritage_name or ''}".lower()
+    all_feat_text = " ".join(f"{n} {d}" for n, d in feat_entries).lower()
+
+    # Identify feat/heritage descriptions that explicitly grant or describe an unarmed/natural attack or strike
+    attack_grant_snippets = []
+    for n, d in feat_entries:
+        combined = f"{n} {d}".lower()
+        if re.search(
+            r"\b(?:unarmed\s+(?:attack|strike)|natural\s+(?:weapon|attack|strike)|gain\s+(?:an?\s+)?[a-z0-9\s\-]{0,35}?(?:unarmed\s+)?(?:attack|strike))\b",
+            combined,
+        ):
+            attack_grant_snippets.append(combined)
+
+    ancestry_search_blob = f"{anc_her_text} {all_feat_text} {' '.join(attack_grant_snippets)}".strip()
+
+    # Propagate natural strike keywords found in ancestry/heritage text or attack-granting feat descriptions
+    strike_source_text = f"{anc_her_text} {' '.join(attack_grant_snippets)}"
+    for tok in ("horn", "hoof", "hooves", "fang", "jaw", "claw", "pincer", "talon", "tail", "venom", "poison", "spine", "quill", "thorn", "fist"):
+        if re.search(r"\b" + tok + r"s?\b", strike_source_text) and tok not in ancestry_search_blob:
+            ancestry_search_blob += f" {tok}"
 
     base_anc_atk = 2 + lvl + max(str_mod, dex_mod)
     ancestry_strikes_to_add = []
-    if "automaton" in ancestry_search_blob or "armament" in ancestry_search_blob or "claw" in ancestry_search_blob or "pincer" in ancestry_search_blob or "natural attack" in ancestry_search_blob:
-        if "pincer" in ancestry_search_blob:
+    if re.search(r"\b(?:automaton|armament|pincer)\b", ancestry_search_blob):
+        if re.search(r"\bpincers?\b", ancestry_search_blob):
             ancestry_strikes_to_add.append(Strike(
                 name="Pincer (Automaton Armament)",
                 attack_bonus=base_anc_atk,
@@ -740,7 +757,7 @@ def resolve_equipment(
                 damage_type="Piercing",
                 traits=["brawling", "grapple", "unarmed"]
             ))
-        else:
+        elif re.search(r"\b(?:automaton|armament|claws?)\b", ancestry_search_blob):
             ancestry_strikes_to_add.append(Strike(
                 name="Claw (Automaton Armament)",
                 attack_bonus=base_anc_atk,
@@ -750,25 +767,39 @@ def resolve_equipment(
                 damage_type="Slashing",
                 traits=["agile", "finesse", "unarmed", "brawling"]
             ))
-    if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob:
-        ancestry_strikes_to_add.append(Strike(
-            name="Natural Ancestry Attack",
-            attack_bonus=base_anc_atk,
-            map_second=base_anc_atk - 4,
-            map_third=base_anc_atk - 8,
-            damage_dice="1d4",
-            damage_type="Slashing",
-            traits=["agile", "finesse", "unarmed"]
-        ))
+
+    stance_attack_specs = [
+        (("gorilla stance", "gorilla slam"), "Gorilla Slam", "1d8", "Bludgeoning", ["backswing", "grappling", "nonlethal", "unarmed"]),
+        (("dragon stance", "dragon tail"), "Dragon Tail", "1d10", "Bludgeoning", ["backswing", "nonlethal", "unarmed"]),
+        (("tiger stance", "tiger claw"), "Tiger Claw", "1d8", "Slashing", ["agile", "finesse", "nonlethal", "unarmed"]),
+        (("wolf stance", "wolf jaws"), "Wolf Jaws", "1d8", "Piercing", ["agile", "backstabber", "finesse", "nonlethal", "unarmed"]),
+    ]
+    for tokens, st_name, st_dice, st_type, st_traits in stance_attack_specs:
+        if any(tok in ancestry_search_blob for tok in tokens) and not any(st_name.lower() in s.name.lower() for s in ancestry_strikes_to_add):
+            is_ag = "agile" in st_traits
+            ancestry_strikes_to_add.append(Strike(
+                name=st_name,
+                attack_bonus=base_anc_atk,
+                map_second=base_anc_atk - (4 if is_ag else 5),
+                map_third=base_anc_atk - (8 if is_ag else 10),
+                damage_dice=st_dice,
+                damage_type=st_type,
+                traits=st_traits,
+            ))
 
     natural_attack_specs = [
         (("horn", "horns", "gore"), "Horn", "1d6", "Piercing", ["unarmed"]),
+        (("hoof", "hooves"), "Hoof", "1d6", "Bludgeoning", ["unarmed"]),
         (("fang", "fangs", "bite"), "Fangs", "1d6", "Piercing", ["finesse", "unarmed"]),
         (("jaw", "jaws"), "Jaws", "1d6", "Piercing", ["unarmed"]),
+        (("claw", "claws"), "Claws", "1d4", "Slashing", ["agile", "finesse", "unarmed"]),
         (("talon", "talons"), "Talons", "1d4", "Slashing", ["agile", "finesse", "unarmed"]),
         (("tail",), "Tail", "1d4", "Bludgeoning", ["agile", "finesse", "unarmed"]),
         (("venom", "poison"), "Venomous Strike", "1d4", "Poison", ["unarmed", "poison"]),
         (("spine", "spines", "quill", "quills"), "Spines", "1d4", "Piercing", ["unarmed"]),
+        (("thorn", "thorns"), "Thorn", "1d6", "Piercing", ["finesse", "unarmed"]),
+        (("iron fists",), "Fist", "1d4", "Bludgeoning", ["agile", "finesse", "shove", "unarmed"]),
+        (("fist", "fists"), "Fist", "1d4", "Bludgeoning", ["agile", "finesse", "nonlethal", "unarmed"]),
     ]
     for tokens, nat_name, nat_dice, nat_type, nat_traits in natural_attack_specs:
         if any(re.search(r"\b" + re.escape(tok) + r"\b", ancestry_search_blob) for tok in tokens):
@@ -885,10 +916,11 @@ def resolve_equipment(
 
     base_anc_atk = 2 + lvl + max(str_mod, dex_mod)
     ancestry_strikes_to_add = []
-    if "automaton" in ancestry_search_blob or "armament" in ancestry_search_blob or "claw" in ancestry_search_blob or "pincer" in ancestry_search_blob or "natural attack" in ancestry_search_blob:
+    is_automaton_like = "automaton" in ancestry_search_blob or "armament" in ancestry_search_blob
+    if is_automaton_like or "pincer" in ancestry_search_blob or "claw" in ancestry_search_blob or "natural attack" in ancestry_search_blob or "lizardfolk" in ancestry_search_blob or "iruxi" in ancestry_search_blob:
         if "pincer" in ancestry_search_blob:
             ancestry_strikes_to_add.append(Strike(
-                name="Pincer (Automaton Armament)",
+                name="Pincer (Automaton Armament)" if is_automaton_like else "Pincer",
                 attack_bonus=base_anc_atk,
                 map_second=base_anc_atk - 5,
                 map_third=base_anc_atk - 10,
@@ -898,7 +930,7 @@ def resolve_equipment(
             ))
         else:
             ancestry_strikes_to_add.append(Strike(
-                name="Claw (Automaton Armament)",
+                name="Claw (Automaton Armament)" if is_automaton_like else "Claw",
                 attack_bonus=base_anc_atk,
                 map_second=base_anc_atk - 4,
                 map_third=base_anc_atk - 8,
@@ -906,7 +938,17 @@ def resolve_equipment(
                 damage_type="Slashing",
                 traits=["agile", "finesse", "unarmed", "brawling"]
             ))
-    if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob or "tengu" in ancestry_search_blob:
+    if "tengu" in ancestry_search_blob:
+        ancestry_strikes_to_add.append(Strike(
+            name="Beak",
+            attack_bonus=base_anc_atk,
+            map_second=base_anc_atk - 5,
+            map_third=base_anc_atk - 10,
+            damage_dice="1d6",
+            damage_type="Piercing",
+            traits=["finesse", "unarmed"]
+        ))
+    if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob:
         ancestry_strikes_to_add.append(Strike(
             name="Natural Ancestry Attack",
             attack_bonus=base_anc_atk,
