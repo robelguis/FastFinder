@@ -658,19 +658,55 @@ USER CONCEPT: "{concept_text}"
                 parsed_strikes.append(new_entry)
 
         two_handed_weapons = {"Glaive", "Greatsword", "Greataxe", "Maul", "Longbow", "Shortbow", "Staff", "Crossbow"}
-        if parsed_strikes and hasattr(sheet.equipment, "strikes"):
-            # Keep non-weapon class/ancestry strikes (e.g. Elemental Blast / Animal Instinct), replace random weapon kit
-            preserved_non_weapons = [
-                s for s in (sheet.equipment.strikes or [])
-                if any(tok in ((s.name if hasattr(s, "name") else str(s)).lower()) for tok in ("elemental blast", "unarmed", "jaw", "claw", "talon", "horn", "fang"))
-            ]
-            sheet.equipment.strikes = parsed_strikes + preserved_non_weapons
+        ranged_weapon_names = {"Longbow", "Shortbow", "Crossbow"}
+        strict_only_weapon = bool(re.search(
+            r"\b(?:only|just|solely|exclusively)\s+(?:a|an|one|the|this)?\s*(?:[a-z]+\s+){0,2}(?:weapon|glaive|greatsword|bastard sword|shortsword|longsword|sword|rapier|greataxe|battleaxe|axe|maul|warhammer|longbow|shortbow|bow|dagger|spear|staff|club|crossbow)\b|\bsingle\s+weapon\b|\bno\s+(?:other|extra|secondary|backup)\s+weapons?\b",
+            t_low,
+        ))
+        innate_tokens = ("elemental blast", "unarmed", "horn", "claw", "pincer", "fang", "jaw", "talon", "tail", "venom", "poison", "spine", "quill")
 
-            # Sync equipment.weapons Item list so inventory matches Strikes & Attacks
+        if parsed_strikes and hasattr(sheet.equipment, "strikes"):
+            preserved_innate = [
+                s for s in (sheet.equipment.strikes or [])
+                if any(tok in ((s.name if hasattr(s, "name") else str(s)).lower()) for tok in innate_tokens)
+            ]
+            if strict_only_weapon:
+                final_strikes = parsed_strikes + preserved_innate
+            else:
+                # Keep full legal loadout: replace/dedupe matching melee/ranged slots and cap physical weapons cleanly
+                existing_phys = [
+                    s for s in (sheet.equipment.strikes or [])
+                    if not any(tok in ((s.name if hasattr(s, "name") else str(s)).lower()) for tok in innate_tokens)
+                ]
+                parsed_names_low = {(ps.name if hasattr(ps, "name") else ps.get("name", "")).lower() for ps in parsed_strikes}
+                parsed_has_ranged = any(n in ranged_weapon_names for n in parsed_names_low)
+                parsed_has_melee = any(n not in ranged_weapon_names for n in parsed_names_low)
+
+                kept_backups = []
+                for ex in existing_phys:
+                    ex_name_low = (ex.name if hasattr(ex, "name") else str(ex)).lower()
+                    if ex_name_low in parsed_names_low:
+                        continue
+                    ex_is_ranged = any(rw in ex_name_low for rw in ("bow", "crossbow", "sling", "dart", "javelin"))
+                    if parsed_has_ranged and ex_is_ranged:
+                        continue
+                    if parsed_has_melee and not ex_is_ranged:
+                        continue
+                    kept_backups.append(ex)
+
+                final_strikes = parsed_strikes + kept_backups[:1] + preserved_innate
+
+            sheet.equipment.strikes = final_strikes
+
+            # Sync equipment.weapons Item list with physical weapons only (no innate natural attacks)
+            final_phys_strikes = [
+                s for s in (sheet.equipment.strikes or [])
+                if not any(tok in ((s.name if hasattr(s, "name") else str(s)).lower()) for tok in innate_tokens)
+            ]
             if hasattr(sheet.equipment, "weapons"):
                 item_cls = type(sheet.equipment.weapons[0]) if sheet.equipment.weapons else None
                 new_weapon_items = []
-                for ps in parsed_strikes:
+                for ps in final_phys_strikes:
                     w_title = ps.name if hasattr(ps, "name") else ps.get("name", "Weapon")
                     w_traits = ps.traits if hasattr(ps, "traits") else ps.get("traits", [])
                     item_payload = {

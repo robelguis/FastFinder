@@ -742,7 +742,7 @@ def resolve_equipment(
                 damage_type="Slashing",
                 traits=["agile", "finesse", "unarmed", "brawling"]
             ))
-    if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob or "tengu" in ancestry_search_blob:
+    if "surki" in ancestry_search_blob or "razortooth" in ancestry_search_blob:
         ancestry_strikes_to_add.append(Strike(
             name="Natural Ancestry Attack",
             attack_bonus=base_anc_atk,
@@ -752,6 +752,29 @@ def resolve_equipment(
             damage_type="Slashing",
             traits=["agile", "finesse", "unarmed"]
         ))
+
+    natural_attack_specs = [
+        (("horn", "horns", "gore"), "Horn", "1d6", "Piercing", ["unarmed"]),
+        (("fang", "fangs", "bite"), "Fangs", "1d6", "Piercing", ["finesse", "unarmed"]),
+        (("jaw", "jaws"), "Jaws", "1d6", "Piercing", ["unarmed"]),
+        (("talon", "talons"), "Talons", "1d4", "Slashing", ["agile", "finesse", "unarmed"]),
+        (("tail",), "Tail", "1d4", "Bludgeoning", ["agile", "finesse", "unarmed"]),
+        (("venom", "poison"), "Venomous Strike", "1d4", "Poison", ["unarmed", "poison"]),
+        (("spine", "spines", "quill", "quills"), "Spines", "1d4", "Piercing", ["unarmed"]),
+    ]
+    for tokens, nat_name, nat_dice, nat_type, nat_traits in natural_attack_specs:
+        if any(re.search(r"\b" + re.escape(tok) + r"\b", ancestry_search_blob) for tok in tokens):
+            if not any(nat_name.lower() in s.name.lower() for s in ancestry_strikes_to_add):
+                is_ag = "agile" in nat_traits
+                ancestry_strikes_to_add.append(Strike(
+                    name=nat_name,
+                    attack_bonus=base_anc_atk,
+                    map_second=base_anc_atk - (4 if is_ag else 5),
+                    map_third=base_anc_atk - (8 if is_ag else 10),
+                    damage_dice=nat_dice,
+                    damage_type=nat_type,
+                    traits=nat_traits,
+                ))
 
     for ast in ancestry_strikes_to_add:
         if not any(ast.name.lower() in s.name.lower() for s in strikes):
