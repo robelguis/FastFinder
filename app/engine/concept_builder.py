@@ -696,6 +696,26 @@ USER CONCEPT: "{concept_text}"
 
                 final_strikes = parsed_strikes + kept_backups[:1] + preserved_innate
 
+            # Dedupe duplicate ranged weapons (e.g., Longbow + Heavy Crossbow or Crossbow + Shortbow) unless explicitly requested
+            ranged_tokens = ("bow", "crossbow", "sling")
+            explicit_ranged_count = sum(
+                1 for kw, wname, *_ in weapon_presets
+                if any(rt in wname.lower() for rt in ranged_tokens)
+                and re.search(r"\b" + re.escape(kw) + r"\b", t_low)
+            )
+            if explicit_ranged_count <= 1:
+                deduped_strikes = []
+                seen_ranged = False
+                for st_obj in final_strikes:
+                    st_n_low = ((st_obj.name if hasattr(st_obj, "name") else str(st_obj)) or "").lower()
+                    is_ranged_st = any(rt in st_n_low for rt in ranged_tokens)
+                    if is_ranged_st:
+                        if seen_ranged:
+                            continue
+                        seen_ranged = True
+                    deduped_strikes.append(st_obj)
+                final_strikes = deduped_strikes
+
             sheet.equipment.strikes = final_strikes
 
             # Sync equipment.weapons Item list with physical weapons only (no innate natural attacks)
