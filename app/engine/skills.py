@@ -544,8 +544,10 @@ def resolve_character_skills(
 
     # Dynamically extract and award Lore granted by Dedications and Feats
     if feats:
-        existing_lore_names = {s.name.lower() for s in result_skills}
-        lore_regex = re.compile(r"(?:trained in|gain the|gain)\s+(?:your choice of\s+[^;.]+and\s+)?([A-Z][a-zA-Z\s]+ Lore)", re.IGNORECASE)
+        lore_regex = re.compile(
+            r"(?:become trained in|trained in|gain the|gain)\s+(?:your choice of\s+[^;.]+and\s+)?([A-Za-z][A-Za-z\s\-]+?\s+Lore)(?=[.,;\n]|\s+or\b|$)",
+            re.IGNORECASE,
+        )
         for f_obj in feats:
             f_nm = f_obj.get("name", "") if isinstance(f_obj, dict) else getattr(f_obj, "name", "")
             if "additional lore" in f_nm.lower():
@@ -553,15 +555,32 @@ def resolve_character_skills(
             f_desc = f_obj.get("description", "") if isinstance(f_obj, dict) else getattr(f_obj, "description", "")
             found_lores = lore_regex.findall(f_desc)
             for raw_lore in found_lores:
-                clean_lore = raw_lore.strip()
-                if len(clean_lore.split()) > 4 or any(bad in clean_lore.lower() for bad in ["another", "associated", "appropriate", "choice", "additional", "skill increase", "apply", "chosen", "subcategory"]):
+                clean_lore = re.sub(r"\s+", " ", raw_lore.strip())
+                if len(clean_lore.split()) > 5 or any(
+                    bad in clean_lore.lower()
+                    for bad in ["another", "associated", "appropriate", "choice", "additional", "skill increase", "apply", "chosen", "subcategory"]
+                ):
                     continue
                 if clean_lore.lower().startswith("in "):
                     clean_lore = clean_lore[3:].strip()
                 clean_lore = clean_lore.title()
-                if "Lore" not in clean_lore:
+                if not clean_lore.endswith(" Lore"):
                     clean_lore = f"{clean_lore} Lore"
-                if clean_lore.lower() not in existing_lore_names:
+
+                existing_idx = next((i for i, s in enumerate(result_skills) if s.name.lower() == clean_lore.lower()), None)
+                already_trained_desc = "or expert if you were already trained" in f_desc.lower()
+                if existing_idx is not None:
+                    cur_entry = result_skills[existing_idx]
+                    upgraded_rank = max(cur_entry.rank, 4 if already_trained_desc else 2)
+                    if upgraded_rank > cur_entry.rank:
+                        result_skills[existing_idx] = SkillEntry(
+                            name=cur_entry.name,
+                            rank=upgraded_rank,
+                            rank_letter=RANK_LETTER_MAP.get(upgraded_rank, "E"),
+                            modifier=(upgraded_rank + target_lvl) + norm_mods.get("int", 0),
+                            attribute=cur_entry.attribute or "INT",
+                        )
+                else:
                     target_rank = 2
                     lore_prof = target_rank + target_lvl
                     lore_mod = lore_prof + norm_mods.get("int", 0)
@@ -574,5 +593,4 @@ def resolve_character_skills(
                             attribute="INT"
                         )
                     )
-                    existing_lore_names.add(clean_lore.lower())
     return result_skills
