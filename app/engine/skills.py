@@ -544,6 +544,14 @@ def resolve_character_skills(
 
     # Dynamically extract and award Lore granted by Dedications and Feats
     if feats:
+    DEDICATION_LORE_MAP = {
+        "living monolith dedication": ("Ancient Osirion Lore", True),
+        "hellknight armiger": ("Hell Lore", False),
+        "mammoth lord": ("Mammoth Lore", False),
+        "riftwarden": ("Planes Lore", False),
+    }
+
+
         lore_regex = re.compile(
             r"(?:become trained in|trained in|gain the|gain)\s+(?:your choice of\s+[^;.]+and\s+)?([A-Za-z][A-Za-z\s\-]+?\s+Lore)(?=[.,;\n]|\s+or\b|$)",
             re.IGNORECASE,
@@ -553,7 +561,10 @@ def resolve_character_skills(
             if "additional lore" in f_nm.lower():
                 continue
             f_desc = f_obj.get("description", "") if isinstance(f_obj, dict) else getattr(f_obj, "description", "")
-            found_lores = lore_regex.findall(f_desc)
+            found_lores = list(lore_regex.findall(f_desc))
+            ded_match = DEDICATION_LORE_MAP.get(f_nm.strip().lower())
+            if ded_match and ded_match[0] not in found_lores:
+                found_lores.append(ded_match[0])
             for raw_lore in found_lores:
                 clean_lore = re.sub(r"\s+", " ", raw_lore.strip())
                 if len(clean_lore.split()) > 5 or any(
