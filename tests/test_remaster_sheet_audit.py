@@ -93,3 +93,32 @@ def test_audit_live_level20_centaur_summoner():
     issues = audit_remaster_sheet(sheet_dict)
     print("\nLive Level 20 Centaur Summoner audit issues:", issues)
     assert issues == [], f'Unexpected audit issues: {issues}'
+@pytest.mark.parametrize("level", [1, 10, 20])
+@pytest.mark.parametrize(
+    "archetype_name,subclass_name",
+    [
+        ("Living Monolith", "Fey Eidolon"),
+        ("Beastmaster", "Beast Eidolon"),
+        ("Blessed One", "Devotion Phantom Eidolon"),
+        ("Undead Master", "Undead Eidolon"),
+    ],
+)
+def test_audit_summoner_levels_and_archetypes(level, archetype_name, subclass_name):
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name="Centaur",
+        class_name="Summoner",
+        background_name="Union Representative",
+        archetype_name=archetype_name,
+        char_name=f"Audit {archetype_name} L{level}",
+        level=level,
+        use_dedication=True,
+        heritage_name="Plain-Runner Centaur",
+        subclass_name=subclass_name,
+    )
+    issues = audit_remaster_sheet(sheet)
+    assert issues == [], f"Audit issues for {archetype_name} ({subclass_name}) at L{level}: {issues}"
+    assert sheet.companion is not None, f"Expected Eidolon companion for L{level} {archetype_name}"
+    assert sheet.companion.ac >= 15 + level, (
+        f"Unexpectedly low Eidolon AC {sheet.companion.ac} for L{level} {subclass_name}"
+    )
