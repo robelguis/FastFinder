@@ -140,6 +140,11 @@ FEAT_FOCUS_SPELLS = {
 }
 
 CLASS_FOCUS_SPELLS: Dict[str, Dict[str, Any]] = {
+    "cleric": {
+        "tradition": "Divine",
+        "attr": "wis",
+        "spells": []
+    },
     "champion": {
         "tradition": "Divine",
         "attr": "cha",
@@ -289,12 +294,85 @@ def _get_druid_order_spell(subclass_name: Optional[str], feats: List[FeatSummary
             return sp
     return DRUID_ORDER_FOCUS_SPELLS["animal"]
 
+
+def _append_deity_domain_spells(
+    spells: List[SpellSummary],
+    feats: List[FeatSummary],
+    deity_data: Optional[Dict[str, Any]],
+    tradition: str,
+    curr_rank: int,
+) -> None:
+    if not deity_data:
+        return
+    try:
+        from app.engine.deities import get_domain_info, get_deity_domains
+    except Exception:
+        return
+
+    feat_names = [
+        (getattr(f, "name", "") if not isinstance(f, dict) else f.get("name", "")) or ""
+        for f in (feats or [])
+    ]
+    domain_feat_markers = (
+        "domain initiate",
+        "deity's domain",
+        "deitys domain",
+        "expanded domain initiate",
+        "domain acumen",
+        "domain fluency",
+        "advanced domain",
+        "advanced deity's domain",
+        "advanced deitys domain",
+        "splinter faith",
+    )
+    has_domain_feat = any(any(m in fn.lower() for m in domain_feat_markers) for fn in feat_names)
+    chosen_doms: List[str] = []
+    if isinstance(deity_data, dict):
+        for d_item in deity_data.get("chosen_domains") or []:
+            d_clean = str(d_item).strip().title()
+            if d_clean and d_clean not in chosen_doms:
+                chosen_doms.append(d_clean)
+
+    for fn in feat_names:
+        low = fn.lower()
+        if any(m in low for m in domain_feat_markers) and "(" in fn and ")" in fn:
+            inside = fn.split("(", 1)[1].rsplit(")", 1)[0]
+            for part in inside.split(","):
+                d_clean = part.strip().title()
+                if d_clean and d_clean not in chosen_doms:
+                    chosen_doms.append(d_clean)
+
+    if not chosen_doms and has_domain_feat:
+        d_list = get_deity_domains(deity_data.get("name"))
+        if d_list:
+            chosen_doms.append(d_list[0])
+
+    for dom in chosen_doms:
+        info = get_domain_info(dom)
+        for key in ("domain_spell", "advanced_domain_spell"):
+            sp_info = info.get(key)
+            if isinstance(sp_info, dict) and sp_info.get("name"):
+                sp_name = str(sp_info["name"]).strip()
+                if any(s.name.lower() == sp_name.lower() for s in spells):
+                    continue
+                traits = ["Domain", "Focus", tradition.split(" ")[0]]
+                spells.append(
+                    SpellSummary(
+                        name=sp_name,
+                        rank=max(curr_rank, int(sp_info.get("rank") or 1)),
+                        actions=str(sp_info.get("casting_time") or "1 action"),
+                        traits=traits,
+                        description=str(sp_info.get("description") or f"Granted by the {dom} domain ({deity_data.get('name')})."),
+                    )
+                )
+
 def resolve_focus_spells(
     class_name: str,
     feats: List[FeatSummary],
     attribute_mods: Dict[str, int],
     subclass_name: Optional[str] = None,
-    level: int = 1
+    level: int = 1,
+    deity_data: Optional[Dict[str, Any]] = None,
 ) -> Optional[FocusSpellData]:
     cls_key = class_name.lower()
 
@@ -573,6 +651,24 @@ def resolve_focus_spells(
                 spell_attack=prof_bonus + attr_mod,
                 spells=[delay_consequence],
             )
+        domain_spells_early: List[SpellSummary] = []
+        _append_deity_domain_spells(domain_spells_early, feats, deity_data, "Divine", max(1, (level + 1) // 2))
+        if domain_spells_early:
+            attr_key = "cha" if attribute_mods.get("cha", 0) >= attribute_mods.get("wis", 0) else "wis"
+            if attr_key not in attribute_mods:
+                attr_key = "int" if "int" in attribute_mods else "cha"
+            attr_mod = attribute_mods.get(attr_key, 2)
+            prof_bonus = 2 + level
+            pool = min(3, len(domain_spells_early))
+            return FocusSpellData(
+                focus_points=pool,
+                max_focus_points=pool,
+                tradition="Divine",
+                casting_attribute=attr_key.upper(),
+                spell_dc=10 + prof_bonus + attr_mod,
+                spell_attack=prof_bonus + attr_mod,
+                spells=domain_spells_early,
+            )
         return None
 
     cfg = CLASS_FOCUS_SPELLS[cls_key]
@@ -601,6 +697,8 @@ def resolve_focus_spells(
         if any(feat_trigger in fn for fn in feat_names_lower):
             if not any(s.name.lower() == spell_def["name"].lower() for s in spells):
                 spells.append(SpellSummary(rank=curr_rank, **spell_def))
+
+    _append_deity_domain_spells(spells, feats, deity_data, cfg["tradition"], curr_rank)
 
     # Remaster rules: 1 Focus Point per known focus spell, capped at 3
     calculated_pool = min(3, max(1, len(spells)))

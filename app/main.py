@@ -7,6 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.engine.archetypes import get_all_archetype_names
+from app.engine.deities import get_all_deities, list_all_domains
 from app.engine.foundry import export_to_foundry_actor
 from app.engine.generator import PF2eGenerator
 from app.engine.subclasses import CLASS_SUBCLASSES
@@ -55,6 +56,15 @@ def get_options():
         "backgrounds": sorted(b["name"] for b in generator.backgrounds.values()),
         "archetypes": get_all_archetype_names(),
         "subclasses": subclasses_by_class,
+        "deities": [d["name"] for d in get_all_deities()],
+        "deity_domains": {
+            d["name"].lower(): {
+                "primary": d.get("domains", {}).get("primary", []),
+                "alternate": d.get("domains", {}).get("alternate", []),
+            }
+            for d in get_all_deities()
+        },
+        "domains": list_all_domains(),
     }
 
 
@@ -65,6 +75,8 @@ def generate_character(
     class_name: Optional[str] = None,
     subclass: Optional[str] = None,
     background: Optional[str] = None,
+    deity: Optional[str] = None,
+    domain: Optional[str] = None,
     archetype: Optional[str] = None,
     level: int = Query(1, ge=1, le=20),
     dedication: bool = Query(False),
@@ -76,6 +88,8 @@ def generate_character(
             class_name=class_name,
             subclass_name=subclass,
             background_name=background,
+            deity_name=deity,
+            domain_name=domain,
             archetype_name=clean_arch,
             char_name=name,
             level=level,
@@ -135,6 +149,8 @@ def export_foundry(
     class_name: Optional[str] = None,
     subclass: Optional[str] = None,
     background: Optional[str] = None,
+    deity: Optional[str] = None,
+    domain: Optional[str] = None,
     archetype: Optional[str] = None,
     level: int = Query(1, ge=1, le=20),
     dedication: bool = Query(False),
@@ -146,6 +162,8 @@ def export_foundry(
             class_name=class_name,
             subclass_name=subclass,
             background_name=background,
+            deity_name=deity,
+            domain_name=domain,
             archetype_name=clean_arch,
             char_name=name,
             level=level,

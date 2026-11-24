@@ -28,6 +28,7 @@ from app.engine.feat_prereqs import (
     is_kineticist_feat_allowed,
 )
 from app.engine.focus import resolve_focus_spells
+from app.engine.deities import get_deity, get_deity_domains, get_domain_info, select_deity
 from app.engine.heritages import ANCESTRY_HERITAGES, resolve_heritage
 from app.engine.models import (
     AttributeModifiers,
@@ -39,6 +40,9 @@ from app.engine.models import (
     SkillEntry,
     Strike,
     SubclassSummary,
+    DeitySummary,
+    FocusSpellData,
+    SpellSummary,
 )
 from app.engine.names import generate_golarion_name
 from app.engine.plants_familiars_summons import resolve_plant_companion, resolve_specific_familiar
@@ -836,7 +840,7 @@ def apply_feat_granted_lores(all_skills: list, chosen_feats: list, level: int, i
                         pass
 
 
-def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
+def resolve_feat_subchoices(feat_name: str, existing_feat_names: set, active_deity_name: Optional[str] = None) -> str:
     fn_lower = feat_name.lower()
     if "(" in feat_name:
         return feat_name
@@ -852,12 +856,16 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set) -> str:
         return f"{feat_name} ({chosen})"
 
     if "splinter faith" in fn_lower:
-        domain_pool = ["Protection", "Zeal", "Sun", "Might", "Moon", "Nature", "Healing", "Truth", "Family", "Travel"]
-        return f"{feat_name} ({', '.join(random.sample(domain_pool, 4))})"
+        deity_pool = get_deity_domains(active_deity_name, include_alternate=True) if active_deity_name else []
+        fallback_pool = ["Protection", "Zeal", "Sun", "Might", "Moon", "Nature", "Healing", "Truth", "Family", "Travel"]
+        domain_pool = deity_pool if len(deity_pool) >= 4 else (deity_pool + [d for d in fallback_pool if d not in deity_pool])
+        return f"{feat_name} ({', '.join(random.sample(domain_pool, min(4, len(domain_pool))))})"
 
     norm_fn = fn_lower.replace("’", "'")
     if any(k in norm_fn for k in ("deity's domain", "deitys domain", "domain initiate")):
-        domain_pool = ["Zeal", "Protection", "Sun", "Might", "Moon", "Nature", "Healing", "Truth", "Family", "Travel"]
+        deity_pool = get_deity_domains(active_deity_name, include_alternate=True) if active_deity_name else []
+        fallback_pool = ["Zeal", "Protection", "Sun", "Might", "Moon", "Nature", "Healing", "Truth", "Family", "Travel"]
+        domain_pool = deity_pool or fallback_pool
         taken_domains = {
             fn.split("(")[-1].replace(")", "").strip().title()
             for fn in existing_feat_names
@@ -944,7 +952,10 @@ def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
     if has_parens and any(k in feat_name.lower() for k in ("domain", "deity")):
         sub_val = feat_name.split("(", 1)[1].rsplit(")", 1)[0].strip()
         if sub_val and sub_val.lower() not in desc.lower():
-            desc = f"{desc} Chosen Domain: {sub_val}." if desc else f"Chosen Domain: {sub_val}."
+            d_info = get_domain_info(sub_val)
+            sp_name = (d_info.get("domain_spell") or {}).get("name") if isinstance(d_info.get("domain_spell"), dict) else None
+            extra = f" Chosen Domain: {sub_val}" + (f" (Domain Spell: {sp_name})." if sp_name else ".")
+            desc = f"{desc}{extra}" if desc else extra.strip()
     cleaned = clean_pf2e_text(desc)
     if has_parens:
         subchoice = feat_name.split("(", 1)[1].rstrip(")")
@@ -1105,6 +1116,99 @@ def apply_ostilli_host_graft(chosen_feats: List[FeatSummary], equipment_loadout:
     else:
         feat_map["spit ambient magic"].description = spit_desc
 
+
+
+def _build_deity_summary(deity_raw: Optional[Dict[str, Any]], feats: List[FeatSummary]) -> Optional[DeitySummary]:
+    if not deity_raw:
+        return None
+    chosen_doms: List[str] = []
+    domain_spell_names: List[str] = []
+    for f in (feats or []):
+        fname = getattr(f, "name", "") or ""
+        low = fname.lower()
+        if any(k in low for k in ("domain initiate", "deity's domain", "deitys domain", "splinter faith", "domain acumen", "domain fluency", "advanced domain")) and "(" in fname and ")" in fname:
+            inside = fname.split("(", 1)[1].rsplit(")", 1)[0]
+            for part in inside.split(","):
+                d_clean = part.strip().title()
+                if d_clean and d_clean not in chosen_doms:
+                    chosen_doms.append(d_clean)
+                    info = get_domain_info(d_clean)
+                    sp_obj = info.get("domain_spell") if isinstance(info.get("domain_spell"), dict) else None
+                    if sp_obj and sp_obj.get("name") and sp_obj["name"] not in domain_spell_names:
+                        domain_spell_names.append(str(sp_obj["name"]))
+    return DeitySummary(
+        name=str(deity_raw.get("name") or ""),
+        category=str(deity_raw.get("category") or ""),
+        attributes=list(deity_raw.get("attributes") or []),
+        sanctification=dict(deity_raw.get("sanctification") or {}),
+        domains=dict(deity_raw.get("domains") or {"primary": [], "alternate": []}),
+        font=list(deity_raw.get("font") or []),
+        favored_weapon=deity_raw.get("favored_weapon"),
+        skill=deity_raw.get("skill"),
+        chosen_domains=chosen_doms,
+        domain_spells=domain_spell_names,
+    )
+
+
+def _sync_deity_focus_spells(sheet: CharacterSheet) -> CharacterSheet:
+    deity_obj = getattr(sheet, "deity", None)
+    if not deity_obj:
+        return sheet
+    chosen_doms = list(getattr(deity_obj, "chosen_domains", None) or [])
+    if not chosen_doms:
+        return sheet
+
+    curr_rank = max(1, (int(getattr(sheet, "level", 1) or 1) + 1) // 2)
+    wis_mod = int(getattr(getattr(sheet, "attributes", None), "wis", 0) or 0)
+    cha_mod = int(getattr(getattr(sheet, "attributes", None), "cha", 0) or 0)
+    int_mod = int(getattr(getattr(sheet, "attributes", None), "int", 0) or 0)
+    cls_low = str(getattr(sheet, "char_class", "") or "").lower()
+    if "cleric" in cls_low or "druid" in cls_low:
+        attr_code, attr_mod = "WIS", wis_mod
+    elif "champion" in cls_low or "bard" in cls_low or "oracle" in cls_low or "sorcerer" in cls_low:
+        attr_code, attr_mod = "CHA", cha_mod
+    else:
+        attr_code, attr_mod = "INT", int_mod
+
+    prof_bonus = (4 if int(getattr(sheet, "level", 1) or 1) >= 7 else 2) + int(getattr(sheet, "level", 1) or 1)
+    spell_dc = 10 + prof_bonus + attr_mod
+    spell_attack = prof_bonus + attr_mod
+
+    existing_fs = getattr(sheet, "focus_spells", None)
+    spell_list = list(getattr(existing_fs, "spells", None) or [])
+    known_names = {str(getattr(s, "name", "") or "").lower() for s in spell_list}
+
+    for dom in chosen_doms:
+        info = get_domain_info(dom)
+        for key in ("domain_spell", "advanced_domain_spell"):
+            sp_info = info.get(key) if isinstance(info, dict) else None
+            if isinstance(sp_info, dict) and sp_info.get("name"):
+                sp_name = str(sp_info["name"]).strip()
+                if sp_name.lower() in known_names:
+                    continue
+                known_names.add(sp_name.lower())
+                spell_list.append(
+                    SpellSummary(
+                        name=sp_name,
+                        rank=max(curr_rank, int(sp_info.get("rank") or 1)),
+                        actions=str(sp_info.get("casting_time") or "1 action"),
+                        traits=["Domain", "Focus", "Divine"],
+                        description=str(sp_info.get("description") or f"Granted by the {dom} domain ({getattr(deity_obj, 'name', '')})."),
+                    )
+                )
+
+    if spell_list:
+        pool = min(3, max(1, len(spell_list)))
+        sheet.focus_spells = FocusSpellData(
+            focus_points=max(pool, int(getattr(existing_fs, "focus_points", 0) or 0)),
+            max_focus_points=max(pool, int(getattr(existing_fs, "max_focus_points", 0) or 0)),
+            tradition=getattr(existing_fs, "tradition", None) or "Divine",
+            casting_attribute=getattr(existing_fs, "casting_attribute", None) or attr_code,
+            spell_dc=int(getattr(existing_fs, "spell_dc", 0) or 0) or spell_dc,
+            spell_attack=int(getattr(existing_fs, "spell_attack", 0) or 0) or spell_attack,
+            spells=spell_list,
+        )
+    return sheet
 
 class PF2eGenerator:
     def __init__(self) -> None:
@@ -1523,6 +1627,8 @@ class PF2eGenerator:
         existing_languages: Optional[List[str]] = None,
         old_int: int = 0,
         concept_text: Optional[str] = None,
+        deity_name: Optional[str] = None,
+        domain_name: Optional[str] = None,
     ) -> CharacterSheet:
         cls_name_lower = cls["name"].lower()
         sub_name = (
@@ -1828,13 +1934,27 @@ class PF2eGenerator:
         for f_obj in chosen_feats:
             orig_n = getattr(f_obj, "name", None)
             if isinstance(orig_n, str) and "(" not in orig_n:
-                updated_n = resolve_feat_subchoices(orig_n, all_feat_names_final)
+                _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
+                _fin_deity = select_deity(deity_name=None, class_name=_fin_cls_name, background_name=background_name)
+                updated_n = resolve_feat_subchoices(orig_n, all_feat_names_final, _fin_deity.get("name") if isinstance(_fin_deity, dict) else None)
                 if updated_n != orig_n:
                     f_obj.name = updated_n
                     all_feat_names_final.add(updated_n)
                     if hasattr(f_obj, "description"):
                         f_obj.description = enrich_feat_description(updated_n, getattr(f_obj, "description", "") or "")
 
+        _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
+        _fin_deity_raw = select_deity(deity_name=deity_name, class_name=_fin_cls_name, background_name=background_name)
+        deity_summary = _build_deity_summary(_fin_deity_raw, chosen_feats)
+        if deity_summary and domain_name and domain_name.strip().lower() not in ("", "any", "any domain", "none"):
+            clean_dom = domain_name.strip().title()
+            if clean_dom not in deity_summary.chosen_domains:
+                deity_summary.chosen_domains.insert(0, clean_dom)
+            dom_info = get_domain_info(clean_dom)
+            sp_obj = dom_info.get("domain_spell") if isinstance(dom_info, dict) else None
+            if isinstance(sp_obj, dict) and sp_obj.get("name"):
+                if sp_obj["name"] not in deity_summary.domain_spells:
+                    deity_summary.domain_spells.insert(0, sp_obj["name"])
         raw_sheet = CharacterSheet(
             name=name,
             level=level,
@@ -1845,6 +1965,7 @@ class PF2eGenerator:
             background_description=background_description,
             character_class=cls["name"],
             subclass=subclass_obj,
+            deity=deity_summary,
             archetype=archetype_name,
             archetype_description=archetype_description,
             size=size,
@@ -1915,6 +2036,8 @@ class PF2eGenerator:
         subclass_name: Optional[str] = None,
         concept_text: Optional[str] = None,
         requested_feats: Optional[List[str]] = None,
+        deity_name: Optional[str] = None,
+        domain_name: Optional[str] = None,
     ) -> CharacterSheet:
         level = max(1, min(20, int(level)))
 
@@ -2846,7 +2969,7 @@ class PF2eGenerator:
             fallback_lore_name="Scribing Lore",
         )
 
-        return self._sync_feat_skill_prereqs(self._finalize_sheet(
+        return _sync_deity_focus_spells(self._sync_feat_skill_prereqs(self._finalize_sheet(
             name=resolved_name,
             level=level,
             anc=anc,
@@ -2874,7 +2997,9 @@ class PF2eGenerator:
             chosen_feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
             concept_text=concept_text,
-        ))
+            deity_name=deity_name,
+            domain_name=domain_name,
+        )))
 
     def level_up(
         self,
@@ -3642,12 +3767,20 @@ class PF2eGenerator:
             concept_text=None,
         )
 
+        existing_deity_name = (current_char.get("deity") or {}).get("name") if isinstance(current_char.get("deity"), dict) else getattr(current_char.get("deity"), "name", None)
+        selected_deity = select_deity(
+            deity_name=existing_deity_name,
+            class_name=cls["name"],
+            background_name=bg["name"],
+        )
+        deity_summary = _build_deity_summary(selected_deity, chosen_feats)
         focus_data = resolve_focus_spells(
             class_name=cls["name"],
             feats=chosen_feats,
             attribute_mods=mods,
             subclass_name=sub_name,
             level=target_level,
+            deity_data=selected_deity,
         )
 
         raw_companion = current_char.get("companion")
@@ -3728,4 +3861,6 @@ class PF2eGenerator:
             existing_partners=combined_partners,
             existing_languages=list(current_char.get("languages") or ["Common"]),
             old_int=raw_attrs.get("int", raw_attrs.get("intelligence", 0)),
+            deity_name=deity_name,
+            domain_name=domain_name,
         ))

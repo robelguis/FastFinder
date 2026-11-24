@@ -173,6 +173,18 @@ class PartnerCreatureData(BaseModel):
 
 AnimalCompanionData = PartnerCreatureData
 
+class DeitySummary(BaseModel):
+    name: str
+    category: str = ""
+    attributes: List[str] = []
+    sanctification: Dict[str, Any] = {}
+    domains: Dict[str, List[str]] = {}
+    font: List[str] = []
+    favored_weapon: Optional[str] = None
+    skill: Optional[str] = None
+    chosen_domains: List[str] = []
+    domain_spells: List[str] = []
+
 class SubclassSummary(BaseModel):
     title: str
     name: str
@@ -197,6 +209,7 @@ class CharacterSheet(BaseModel):
     background_description: Optional[str] = None
     character_class: str
     subclass: Optional[SubclassSummary] = None
+    deity: Optional[DeitySummary] = None
     archetype: Optional[str] = None
     archetype_description: Optional[str] = None
     size: str

@@ -479,6 +479,14 @@
           <select id="backgroundSelect"><option value="">Any Background</option></select>
         </div>
         <div class="field">
+          <label for="deitySelect">Deity</label>
+          <select id="deitySelect"><option value="">Any Deity</option></select>
+        </div>
+        <div class="field">
+          <label for="domainSelect">Domain</label>
+          <select id="domainSelect"><option value="">Any Domain</option></select>
+        </div>
+        <div class="field">
           <label for="levelSelect">Level</label>
           <select id="levelSelect">
             <option value="1" selected>Level 1</option><option value="2">Level 2</option><option value="3">Level 3</option><option value="4">Level 4</option>
@@ -876,6 +884,59 @@ function updateHeritageDropdown() {
             bgSelect.appendChild(opt);
           });
         }
+
+        window.cachedDeityDomains = data.deity_domains || {};
+        window.cachedAllDomains = data.domains || [];
+        const deitySelect = document.getElementById("deitySelect");
+        const domainSelect = document.getElementById("domainSelect");
+
+        function updateDomainsForDeity(selectedDeity) {
+          if (!domainSelect) return;
+          const prevVal = domainSelect.value;
+          domainSelect.innerHTML = '<option value="">Any Domain</option>';
+          const key = (selectedDeity || "").toLowerCase().trim();
+          const entry = key && window.cachedDeityDomains ? window.cachedDeityDomains[key] : null;
+          if (entry) {
+            (entry.primary || []).forEach(d => {
+              const opt = document.createElement("option");
+              opt.value = d;
+              opt.textContent = d;
+              domainSelect.appendChild(opt);
+            });
+            (entry.alternate || []).forEach(d => {
+              if (!(entry.primary || []).includes(d)) {
+                const opt = document.createElement("option");
+                opt.value = d;
+                opt.textContent = `${d} (Alternate)`;
+                domainSelect.appendChild(opt);
+              }
+            });
+          } else {
+            (window.cachedAllDomains || []).forEach(d => {
+              const opt = document.createElement("option");
+              opt.value = d;
+              opt.textContent = d;
+              domainSelect.appendChild(opt);
+            });
+          }
+          if (prevVal && Array.from(domainSelect.options).some(o => o.value === prevVal)) {
+            domainSelect.value = prevVal;
+          }
+        }
+
+        if (deitySelect && data.deities) {
+          deitySelect.innerHTML = '<option value="">Any Deity</option>';
+          data.deities.forEach(d => {
+            const opt = document.createElement("option");
+            opt.value = d;
+            opt.textContent = d;
+            deitySelect.appendChild(opt);
+          });
+          deitySelect.addEventListener("change", () => {
+            updateDomainsForDeity(deitySelect.value);
+          });
+        }
+        updateDomainsForDeity(deitySelect ? deitySelect.value : "");
 
         const archSelect = document.getElementById("archetypeSelect");
         if (archSelect && data.archetypes) {
@@ -1379,6 +1440,8 @@ function updateHeritageDropdown() {
       const cls = document.getElementById('classSelect').value;
       const sub = document.getElementById("subclassSelect") ? document.getElementById("subclassSelect").value : "";
       const bg = document.getElementById("backgroundSelect") ? document.getElementById("backgroundSelect").value : "";
+      const deityVal = document.getElementById("deitySelect") ? document.getElementById("deitySelect").value : "";
+      const domainVal = document.getElementById("domainSelect") ? document.getElementById("domainSelect").value : "";
       const arch = document.getElementById("archetypeSelect") ? document.getElementById("archetypeSelect").value : "";
       const lvl = document.getElementById('levelSelect').value || 1;
       const useDedication = document.getElementById('dedicationToggle')?.checked;
@@ -1394,6 +1457,8 @@ function updateHeritageDropdown() {
         params.append('subclass', sub);
       }
       if (bg) params.append("background", bg);
+      if (deityVal) params.append("deity", deityVal);
+      if (domainVal) params.append("domain", domainVal);
       params.append('level', lvl);
       params.append('dedication', useDedication ? 'true' : 'false');
 
@@ -1648,6 +1713,8 @@ function updateHeritageDropdown() {
         "classSelect",
         "subclassSelect",
         "backgroundSelect",
+        "deitySelect",
+        "domainSelect",
         "archetypeSelect",
         "levelSelect"
       ];
