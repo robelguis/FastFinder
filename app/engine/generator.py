@@ -788,12 +788,14 @@ def extract_lores_from_feat(feat_name: str, feat_desc: str = "") -> List[str]:
     found: List[str] = []
     seen: Set[str] = set()
 
+    blocked_lores = {"lore", "chosen lore", "additional lore", "your lore", "any lore", "that lore", "specific lore"}
+
     def _add(raw: str) -> None:
         cand = _clean_lore_candidate(raw)
         if not cand:
             return
         key = cand.lower()
-        if key not in seen and key != "lore":
+        if key not in seen and key not in blocked_lores and not key.startswith("chosen "):
             seen.add(key)
             found.append(cand)
 
