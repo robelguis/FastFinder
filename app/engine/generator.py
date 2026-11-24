@@ -1001,7 +1001,11 @@ def extract_bg_feat(bg_desc: str, feats_list: list) -> str:
     if not bg_desc:
         return ""
     feat_lookup = {f["name"].lower(): f["name"] for f in feats_list}
-    m_uuid = re.search(r"@UUID\[[^\]]*feats-srd\.Item\.([^|\]]+)", bg_desc) or re.search(r"@UUID\[[^\]]*Item\.([^|\]]+)", bg_desc)
+    m_uuid = re.search(r"@UUID\[[^\]]*feats-srd\.Item\.([^|\]]+)", bg_desc)
+    if not m_uuid:
+        m_item = re.search(r"@UUID\[[^\]]*Item\.([^|\]]+)", bg_desc)
+        if m_item and not re.search(r"equipment-srd|pathfinder-monster-core|spells-srd|actionspf2e", m_item.group(0), re.IGNORECASE):
+            m_uuid = m_item
     if m_uuid:
         c_name = m_uuid.group(1).strip()
         return feat_lookup.get(c_name.lower(), c_name)
@@ -1116,6 +1120,127 @@ def apply_ostilli_host_graft(chosen_feats: List[FeatSummary], equipment_loadout:
     else:
         feat_map["spit ambient magic"].description = spit_desc
 
+
+
+
+
+def apply_background_starting_package(
+    bg_desc: str,
+    equipment_loadout: Any,
+    collected_partners: List[PartnerCreatureData],
+    level: int,
+    mods: dict,
+) -> None:
+    if not bg_desc or not equipment_loadout:
+        return
+
+    # Extract explicit Item and Actor UUIDs
+    item_matches = re.findall(r"@UUID\[[^\]]*\.Item\.([^|\]]+)", bg_desc)
+    actor_matches = re.findall(r"@UUID\[[^\]]*\.Actor\.([^|\]]+)", bg_desc)
+
+    # Also detect "shoddy <Name>" if not already captured
+    for m in re.finditer(r"\bshoddy\s+([A-Z][A-Za-z\s\-]+?)(?:\s+armor|[.,;)]|$)", bg_desc):
+        cand = f"Shoddy {m.group(1).strip()}"
+        if cand not in item_matches:
+            item_matches.append(cand)
+
+    weapons_list = equipment_loadout.weapons if isinstance(getattr(equipment_loadout, "weapons", None), list) else []
+    gear_list = equipment_loadout.gear if isinstance(getattr(equipment_loadout, "gear", None), list) else []
+    strikes_list = equipment_loadout.strikes if isinstance(getattr(equipment_loadout, "strikes", None), list) else []
+
+    weapon_specs = {
+        "longsword": ("1d8", "Slashing", ["Versatile P"]),
+        "lance": ("1d8", "Piercing", ["Deadly d8", "Jousting"]),
+    }
+    armor_names = {"half plate", "breastplate", "chain mail", "splint mail", "plate", "scale mail", "hide", "studded leather", "leather"}
+
+    from app.engine.models import Item as EqItem
+
+    for raw_item in item_matches:
+        clean_item = re.sub(r"\s+", " ", raw_item.replace("’", "'")).strip()
+        low_item = clean_item.lower()
+        base_item = re.sub(r"^shoddy\s+", "", low_item).strip()
+        is_shoddy = "shoddy" in low_item or f"shoddy {base_item}" in bg_desc.lower()
+        display_name = f"{clean_item.title()} (Shoddy -2 item penalty)" if (is_shoddy and "shoddy" not in low_item) else clean_item.title()
+        if is_shoddy and "(Shoddy" not in display_name:
+            display_name = f"{display_name} (-2 item penalty)"
+
+        if base_item in armor_names:
+            cur_armor = getattr(equipment_loadout, "armor", None)
+            cur_armor_name = (
+                getattr(cur_armor, "name", None)
+                or (cur_armor.get("name") if isinstance(cur_armor, dict) else None)
+                or (str(cur_armor) if cur_armor else "")
+            )
+            if base_item not in cur_armor_name.lower():
+                new_armor_label = f"{display_name} [over {cur_armor_name}]" if cur_armor_name else display_name
+                if isinstance(cur_armor, EqItem):
+                    equipment_loadout.armor = cur_armor.model_copy(update={"name": new_armor_label})
+                else:
+                    equipment_loadout.armor = EqItem(name=new_armor_label)
+            if display_name not in gear_list:
+                gear_list.append(display_name)
+        elif base_item in weapon_specs:
+            dice_str, dmg_type, w_traits = weapon_specs[base_item]
+            existing_w_names = {
+                (getattr(w, "name", None) or (w.get("name") if isinstance(w, dict) else str(w))).lower()
+                for w in weapons_list
+            }
+            if display_name.lower() not in existing_w_names:
+                weapons_list.append(EqItem(name=display_name))
+            if not any(base_item in (st.name or "").lower() for st in strikes_list):
+                atk_val = 2 + level + mods.get("str", 0) + (-2 if is_shoddy else 0)
+                str_mod = mods.get("str", 0)
+                dmg_dice = f"{dice_str}+{str_mod}" if str_mod > 0 else (f"{dice_str}{str_mod}" if str_mod < 0 else dice_str)
+                st_traits = list(w_traits) + (["Shoddy"] if is_shoddy else [])
+                strikes_list.append(Strike(
+                    name=display_name,
+                    attack_bonus=f"+{atk_val}" if atk_val >= 0 else str(atk_val),
+                    damage=f"{dmg_dice} {dmg_type}",
+                    damage_dice=dmg_dice,
+                    damage_type=dmg_type,
+                    traits=st_traits,
+                    map_second=f"+{atk_val - 5}" if (atk_val - 5) >= 0 else str(atk_val - 5),
+                    map_third=f"+{atk_val - 10}" if (atk_val - 10) >= 0 else str(atk_val - 10),
+                ))
+        else:
+            if display_name not in gear_list:
+                gear_list.append(display_name)
+
+    equipment_loadout.weapons = weapons_list
+    equipment_loadout.gear = gear_list
+    equipment_loadout.strikes = strikes_list
+
+    for mount_kw in ("riding horse", "pony", "warhorse", "riding dog", "camel"):
+        if mount_kw in bg_desc.lower() and not any(mount_kw in a.lower() for a in actor_matches):
+            actor_matches.append(mount_kw.title())
+
+    for raw_actor in actor_matches:
+        actor_name = re.sub(r"\s+", " ", raw_actor.replace("’", "'")).strip().title()
+        if not any(actor_name.lower() in (p.name or "").lower() for p in collected_partners):
+            mount_hp = 8 + (6 * level)
+            collected_partners.append(PartnerCreatureData(
+                name=actor_name,
+                creature_type="Mount",
+                sub_type="Animal",
+                stage="Starting Mount",
+                size="Large",
+                speed="40 ft",
+                ac=12 + level,
+                hp=mount_hp,
+                fortitude=f"+{3 + level}",
+                reflex=f"+{3 + level}",
+                will=f"+{2 + level}",
+                perception=f"+{3 + level}",
+                strikes=[],
+                primary_ability="Mount for overland travel and movement when commanded.",
+                secondary_ability="Carries rider and gear according to Encumbrance rules.",
+                languages=[],
+                traits=["Animal", "Mount"],
+                senses="Low-Light Vision, Scent (imprecise, 30 feet)",
+                attributes={"STR": "+3", "DEX": "+1", "CON": "+2", "INT": "-4", "WIS": "+1", "CHA": "-2"},
+                skills={"Athletics": f"+{3 + level}"},
+            ))
 
 
 def _build_deity_summary(deity_raw: Optional[Dict[str, Any]], feats: List[FeatSummary]) -> Optional[DeitySummary]:
@@ -1955,6 +2080,15 @@ class PF2eGenerator:
             if isinstance(sp_obj, dict) and sp_obj.get("name"):
                 if sp_obj["name"] not in deity_summary.domain_spells:
                     deity_summary.domain_spells.insert(0, sp_obj["name"])
+        apply_background_starting_package(
+            bg_desc=background_description or "",
+            equipment_loadout=equipment_loadout,
+            collected_partners=collected_partners,
+            level=level,
+            mods=mods,
+        )
+        primary_companion = collected_partners[0] if collected_partners else None
+        extra_partners = collected_partners[1:] if len(collected_partners) > 1 else []
         raw_sheet = CharacterSheet(
             name=name,
             level=level,
