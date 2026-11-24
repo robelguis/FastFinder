@@ -173,7 +173,16 @@ def _get_property_runes_and_crit_spec(weapon_name: str, traits: list, level: int
     else:
         crit_note = "Crit Spec: Applies weapon group critical specialization effect on a critical hit."
 
-    if (class_name or "").lower() == "exemplar" and level >= 1:
+    cls_low = (class_name or "").lower()
+    has_crit_spec = (
+        (cls_low == "exemplar" and level >= 1)
+        or (cls_low == "fighter" and level >= 5)
+        or (cls_low in ("barbarian", "champion", "monk", "ranger", "rogue", "swashbuckler", "gunslinger", "magus", "inventor", "thaumaturge", "commander", "guardian") and level >= 5)
+        or (pot >= 2)
+    )
+    if not has_crit_spec:
+        crit_note = ""
+    elif cls_low == "exemplar":
         crit_note = f"{crit_note} [Ikon/Transcendence active]"
 
     return prop_runes, crit_note
@@ -743,7 +752,8 @@ def resolve_equipment(
         enriched_traits = list(w.get("traits", []))
         if prop_runes:
             enriched_traits.append("Runes: " + ", ".join(prop_runes))
-        enriched_traits.append(crit_note)
+        if crit_note:
+            enriched_traits.append(crit_note)
         strikes.append(Strike(
             name=w_name,
             attack_bonus=total_atk,
@@ -846,16 +856,22 @@ def resolve_equipment(
     ]
     for tokens, nat_name, nat_dice, nat_type, nat_traits in natural_attack_specs:
         if any(re.search(r"\b" + re.escape(tok) + r"\b", ancestry_search_blob) for tok in tokens):
-            if not any(nat_name.lower() in s.name.lower() for s in ancestry_strikes_to_add):
+            n_low = nat_name.lower()
+            already_present = any(
+                n_low in s.name.lower() or s.name.lower() in n_low
+                for s in (strikes + ancestry_strikes_to_add)
+            )
+            if not already_present:
                 is_ag = "agile" in nat_traits
+                nat_dmg = f"{nat_dice}+{str_mod}" if str_mod > 0 else (f"{nat_dice}{str_mod}" if str_mod < 0 else nat_dice)
                 ancestry_strikes_to_add.append(Strike(
                     name=nat_name,
                     attack_bonus=base_anc_atk,
                     map_second=base_anc_atk - (4 if is_ag else 5),
                     map_third=base_anc_atk - (8 if is_ag else 10),
-                    damage_dice=nat_dice,
+                    damage_dice=nat_dmg,
                     damage_type=nat_type,
-                    traits=nat_traits,
+                    traits=[t.title() for t in nat_traits],
                 ))
 
     for ast in ancestry_strikes_to_add:
