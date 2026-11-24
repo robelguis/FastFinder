@@ -4070,7 +4070,7 @@ class PF2eGenerator:
             background_name=bg["name"],
             ancestry_name=anc["name"],
             subclass_name=sub_name,
-            domain_name=current_char.get("domain") or (current_char.get("deity") or {}).get("chosen_domains", [None])[0] if isinstance(current_char.get("deity"), dict) else None,
+            domain_name=current_char.get("domain") or (next(iter((current_char.get("deity") or {}).get("chosen_domains") or []), None) if isinstance(current_char.get("deity"), dict) else None),
         )
         deity_summary = _build_deity_summary(selected_deity, chosen_feats)
         focus_data = resolve_focus_spells(
