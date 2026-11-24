@@ -186,9 +186,20 @@ def _load_deities() -> Dict[str, Dict[str, Any]]:
     return deities_by_key
 
 
+_BUNDLED_DEITIES_DOMAINS = _REPO_ROOT / "data" / "deities_domains.json"
 _FOCUS_INDEX: Dict[str, Dict[str, Any]] = _load_focus_spell_index()
 _DOMAIN_SPELLS: Dict[str, Dict[str, Any]] = _parse_domain_spells(_FOCUS_INDEX)
 _DEITIES: Dict[str, Dict[str, Any]] = _load_deities()
+
+if (not _DEITIES or not _DOMAIN_SPELLS) and _BUNDLED_DEITIES_DOMAINS.exists():
+    try:
+        _bundled_raw = json.loads(_BUNDLED_DEITIES_DOMAINS.read_text(encoding="utf-8"))
+        if not _DEITIES and isinstance(_bundled_raw.get("deities"), dict):
+            _DEITIES = _bundled_raw["deities"]
+        if not _DOMAIN_SPELLS and isinstance(_bundled_raw.get("domain_spells"), dict):
+            _DOMAIN_SPELLS = _bundled_raw["domain_spells"]
+    except Exception:
+        pass
 
 
 def get_all_deities() -> List[Dict[str, Any]]:
