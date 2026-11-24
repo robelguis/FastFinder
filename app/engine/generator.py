@@ -1287,8 +1287,17 @@ def _build_weapon_strike_entry(weapon_name: str, level: int, mods: dict, cls_nam
     clean_name = weapon_name.strip().title()
     w_info = _get_equipment_weapon_lookup().get(clean_name.lower()) or {}
     dmg_obj = w_info.get("damage") if isinstance(w_info.get("damage"), dict) else {}
-    raw_dice = str(dmg_obj.get("dice") or "1d6").strip()
-    die_part = raw_dice if raw_dice.startswith("1d") or "d" in raw_dice else f"1d{raw_dice}"
+    raw_num = dmg_obj.get("dice")
+    try:
+        base_num = int(raw_num) if raw_num is not None and str(raw_num).strip() != "" else 1
+    except (ValueError, TypeError):
+        base_num = 1
+    raw_die = str(dmg_obj.get("die") or "").strip().lower()
+    if not raw_die:
+        raw_die = "d6"
+    elif not raw_die.startswith("d"):
+        raw_die = f"d{raw_die}"
+    die_part = f"{max(1, base_num)}{raw_die}"
     dmg_type = str(dmg_obj.get("damageType") or dmg_obj.get("type") or "Slashing").title()
     w_traits = [str(t).title() for t in (w_info.get("traits") or []) if t]
     if not w_traits:
