@@ -362,9 +362,42 @@ def safe_action_cost(val: Any) -> Optional[int]:
     return None
 
 
-def clean_pf2e_text(text: str) -> str:
+def _resolve_ternary_expr(expr: str, level: int = 20) -> str:
+    def _eval_cmp(cmp_str: str) -> bool:
+        m = re.match(
+            r"^\s*(gte|gt|lte|lt|eq)\s*\(\s*(?:your\s+level|@actor\.level|level)\s*,\s*(-?\d+)\s*\)\s*$",
+            cmp_str.strip(),
+            re.IGNORECASE,
+        )
+        if not m:
+            return False
+        op, rhs = m.group(1).lower(), int(m.group(2))
+        if op == "gte":
+            return level >= rhs
+        if op == "gt":
+            return level > rhs
+        if op == "lte":
+            return level <= rhs
+        if op == "lt":
+            return level < rhs
+        return level == rhs
+
+    pattern = re.compile(r"ternary\s*\(\s*([^(),]+(?:\([^()]*\))?)\s*,\s*([^(),]+)\s*,\s*([^()]+)\s*\)", re.IGNORECASE)
+    prev = None
+    cur = expr
+    while cur != prev:
+        prev = cur
+        def _sub_t(match):
+            cond, t_val, f_val = match.group(1).strip(), match.group(2).strip(), match.group(3).strip()
+            return t_val if _eval_cmp(cond) else f_val
+        cur = pattern.sub(_sub_t, cur)
+    return cur
+
+
+def clean_pf2e_text(text: str, level: int = 20) -> str:
     if not text:
         return ""
+    text = _resolve_ternary_expr(text, level=level)
     text = _RE_HTML_TAG.sub("", text)
     text = _RE_TEMPLATE.sub(lambda m: m.group(3) if m.group(3) else f"{m.group(2)}-foot {m.group(1)}", text)
     text = _RE_UUID_LABELED.sub(r"\1", text)

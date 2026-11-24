@@ -1325,9 +1325,12 @@ function updateHeritageDropdown() {
       (data.feats || []).forEach(f => {
         const rawCost = (f.action_cost || '').toString().trim().toLowerCase();
         const descLow = (f.description || '').toLowerCase();
+        const catLow = (f.category || '').toString().trim().toLowerCase();
+        const traitList = (f.traits || []).map(t => String(t).toLowerCase());
+        const isSkillFeat = catLow.startsWith('skill') || traitList.includes('skill');
         if (rawCost.includes('reaction') || rawCost === 'r' || descLow.startsWith('trigger:')) {
           reactionFeats.push(f);
-        } else if (rawCost.includes('free') || rawCost === 'f' || ['1', '2', '3', '1 action', '2 actions', '3 actions', '1 to 3 actions'].includes(rawCost)) {
+        } else if (!isSkillFeat && (rawCost.includes('free') || rawCost === 'f' || ['1', '2', '3', '1 action', '2 actions', '3 actions', '1 to 3 actions'].includes(rawCost))) {
           actionFeats.push(f);
         } else {
           passiveFeats.push(f);
