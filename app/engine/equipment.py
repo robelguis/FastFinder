@@ -878,10 +878,19 @@ def resolve_equipment(
             shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
             shield_bonus = 2
     else:
-        armor_name = format_runed_armor_name("Hide Armor", lvl)
-        armor_item = Item(name=armor_name, bulk="2", cost_sp=20)
         arm_prof = (4 + lvl) if (cls_key == "thaumaturge" and lvl >= 11) else (2 + lvl)
-        calculated_ac = 10 + 3 + min(dex_mod, 2) + arm_prof + armor_pot
+        if dex_mod >= 4:
+            armor_name = format_runed_armor_name("Leather Armor", lvl)
+            armor_item = Item(name=armor_name, bulk="1", cost_sp=20)
+            calculated_ac = 10 + 1 + min(dex_mod, 4) + arm_prof + armor_pot
+        elif dex_mod == 3:
+            armor_name = format_runed_armor_name("Studded Leather Armor", lvl)
+            armor_item = Item(name=armor_name, bulk="1", cost_sp=30)
+            calculated_ac = 10 + 2 + min(dex_mod, 3) + arm_prof + armor_pot
+        else:
+            armor_name = format_runed_armor_name("Hide Armor", lvl)
+            armor_item = Item(name=armor_name, bulk="2", cost_sp=20)
+            calculated_ac = 10 + 3 + min(dex_mod, 2) + arm_prof + armor_pot
         if use_shield:
             shield_item = Item(name=format_scaled_shield_name("Steel Shield" if cls_key in ("commander", "exemplar", "barbarian") else "Wooden Shield", lvl), bulk="1", cost_sp=10)
             shield_bonus = 2
