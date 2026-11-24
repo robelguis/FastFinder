@@ -256,37 +256,164 @@ def list_all_domains() -> List[str]:
     return sorted(names)
 
 
+import random
+
+
+_ANCESTRY_DEITY_HINTS: Dict[str, List[str]] = {
+    "dwarf": ["torag", "angradd", "folgrit", "grundinnar", "kols", "trudd"],
+    "elf": ["findeladlara", "ketephys", "yuelral", "desna", "calistria"],
+    "gnome": ["nivi rhombodazzle", "shelyn", "desna", "barbatos"],
+    "goblin": ["zogmugot", "zarongel", "venkelvore", "hadregash"],
+    "halfling": ["chaldira", "thamir", "desna", "abadar"],
+    "orc": ["gorum", "dretha", "lanishra", "nulgreth", "rull", "sezelrian", "varg"],
+    "kitsune": ["daikitsu", "shizuru", "tsukiyo", "lady nanbyo"],
+    "tengu": ["hei feng", "shizuru", "desna"],
+    "leshy": ["gozreh", "erastil", "desna"],
+    "ratfolk": ["shyka", "abadar", "calistria"],
+    "kobold": ["aupmahoz", "draconic", "asmodeus"],
+    "fetchling": ["zon-kuthon", "desna", "shyka"],
+    "iruxi": ["angradd", "gozreh", "pharasma"],
+}
+
+_CLASS_DOMAIN_HINTS: Dict[str, List[str]] = {
+    "cleric": ["healing", "protection", "zeal", "sun", "knowledge", "family", "duty"],
+    "champion": ["protection", "zeal", "might", "duty", "freedom", "redemption", "sun"],
+    "druid": ["nature", "earth", "air", "water", "fire", "plant", "wood", "lightning", "moon"],
+    "animist": ["nature", "soul", "repose", "earth", "water", "air", "fire", "moon"],
+    "ranger": ["nature", "hunt", "travel", "air", "earth", "moon", "wood"],
+    "barbarian": ["might", "zeal", "destruction", "earth", "fire", "lightning", "rage"],
+    "fighter": ["might", "zeal", "duty", "protection", "air"],
+    "commander": ["duty", "might", "protection", "zeal", "truth"],
+    "rogue": ["trickery", "luck", "secrecy", "moon", "shadow", "freedom"],
+    "bard": ["charm", "luck", "moon", "travel", "dreams", "creation", "perfection"],
+    "wizard": ["knowledge", "magic", "arcane", "time", "fate", "secrecy"],
+    "witch": ["secrecy", "moon", "fate", "soul", "nature", "nightmares", "repose"],
+    "sorcerer": ["magic", "fate", "moon", "fire", "air", "earth", "water", "soul"],
+    "psychic": ["dreams", "knowledge", "mind", "nightmares", "fate", "star"],
+    "oracle": ["fate", "time", "soul", "sun", "moon", "repose", "death"],
+    "thaumaturge": ["secrecy", "knowledge", "soul", "luck", "protection"],
+    "investigator": ["knowledge", "truth", "secrecy", "luck", "fate"],
+    "monk": ["perfection", "air", "earth", "fire", "water", "truth", "duty"],
+    "swashbuckler": ["freedom", "luck", "charm", "air", "travel"],
+    "alchemist": ["creation", "knowledge", "earth", "fire", "nature"],
+    "inventor": ["creation", "knowledge", "earth", "fire", "truth"],
+    "magus": ["knowledge", "might", "magic", "zeal", "lightning"],
+    "summoner": ["soul", "creation", "nature", "fate", "moon"],
+    "kineticist": ["earth", "air", "water", "fire", "wood", "metal", "nature"],
+    "gunslinger": ["luck", "freedom", "travel", "fire", "air"],
+    "exemplar": ["might", "zeal", "sun", "moon", "freedom", "protection"],
+}
+
+
 def select_deity(
     deity_name: Optional[str] = None,
     class_name: Optional[str] = None,
     background_name: Optional[str] = None,
+    ancestry_name: Optional[str] = None,
+    subclass_name: Optional[str] = None,
+    domain_name: Optional[str] = None,
+    concept_text: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    if deity_name:
+    if deity_name and deity_name.strip().lower() not in ("", "any", "any deity", "none"):
         explicit = get_deity(deity_name)
         if explicit:
             return explicit
 
-    cls_low = (class_name or "").lower()
-    bg_low = (background_name or "").lower()
+    all_deities = get_all_deities()
+    if not all_deities:
+        return None
 
-    preferred_pool: List[str] = []
-    if "cleric" in cls_low or "champion" in cls_low or "acolyte" in bg_low:
-        preferred_pool = ["Iomedae", "Sarenrae", "Abadar", "Cayden Cailean", "Desna", "Torag", "Shelyn", "Pharasma"]
-    elif "wizard" in cls_low or "witch" in cls_low or "scholar" in bg_low:
-        preferred_pool = ["Nethys", "Irori", "Abadar", "Desna"]
-    elif "rogue" in cls_low or "bard" in cls_low:
-        preferred_pool = ["Cayden Cailean", "Desna", "Shelyn", "Calistria"]
-    elif "fighter" in cls_low or "barbarian" in cls_low or "ranger" in cls_low or "warrior" in bg_low:
-        preferred_pool = ["Gorum", "Iomedae", "Torag", "Cayden Cailean", "Gozreh"]
-    elif "druid" in cls_low or "animist" in cls_low or "nomad" in bg_low:
-        preferred_pool = ["Gozreh", "Desna", "Pharasma", "Erastil"]
+    clean_domain = ""
+    if domain_name and domain_name.strip().lower() not in ("", "any", "any domain", "none"):
+        clean_domain = re.sub(r"\s*\(alternate\)$", "", domain_name.strip(), flags=re.IGNORECASE).strip().lower()
+
+    cls_low = (class_name or "").strip().lower()
+    sub_low = (subclass_name or "").strip().lower()
+    bg_low = (background_name or "").strip().lower()
+    anc_low = (ancestry_name or "").strip().lower()
+    concept_low = (concept_text or "").strip().lower()
+
+    domain_hints = set(_CLASS_DOMAIN_HINTS.get(cls_low, []))
+    for kw, doms in (
+        ("nature", ["nature", "earth", "water", "air", "fire", "plant", "wood"]),
+        ("fire", ["fire", "sun", "lightning"]),
+        ("water", ["water", "travel", "moon"]),
+        ("earth", ["earth", "metal", "protection"]),
+        ("air", ["air", "travel", "lightning"]),
+        ("wood", ["wood", "plant", "nature"]),
+        ("metal", ["metal", "earth", "creation"]),
+        ("enigma", ["knowledge", "secrecy", "fate"]),
+        ("shadow", ["shadow", "nightmares", "moon", "secrecy"]),
+        ("death", ["death", "repose", "undeath", "soul"]),
+        ("war", ["might", "zeal", "duty", "protection"]),
+        ("trick", ["trickery", "luck", "freedom"]),
+        ("dream", ["dreams", "moon", "nightmares"]),
+        ("star", ["star", "travel", "fate", "moon"]),
+        ("undead", ["death", "undeath", "repose"]),
+    ):
+        if kw in sub_low or kw in concept_low or kw in bg_low:
+            domain_hints.update(doms)
+
+    anc_hints = set(_ANCESTRY_DEITY_HINTS.get(anc_low, []))
+
+    scored: List[tuple[float, Dict[str, Any]]] = []
+    for d in all_deities:
+        d_name_low = str(d.get("name") or "").lower()
+        dom_block = d.get("domains") if isinstance(d.get("domains"), dict) else {}
+        prim_low = {str(x).lower() for x in (dom_block.get("primary") or []) if x}
+        alt_low = {str(x).lower() for x in (dom_block.get("alternate") or []) if x}
+        all_d_doms = prim_low | alt_low
+
+        score = 1.0
+
+        # Selected domain is a primary driver when specified
+        if clean_domain:
+            if clean_domain in prim_low:
+                score += 120.0
+            elif clean_domain in alt_low:
+                score += 85.0
+            else:
+                score -= 40.0
+
+        # Ancestry deity & pantheon affinity
+        if d_name_low in anc_hints:
+            score += 18.0
+        elif anc_low and any(tok in d_name_low for tok in anc_low.split()):
+            score += 6.0
+
+        # Class & subclass domain alignment
+        if domain_hints:
+            prim_matches = len(prim_low & domain_hints)
+            alt_matches = len(alt_low & domain_hints)
+            score += prim_matches * 7.0 + alt_matches * 3.5
+
+        # Background / concept keyword overlap with deity name, skills, or description
+        desc_low = str(d.get("description") or "").lower()
+        skills_low = {str(s).lower() for s in (d.get("skills") or []) if s}
+        for token in set(f"{bg_low} {sub_low} {concept_low}".split()):
+            if len(token) < 4 or token in {"with", "from", "into", "that", "this", "your", "have"}:
+                continue
+            if token in skills_low:
+                score += 6.0
+            if token in d_name_low:
+                score += 8.0
+            elif token in desc_low:
+                score += 1.5
+
+        scored.append((max(0.1, score), d))
+
+    scored.sort(key=lambda pair: pair[0], reverse=True)
+    top_score = scored[0][0]
+
+    # Pick among top-tier candidates so results feel varied yet well-matched
+    if clean_domain:
+        candidates = [(sc, item) for sc, item in scored if sc >= top_score - 15.0][:8]
     else:
-        preferred_pool = ["Abadar", "Cayden Cailean", "Desna", "Iomedae", "Nethys", "Pharasma", "Sarenrae", "Shelyn", "Torag"]
+        candidates = [(sc, item) for sc, item in scored if sc >= top_score - 8.0][:10]
 
-    for cand in preferred_pool:
-        d = get_deity(cand)
-        if d:
-            return d
+    if not candidates:
+        return scored[0][1]
 
-    all_d = get_all_deities()
-    return all_d[0] if all_d else None
+    weights = [sc for sc, _ in candidates]
+    chosen = random.choices([item for _, item in candidates], weights=weights, k=1)[0]
+    return chosen

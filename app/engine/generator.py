@@ -2060,7 +2060,7 @@ class PF2eGenerator:
             orig_n = getattr(f_obj, "name", None)
             if isinstance(orig_n, str) and "(" not in orig_n:
                 _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
-                _fin_deity = select_deity(deity_name=None, class_name=_fin_cls_name, background_name=background_name)
+                _fin_deity = select_deity(deity_name=deity_name, class_name=_fin_cls_name, background_name=background_name, ancestry_name=anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", None), subclass_name=sub_name, domain_name=domain_name, concept_text=concept_text)
                 updated_n = resolve_feat_subchoices(orig_n, all_feat_names_final, _fin_deity.get("name") if isinstance(_fin_deity, dict) else None)
                 if updated_n != orig_n:
                     f_obj.name = updated_n
@@ -2069,7 +2069,7 @@ class PF2eGenerator:
                         f_obj.description = enrich_feat_description(updated_n, getattr(f_obj, "description", "") or "")
 
         _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
-        _fin_deity_raw = select_deity(deity_name=deity_name, class_name=_fin_cls_name, background_name=background_name)
+        _fin_deity_raw = select_deity(deity_name=deity_name, class_name=_fin_cls_name, background_name=background_name, ancestry_name=anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", None), subclass_name=sub_name, domain_name=domain_name, concept_text=concept_text)
         deity_summary = _build_deity_summary(_fin_deity_raw, chosen_feats)
         if deity_summary and domain_name and domain_name.strip().lower() not in ("", "any", "any domain", "none"):
             clean_dom = domain_name.strip().title()
@@ -3913,6 +3913,9 @@ class PF2eGenerator:
             deity_name=existing_deity_name,
             class_name=cls["name"],
             background_name=bg["name"],
+            ancestry_name=anc["name"],
+            subclass_name=sub_name,
+            domain_name=current_char.get("domain") or (current_char.get("deity") or {}).get("chosen_domains", [None])[0] if isinstance(current_char.get("deity"), dict) else None,
         )
         deity_summary = _build_deity_summary(selected_deity, chosen_feats)
         focus_data = resolve_focus_spells(
