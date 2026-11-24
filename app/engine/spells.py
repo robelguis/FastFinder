@@ -765,6 +765,50 @@ def resolve_spellcasting(
                     sc.cantrips.append(sp)
                     existing_names.add(sp.name.lower())
 
+    # 4. Feat-granted ranked / heightened innate spells (e.g., Advanced Targeting System, Unseen Passage)
+    feat_innate_ranked: List[SpellSummary] = []
+    if any("advanced targeting system" in fn for fn in feat_names):
+        feat_innate_ranked.append(SpellSummary(
+            rank=1,
+            name="Sure Strike (Innate Arcane 1/day)",
+            actions="1 action",
+            traits=["Arcane", "Concentrate", "Fortune"],
+            range="Self",
+            defense="None",
+            description="Granted by Advanced Targeting System (1/day): You roll your next attack roll twice and use the better result."
+        ))
+    if any("unseen passage" in fn for fn in feat_names):
+        heightened_rank = max(1, (level + 1) // 2)
+        feat_innate_ranked.append(SpellSummary(
+            rank=heightened_rank,
+            name=f"Vanishing Tracks (Innate Primal Rank {heightened_rank}, 1/day)",
+            actions="2 actions",
+            traits=["Concentrate", "Manipulate", "Primal"],
+            range="Self",
+            defense="None",
+            description="Granted by Unseen Passage (1/day): You mask your tracks and make it harder to follow your trail through the wilds."
+        ))
+
+    if feat_innate_ranked:
+        if sc is None:
+            attr_key = "int" if attribute_mods.get("int", 0) >= attribute_mods.get("wis", 0) else "wis"
+            if attr_key not in attribute_mods:
+                attr_key = "cha" if "cha" in attribute_mods else "int"
+            attr_mod = attribute_mods.get(attr_key, 2)
+            prof_bonus = 2 + level
+            sc = SpellcastingData(
+                tradition="Innate Feat Magic",
+                casting_attribute=attr_key.upper(),
+                spell_dc=10 + prof_bonus + attr_mod,
+                spell_attack=prof_bonus + attr_mod,
+                cantrips=[],
+            )
+        for sp in feat_innate_ranked:
+            r_field = f"rank_{max(1, min(10, sp.rank))}_spells"
+            bucket = getattr(sc, r_field, None)
+            if isinstance(bucket, list) and not any(s.name.lower() == sp.name.lower() for s in bucket):
+                bucket.append(sp)
+
     return sc
 
 

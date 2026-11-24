@@ -198,3 +198,21 @@ def test_level_20_investigator_legendary_skill_cap(builder: ConceptToSheetBuilde
         in {"L", "LEGENDARY", "8"}
     )
     assert legendary_count <= 4, f"Expected at most 4 Legendary skills, got {legendary_count}"
+
+
+def test_feat_innate_spells_sure_strike_and_vanishing_tracks(builder: ConceptToSheetBuilder):
+    sheet = builder.build_lowest_level_sheet(
+        "A level 20 Android Investigator with Advanced Targeting System and Unseen Passage"
+    )
+    sc = sheet.get("spellcasting") or {}
+    all_spells = []
+    for key, val in sc.items():
+        if key == "cantrips" or key.endswith("_spells"):
+            if isinstance(val, list):
+                all_spells.extend(val)
+    spell_names = [
+        (s.get("name") if isinstance(s, dict) else getattr(s, "name", "")).lower()
+        for s in all_spells
+    ]
+    assert any("sure strike" in name for name in spell_names), f"Expected Sure Strike in {spell_names}"
+    assert any("vanishing tracks" in name for name in spell_names), f"Expected Vanishing Tracks in {spell_names}"
