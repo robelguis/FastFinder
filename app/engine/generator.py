@@ -3295,6 +3295,7 @@ class PF2eGenerator:
             concept_text=concept_text,
             deity_name=deity_name,
             domain_name=domain_name,
+        )))
 
     def level_up(
         self,
