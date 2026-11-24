@@ -129,3 +129,42 @@ def test_audit_summoner_levels_and_archetypes(level, archetype_name, subclass_na
     assert sheet.companion.ac >= 15 + level, (
         f"Unexpectedly low Eidolon AC {sheet.companion.ac} for L{level} {subclass_name}"
     )
+@pytest.mark.parametrize("level", [1, 10, 20])
+@pytest.mark.parametrize(
+    "class_name,subclass_name,expected_type_token",
+    [
+        ("Druid", "Animal Order", "companion"),
+        ("Druid", "Leaf Order", "familiar"),
+        ("Witch", "Wild (Primal)", "familiar"),
+        ("Witch", "Rune (Arcane)", "familiar"),
+        ("Inventor", "Construct Innovation", "construct"),
+    ],
+)
+def test_audit_partner_classes_across_levels(level, class_name, subclass_name, expected_type_token):
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name="Elf",
+        class_name=class_name,
+        background_name="Scholar",
+        archetype_name=None,
+        char_name=f"Audit {class_name} {subclass_name} L{level}",
+        level=level,
+        use_dedication=False,
+        subclass_name=subclass_name,
+    )
+    sheet_dict = (
+        sheet.model_dump()
+        if hasattr(sheet, "model_dump")
+        else (sheet.dict() if hasattr(sheet, "dict") else dict(sheet))
+    )
+    issues = audit_remaster_sheet(sheet_dict)
+    assert issues == [], f"Audit issues for {class_name} ({subclass_name}) at L{level}: {issues}"
+    assert sheet.companion is not None, f"Expected partner for L{level} {class_name} ({subclass_name})"
+    ctype = (sheet.companion.creature_type or "").lower()
+    assert expected_type_token in ctype, (
+        f"Expected '{expected_type_token}' in creature_type='{sheet.companion.creature_type}' "
+        f"for L{level} {class_name} ({subclass_name})"
+    )
+    assert sheet.companion.ac >= 14 + level, (
+        f"Unexpectedly low partner AC {sheet.companion.ac} for L{level} {class_name} ({subclass_name})"
+    )
