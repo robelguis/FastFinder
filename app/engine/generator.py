@@ -3293,8 +3293,8 @@ class PF2eGenerator:
             chosen_feats=chosen_feats,
             traits=[anc["name"].lower(), cls["name"].lower()],
             concept_text=concept_text,
-            deity_name=(selected_deity.get("name") if isinstance(selected_deity, dict) else None) or existing_deity_name,
-            domain_name=(
+            deity_name=deity_name,
+            domain_name=domain_name,
                 current_char.get("domain")
                 or (next(iter((current_char.get("deity") or {}).get("chosen_domains") or []), None) if isinstance(current_char.get("deity"), dict) else None)
             ),
@@ -4163,6 +4163,6 @@ class PF2eGenerator:
             existing_partners=combined_partners,
             existing_languages=list(current_char.get("languages") or ["Common"]),
             old_int=raw_attrs.get("int", raw_attrs.get("intelligence", 0)),
-            deity_name=deity_name,
-            domain_name=domain_name,
+            deity_name=(selected_deity.get("name") if isinstance(selected_deity, dict) else None) or locals().get("existing_deity_name"),
+            domain_name=(current_char.get("domain") or (next(iter((current_char.get("deity") or {}).get("chosen_domains") or []), None) if isinstance(current_char.get("deity"), dict) else None)),
         ))
