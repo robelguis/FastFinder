@@ -1238,6 +1238,12 @@ function updateHeritageDropdown() {
           sensesList.push('Low-Light Vision');
         }
       }
+      if (featNames.some(n => n.includes('keen nose')) && !sensesList.some(s => s.toLowerCase().includes('scent'))) {
+        sensesList.push('Scent (imprecise) 30 feet');
+      }
+      if ((data.ancestry || '').toLowerCase().includes('minotaur') && !sensesList.some(s => s.toLowerCase().includes('low-light') || s.toLowerCase().includes('darkvision'))) {
+        sensesList.unshift('Low-Light Vision');
+      }
       document.getElementById('vitalSenses').textContent = sensesList.length ? sensesList.join(', ') : 'Normal';
 
       document.getElementById('vitalFort').textContent = formatMod(data.defenses?.fortitude?.modifier);

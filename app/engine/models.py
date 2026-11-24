@@ -217,6 +217,7 @@ class CharacterSheet(BaseModel):
     attributes: AttributeModifiers
     defenses: Defenses
     perception: Proficiency
+    senses: List[str] = []
     all_skills: List[SkillEntry] = []
     equipment: EquipmentLoadout
     spellcasting: Optional[SpellcastingData] = None

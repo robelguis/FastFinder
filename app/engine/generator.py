@@ -1655,6 +1655,76 @@ def _build_deity_summary(deity_raw: Optional[Dict[str, Any]], feats: List[FeatSu
     )
 
 
+def _resolve_character_senses(
+    ancestry_data: Optional[Dict[str, Any]],
+    heritage_name: Optional[str],
+    feats: Optional[List[Any]],
+) -> List[str]:
+    senses: List[str] = []
+
+    def _add(label: str) -> None:
+        if label and not any(s.lower() == label.lower() for s in senses):
+            senses.append(label)
+
+    anc_vision = str((ancestry_data or {}).get("vision") or (ancestry_data or {}).get("senses") or "").lower()
+    anc_name = str((ancestry_data or {}).get("name") or "").lower()
+    anc_desc = str((ancestry_data or {}).get("description") or "").lower()
+    her_low = str(heritage_name or "").lower()
+
+    low_light_ancestries = (
+        "minotaur", "elf", "gnome", "goblin", "leshy", "catfolk", "kitsune",
+        "ratfolk", "tengu", "azarketi", "changeling", "aiuvarin", "dromaar",
+        "ardande", "talos", "sylph", "undine", "ifrit", "oread", "suli", "nephilim",
+    )
+    darkvision_ancestries = (
+        "dwarf", "orc", "kobold", "hobgoblin", "fetchling", "android",
+        "automaton", "skeleton", "wayang", "duskwalker", "tiefling", "aasimar",
+    )
+
+    if "greater darkvision" in anc_vision or "greater darkvision" in her_low:
+        _add("Greater Darkvision")
+    elif "darkvision" in anc_vision or "darkvision" in her_low or any(a in anc_name for a in darkvision_ancestries):
+        _add("Darkvision")
+    elif "low-light" in anc_vision or "low-light" in her_low or "low-light vision" in anc_desc or any(a in anc_name for a in low_light_ancestries):
+        _add("Low-Light Vision")
+
+    feat_entries = []
+    for f in (feats or []):
+        if isinstance(f, dict):
+            feat_entries.append((str(f.get("name") or ""), str(f.get("description") or "")))
+        else:
+            feat_entries.append((str(getattr(f, "name", "") or ""), str(getattr(f, "description", "") or "")))
+
+    twilight_count = sum(1 for n, _ in feat_entries if "twilight dweller" in n.lower())
+    if twilight_count >= 2:
+        _add("Darkvision")
+    elif twilight_count == 1:
+        if any("low-light vision" in s.lower() for s in senses) and not any("darkvision" in s.lower() for s in senses):
+            _add("Darkvision")
+        else:
+            _add("Low-Light Vision")
+
+    for fname, fdesc in feat_entries:
+        blob = f"{fname} {fdesc}".lower()
+        if "greater darkvision" in blob:
+            _add("Greater Darkvision")
+        elif "darkvision" in blob and ("gain darkvision" in blob or "you have darkvision" in blob or "darkvision" in fname.lower()):
+            _add("Darkvision")
+        elif "low-light vision" in blob and ("gain low-light" in blob or "you have low-light" in blob or "low-light" in fname.lower()):
+            _add("Low-Light Vision")
+        if "keen nose" in fname.lower() or ("scent" in blob and ("imprecise" in blob or "30 feet" in blob or "30-foot" in blob)):
+            _add("Scent (imprecise) 30 feet")
+        if "echolocation" in blob:
+            _add("Echolocation (imprecise) 30 feet")
+        if "tremorsense" in blob:
+            _add("Tremorsense (imprecise) 30 feet")
+
+    if "labyrinth" in her_low and "minotaur" in anc_name:
+        _add("Low-Light Vision")
+
+    return senses
+
+
 def _sync_deity_focus_spells(sheet: CharacterSheet) -> CharacterSheet:
     deity_obj = getattr(sheet, "deity", None)
     if not deity_obj:
@@ -2508,6 +2578,7 @@ class PF2eGenerator:
                 will=will_prof,
             ),
             perception=perception_prof,
+            senses=_resolve_character_senses(anc, heritage_name, chosen_feats),
             all_skills=all_skills,
             equipment=equipment_loadout,
             spellcasting=spellcasting_data,
