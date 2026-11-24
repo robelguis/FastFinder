@@ -103,6 +103,22 @@ ORACLE_MYSTERY_CURSES: Dict[str, Dict[str, Any]] = {
 
 
 FEAT_FOCUS_SPELLS = {
+    "sun blade": {
+        "name": "Sun Blade",
+        "actions": "2 actions",
+        "traits": ["Concentrate", "Fire", "Focus", "Light", "Manipulate"],
+        "range": "60 feet",
+        "defense": "AC",
+        "description": "You fire a ray of blazing sunlight that deals 1d4 fire damage per rank (doubled against undead or creatures weak to sunlight) and dazzles on a critical hit."
+    },
+    "light of revelation": {
+        "name": "Light of Revelation",
+        "actions": "1 action",
+        "traits": ["Concentrate", "Focus", "Light", "Revelation"],
+        "range": "Self",
+        "defense": "None",
+        "description": "You emit bright light in a 20-foot emanation (and dim light for 20 feet beyond) that suppresses magical darkness and reveals hidden or invisible creatures."
+    },
     # Monk Ki Spells
     "ki rush": {
         "name": "Ki Rush",
@@ -613,6 +629,13 @@ def resolve_focus_spells(
                 defense="None",
                 description="Granted by Champion Dedication: Your hands glow with righteous warmth, healing 6 HP per rank and granting +2 status AC for 1 round."
             ))
+
+        for feat_trigger, spell_def in FEAT_FOCUS_SPELLS.items():
+            if any(feat_trigger in fn for fn in feat_names_lower):
+                if not any(s.name.lower() == spell_def["name"].lower() for s in ded_spells):
+                    ded_spells.append(SpellSummary(rank=curr_rank, **spell_def))
+
+        _append_deity_domain_spells(ded_spells, feats, deity_data, "Divine", curr_rank)
 
         pool = min(3, max(1, len(ded_spells)))
         return FocusSpellData(
