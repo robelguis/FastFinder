@@ -3588,10 +3588,13 @@ class PF2eGenerator:
         hard_cap = 6 if target_level >= 20 else (5 if target_level >= 10 else 4)
         for a in ATTRIBUTES:
             mods[a] = min(mods[a], hard_cap)
-        min_sum = 8 + (target_level // 5) * 2
-        for a in boost_priority:
-            if sum(mods.values()) < min_sum and mods[a] < hard_cap:
-                mods[a] += 1
+
+        # In PF2e Remaster, each boost tier grants 4 boosts, so at most 4 attributes
+        # can reach +6 via standard boost progression.
+        if target_level >= 20:
+            six_attrs = [a for a in boost_priority if mods[a] >= 6]
+            for extra_attr in six_attrs[4:]:
+                mods[extra_attr] = 5
 
         # Defenses & Proficiencies
         fort_rank, ref_rank, will_rank, perception_rank = get_class_saving_throws(
