@@ -388,6 +388,16 @@ def clean_pf2e_text(text: str) -> str:
     text = text.replace("[[", "").replace("]]", "")
     text = re.sub(r"[ \t]+", " ", text)
     text = re.sub(r"\n\s*\n+", "\n\n", text)
+    # 1. Clean nested-paren formulas followed by [type]{label} or {label}
+    text = re.sub(r"\((?:[^()\n]|\([^()\n]*\))*\)(?:\s*\[[^\]\n]+\])?\s*\{([^}\n]+)\}", r"\1", text)
+    # 2. Clean formula tokens (your level, @actor.*) with optional [type] and {label}
+    text = re.sub(r"\b(?:your level|@actor(?:\.[A-Za-z0-9_]+)+)(?:\s*\[[^\]\n]+\])?\s*\{([^}\n]+)\}", r"\1", text)
+    # 3. Clean (Skill/Action) followed by key=val tokens and {label}
+    text = re.sub(r"(\([A-Za-z][A-Za-z0-9_\s\-]*\))(?:\s+[a-zA-Z0-9_\-]+=[a-zA-Z0-9_\-]+)*\s*\{([^}\n]+)\}", r"\1", text)
+    # 4. Clean remaining @actor.* attribute paths and stray braces
+    text = re.sub(r"@actor(?:\.system)?\.abilities\.([a-z]{3})\.mod", lambda m: f"your {m.group(1).upper()} modifier", text)
+    text = re.sub(r"@actor\.[A-Za-z0-9_.]+", "your level", text)
+    text = re.sub(r"\{([^}\n]+)\}", r"\1", text)
     return text.strip()
 
 

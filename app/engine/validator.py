@@ -28,19 +28,23 @@ ATTR_PAIRS = [
 
 
 def _fold_strike_damage_modifiers(dmg_str: str) -> str:
-    """Collapses chained trailing +/- integer modifiers on a dice expression (e.g. '4d4+2 + 4' -> '4d4+6')."""
+    """Collapses chained +/- integer modifiers on a leading dice expression (preserving any trailing notes)."""
     if not dmg_str or not isinstance(dmg_str, str):
         return dmg_str
     s = dmg_str.strip()
-    m = re.match(r"^(\d+d\d+)\s*((?:\s*[+-]\s*\d+){2,})$", s)
+    m = re.match(r"^(\d+d\d+)\s*((?:\s*[+-]\s*\d+){2,})(.*)$", s)
     if not m:
         return s
-    dice_part, tail = m.group(1), m.group(2)
+    dice_part, tail, suffix = m.group(1), m.group(2), m.group(3)
     compact_tail = re.sub(r"\s+", "", tail)
     total_mod = sum(int(tok) for tok in re.findall(r"[+-]\d+", compact_tail))
-    if total_mod == 0:
-        return dice_part
-    return f"{dice_part}{total_mod:+d}"
+    if total_mod > 0:
+        folded = f"{dice_part}+{total_mod}"
+    elif total_mod < 0:
+        folded = f"{dice_part}{total_mod}"
+    else:
+        folded = dice_part
+    return f"{folded}{suffix}"
 
 
 def clean_template_text(text: str) -> str:
@@ -77,6 +81,16 @@ def clean_template_text(text: str) -> str:
                 if sp > 0:
                     trimmed = trimmed[:sp].rstrip(",;:- ")
             text = (trimmed or text.rstrip(",;:- ")) + "..."
+    # 1. Clean nested-paren formulas followed by [type]{label} or {label}
+    text = re.sub(r"\((?:[^()\n]|\([^()\n]*\))*\)(?:\s*\[[^\]\n]+\])?\s*\{([^}\n]+)\}", r"\1", text)
+    # 2. Clean formula tokens (your level, @actor.*) with optional [type] and {label}
+    text = re.sub(r"\b(?:your level|@actor(?:\.[A-Za-z0-9_]+)+)(?:\s*\[[^\]\n]+\])?\s*\{([^}\n]+)\}", r"\1", text)
+    # 3. Clean (Skill/Action) followed by key=val tokens and {label}
+    text = re.sub(r"(\([A-Za-z][A-Za-z0-9_\s\-]*\))(?:\s+[a-zA-Z0-9_\-]+=[a-zA-Z0-9_\-]+)*\s*\{([^}\n]+)\}", r"\1", text)
+    # 4. Clean remaining @actor.* attribute paths and stray braces
+    text = re.sub(r"@actor(?:\.system)?\.abilities\.([a-z]{3})\.mod", lambda m: f"your {m.group(1).upper()} modifier", text)
+    text = re.sub(r"@actor\.[A-Za-z0-9_.]+", "your level", text)
+    text = re.sub(r"\{([^}\n]+)\}", r"\1", text)
     return text
 
 
