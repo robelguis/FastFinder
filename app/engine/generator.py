@@ -3295,10 +3295,6 @@ class PF2eGenerator:
             concept_text=concept_text,
             deity_name=deity_name,
             domain_name=domain_name,
-        )))
-                or (next(iter((current_char.get("deity") or {}).get("chosen_domains") or []), None) if isinstance(current_char.get("deity"), dict) else None)
-            ),
-        )))
 
     def level_up(
         self,
