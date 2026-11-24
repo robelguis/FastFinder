@@ -640,6 +640,14 @@
               </div>
             </div>
           </div>
+
+          <div class="sheet-box" id="deityBox" style="margin-top: 0.6rem; display: none;">
+            <div class="sheet-box-title" id="deityBoxTitle">Deity &amp; Domains</div>
+            <div class="sheet-box-content" style="padding: 0.45rem 0.55rem; font-size: 0.78rem; line-height: 1.4; color: #1e293b;">
+              <div id="deityMetaLine" style="margin-bottom: 0.35rem;"></div>
+              <div id="deityDomainsList" style="display: flex; flex-wrap: wrap; gap: 0.35rem;"></div>
+            </div>
+          </div>
         </div>
 
         <div class="right-col">
@@ -1131,6 +1139,35 @@ function updateHeritageDropdown() {
           archDescEl.textContent = data.archetype_description || `Grants dedication feats and training for the ${data.archetype} archetype.`;
         } else {
           archBoxEl.style.display = "none";
+        }
+      }
+
+      const deityBoxEl = document.getElementById("deityBox");
+      const deityTitleEl = document.getElementById("deityBoxTitle");
+      const deityMetaEl = document.getElementById("deityMetaLine");
+      const deityDomEl = document.getElementById("deityDomainsList");
+      if (deityBoxEl) {
+        if (data.deity && data.deity.name) {
+          deityBoxEl.style.display = "block";
+          deityTitleEl.textContent = `Deity: ${data.deity.name}`;
+          const metaParts = [];
+          if (data.deity.favored_weapon) metaParts.push(`<strong>Favored Weapon:</strong> ${data.deity.favored_weapon}`);
+          if (data.deity.sanctification) metaParts.push(`<strong>Sanctification:</strong> ${data.deity.sanctification}`);
+          if (data.deity.font && data.deity.font.length > 0) metaParts.push(`<strong>Font:</strong> ${data.deity.font.join(" / ")}`);
+          deityMetaEl.innerHTML = metaParts.join(" &bull; ");
+          deityMetaEl.style.display = metaParts.length > 0 ? "block" : "none";
+
+          const badges = [];
+          (data.deity.chosen_domains || []).forEach(dom => {
+            badges.push(`<span style="background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 600;">Domain: ${dom}</span>`);
+          });
+          (data.deity.domain_spells || []).forEach(sp => {
+            badges.push(`<span style="background: #e0e7ff; color: #1e3a8a; border: 1px solid #a5b4fc; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 600;">Spell: ${sp}</span>`);
+          });
+          deityDomEl.innerHTML = badges.join("");
+          deityDomEl.style.display = badges.length > 0 ? "flex" : "none";
+        } else {
+          deityBoxEl.style.display = "none";
         }
       }
 
