@@ -141,6 +141,44 @@ def get_fundamental_rune_tiers(level: int) -> Dict[str, Any]:
     }
 
 
+def _get_property_runes_and_crit_spec(weapon_name: str, traits: list, level: int, class_name: str = "") -> tuple[list[str], str]:
+    w_low = (weapon_name or "").lower()
+    t_low = [str(t).lower() for t in (traits or [])]
+    tiers = get_fundamental_rune_tiers(level)
+    pot = tiers.get("wep_potency", 0)
+    dice = tiers.get("dice_count", 1)
+
+    prop_runes: list[str] = []
+    if pot >= 3 or dice >= 4:
+        prop_runes = ["Flaming", "Shock", "Holy"]
+    elif pot >= 2 or dice >= 3:
+        prop_runes = ["Flaming", "Holy"]
+    elif pot >= 1 or dice >= 2:
+        prop_runes = ["Flaming"]
+
+    if "shortsword" in w_low or "short sword" in w_low:
+        crit_note = "Crit Spec (Sword/Agile/Finesse): Target is off-guard until start of your next turn; pairs with Agile/Finesse."
+    elif "longbow" in w_low or "bow" in w_low:
+        crit_note = "Crit Spec (Bow/Deadly d10): Target is pinned to an adjacent surface on crit (DC 10 Escape); Deadly d10 adds extra crit dice."
+    elif "horn" in w_low or "gore" in w_low or "antler" in w_low or "unarmed" in t_low or "brawling" in t_low:
+        crit_note = "Crit Spec (Brawling/Unarmed): Target must succeed at a Fortitude save or be slowed 1 until end of your next turn."
+    elif any("sword" in tr or "blade" in tr or "rapier" in tr or "scimitar" in tr for tr in t_low):
+        crit_note = "Crit Spec (Sword): Target is off-guard until the start of your next turn."
+    elif any("axe" in tr for tr in t_low):
+        crit_note = "Crit Spec (Axe): Choose one creature adjacent to target; deal 1 damage per weapon damage die to it."
+    elif any("hammer" in tr or "flail" in tr or "club" in tr for tr in t_low):
+        crit_note = "Crit Spec (Hammer/Flail): Target is knocked prone or pushed 5 feet on a failed Fortitude/Reflex check."
+    elif any("spear" in tr or "polearm" in tr for tr in t_low):
+        crit_note = "Crit Spec (Spear/Polearm): Target is off-guard until the start of your next turn."
+    else:
+        crit_note = "Crit Spec: Applies weapon group critical specialization effect on a critical hit."
+
+    if (class_name or "").lower() == "exemplar" and level >= 1:
+        crit_note = f"{crit_note} [Ikon/Transcendence active]"
+
+    return prop_runes, crit_note
+
+
 def format_runed_weapon_name(base_name: str, level: int) -> str:
     if level <= 2:
         return base_name
@@ -701,6 +739,11 @@ def resolve_equipment(
         dmg_str = f"{dice_str}{str_mod:+d}" if not is_ranged else dice_str
 
         is_agile = "Agile" in w.get("traits", [])
+        prop_runes, crit_note = _get_property_runes_and_crit_spec(w["name"], w.get("traits", []), lvl, cls_key)
+        enriched_traits = list(w.get("traits", []))
+        if prop_runes:
+            enriched_traits.append("Runes: " + ", ".join(prop_runes))
+        enriched_traits.append(crit_note)
         strikes.append(Strike(
             name=w_name,
             attack_bonus=total_atk,
@@ -708,7 +751,7 @@ def resolve_equipment(
             map_third=total_atk - (8 if is_agile else 10),
             damage_dice=dmg_str,
             damage_type=w["type"],
-            traits=w.get("traits", [])
+            traits=enriched_traits
         ))
 
 

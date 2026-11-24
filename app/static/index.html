@@ -1261,11 +1261,17 @@ function updateHeritageDropdown() {
         const mapSec = s.map_second !== undefined ? formatMod(s.map_second) : formatMod(s.attack_bonus - 5);
         const mapThird = s.map_third !== undefined ? formatMod(s.map_third) : formatMod(s.attack_bonus - 10);
         const mapDisplay = `${formatMod(s.attack_bonus)} / ${mapSec} / ${mapThird}`;
+        const traitParts = (s.traits || []).map(t => String(t));
+        const specParts = traitParts.filter(t => t.startsWith('Crit Spec') || t.startsWith('Runes:'));
+        const baseTraits = traitParts.filter(t => !t.startsWith('Crit Spec') && !t.startsWith('Runes:'));
+        const noteHtml = specParts.length
+          ? `<div style="font-size: 0.68rem; color: #475569; margin-top: 2px;">${specParts.join(' • ')}</div>`
+          : '';
         row.innerHTML = `
-          <td><span class="w-name">${s.name}</span></td>
+          <td><span class="w-name">${s.name}</span>${noteHtml}</td>
           <td class="w-map">${mapDisplay}</td>
           <td class="w-dmg">${s.damage_dice} ${s.damage_type}</td>
-          <td class="w-traits">${(s.traits || []).join(', ')}</td>
+          <td class="w-traits">${baseTraits.join(', ')}</td>
         `;
         strikesTbody.appendChild(row);
       });
