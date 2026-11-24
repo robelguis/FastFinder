@@ -169,9 +169,12 @@ def resolve_familiar(
     hp = 5 * level
 
     if is_pet:
-        ability_tags = list(cfg["innate_abilities"])[:1]
-        ability_summary = ", ".join(ability_tags)
-        primary_text = f"Pet Abilities: {ability_summary}. Tiny animal companion with non-combat utility."
+        ability_tags = list(cfg["innate_abilities"])[:2]
+        ability_summary = ", ".join(ability_tags) if ability_tags else "Amphibious, Tough"
+        primary_text = (
+            f"Pet Abilities: {ability_summary}. Tiny minion (Perception +{3 + level}, other skills +{level}, "
+            f"HP {hp}). Can be retrained if you have a familiar; choose which minion to use in play."
+        )
         secondary_text = cfg["description"]
         stage_label = "Bonded Pet"
         sub_label = f"{species_label} Pet"
