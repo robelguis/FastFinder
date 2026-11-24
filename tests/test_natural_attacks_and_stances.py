@@ -216,3 +216,23 @@ def test_feat_innate_spells_sure_strike_and_vanishing_tracks(builder: ConceptToS
     ]
     assert any("sure strike" in name for name in spell_names), f"Expected Sure Strike in {spell_names}"
     assert any("vanishing tracks" in name for name in spell_names), f"Expected Vanishing Tracks in {spell_names}"
+
+
+def test_validator_cleans_dollar_delimiters_cutoffs_and_chained_strike_damage():
+    from app.engine.validator import clean_template_text, sanitize_and_validate_sheet
+
+    cleaned = clean_template_text("Gain $a+1$ bonus and $8d8+30$ healing. Effect Yo")
+    assert "$" not in cleaned
+    assert not cleaned.endswith("Yo...")
+
+    sheet = {
+        "level": 20,
+        "attributes": {"str": 1, "dex": 5, "con": 4, "int": 6, "wis": 5, "cha": -1},
+        "strikes": [{"name": "Sickle", "damage_dice": "4d4+1+4"}],
+        "feats": [{"name": "Test", "description": "Grants $+2.$ bonus."}],
+        "equipment": {"gear": ["Blast Foot (Activate 1 envision Frequency once per 10 minutes Effect Yo)"]},
+    }
+    out = sanitize_and_validate_sheet(sheet)
+    assert out["strikes"][0]["damage_dice"] == "4d4+5"
+    assert "$" not in out["feats"][0]["description"]
+    assert not out["equipment"]["gear"][0].endswith("Yo...")

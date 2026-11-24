@@ -27,15 +27,55 @@ ATTR_PAIRS = [
 ]
 
 
+def _fold_strike_damage_modifiers(dmg_str: str) -> str:
+    """Collapses chained trailing +/- integer modifiers on a dice expression (e.g. '4d4+1+4' -> '4d4+5')."""
+    if not dmg_str or not isinstance(dmg_str, str):
+        return dmg_str
+    s = dmg_str.strip()
+    m = re.match(r"^(\d+d\d+)((?:[+-]\d+){2,})$", s)
+    if not m:
+        return s
+    dice_part, tail = m.group(1), m.group(2)
+    total_mod = sum(int(tok) for tok in re.findall(r"[+-]\d+", tail))
+    if total_mod == 0:
+        return dice_part
+    return f"{dice_part}{total_mod:+d}"
+
+
 def clean_template_text(text: str) -> str:
-    """Strips raw Foundry/template ternary strings, broken tags, and mid-sentence cutoffs."""
+    """Strips raw Foundry/template strings, $ math wrappers, and mid-sentence/mid-word cutoffs."""
     if not text or not isinstance(text, str):
         return text or ""
     text = re.sub(r"\(ternary\([^)]+\)\)", "", text)
     text = re.sub(r"\[untyped\]|J?options:[a-zA-Z0-9_-]+\]?", "", text)
+    # Unwrap $...$ math delimiters while preserving inner content, then strip stray $
+    text = re.sub(r"\$([^$]+?)\$", r"\1", text)
+    text = text.replace("$", "")
     text = re.sub(r"\s{2,}", " ", text).strip()
-    if text and text[-1] not in ".!?)\"'":
-        text = text.rstrip(",;:- ") + "..."
+
+    # If already ending with ellipsis, clean up any split word right before '...'
+    if text.endswith("..."):
+        stem = text[:-3].rstrip()
+        if stem and stem[-1].isalpha():
+            last_space = stem.rfind(" ")
+            if last_space > 0:
+                candidate = stem[:last_space].rstrip(" ,;:-")
+                if candidate:
+                    text = candidate + "..."
+        return text
+
+    if text and text[-1] not in ".!?\"'":
+        # Prefer trimming back to the last complete sentence if a full sentence exists
+        last_punct = max(text.rfind(". "), text.rfind("! "), text.rfind("? "))
+        if last_punct != -1:
+            text = text[: last_punct + 1].strip()
+        else:
+            trimmed = text.rstrip(",;:- ")
+            if trimmed and trimmed[-1].isalpha():
+                sp = trimmed.rfind(" ")
+                if sp > 0:
+                    trimmed = trimmed[:sp].rstrip(",;:- ")
+            text = (trimmed or text.rstrip(",;:- ")) + "..."
     return text
 
 
@@ -98,6 +138,13 @@ def sanitize_and_validate_sheet(sheet: Dict[str, Any]) -> Dict[str, Any]:
         if skill.get("modifier") != expected:
             warnings.append(f"Adjusted {skill.get('name')} from {skill.get('modifier')} to {expected} ({rank}).")
             skill["modifier"] = expected
+
+    # 2b. Normalize chained flat modifiers on character strikes (e.g. '4d4+1+4' -> '4d4+5')
+    for strike in sheet.get("strikes") or []:
+        if isinstance(strike, dict) and isinstance(strike.get("damage_dice"), str):
+            folded = _fold_strike_damage_modifiers(strike["damage_dice"])
+            if folded != strike["damage_dice"]:
+                strike["damage_dice"] = folded
 
     # 3. Clamp Companion & Additional Partner Outliers (CharacterSheet uses 'hp', 'fortitude', 'reflex', 'will')
     partners: List[Dict[str, Any]] = []
