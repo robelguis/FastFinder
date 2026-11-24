@@ -827,10 +827,20 @@ function updateHeritageDropdown() {
         });
     }
 }
-    async function loadOptions() {
+    async function loadOptions(retries = 3) {
       try {
-        const res = await fetch('/api/options');
-        const data = await res.json();
+        let data = null;
+        for (let attempt = 0; attempt <= retries; attempt++) {
+          try {
+            const res = await fetch('/api/options', { cache: 'no-store' });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            data = await res.json();
+            break;
+          } catch (fetchErr) {
+            if (attempt === retries) throw fetchErr;
+            await new Promise(r => setTimeout(r, 1500));
+          }
+        }
 
         const ancSelect = document.getElementById('ancestrySelect');
         if (ancSelect && data.ancestries) {
