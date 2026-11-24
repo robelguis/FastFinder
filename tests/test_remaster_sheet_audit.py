@@ -170,3 +170,40 @@ def test_audit_partner_classes_across_levels(level, class_name, subclass_name, e
     assert sheet.companion.ac >= 14 + level, (
         f"Unexpectedly low partner AC {sheet.companion.ac} for L{level} {class_name} ({subclass_name})"
     )
+@pytest.mark.parametrize("level", [1, 10, 20])
+@pytest.mark.parametrize(
+    "class_name,subclass_name,archetype_name,use_dedication,partner_label",
+    [
+        ("Champion", "Paladin (Holy)", "Cavalier", True, "Champion Faithful Steed"),
+        ("Ranger", "Precision", "Beastmaster", True, "Ranger Animal Companion"),
+        ("Wizard", "Universalist", "Undead Master", True, "Undead Master Companion"),
+    ],
+)
+def test_audit_steed_ranger_and_undead_companions(
+    level, class_name, subclass_name, archetype_name, use_dedication, partner_label
+):
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name="Human",
+        class_name=class_name,
+        background_name="Field Medic",
+        archetype_name=archetype_name,
+        char_name=f"Audit {partner_label} L{level}",
+        level=level,
+        use_dedication=use_dedication,
+        subclass_name=subclass_name,
+    )
+    sheet_dict = (
+        sheet.model_dump()
+        if hasattr(sheet, "model_dump")
+        else (sheet.dict() if hasattr(sheet, "dict") else dict(sheet))
+    )
+    issues = audit_remaster_sheet(sheet_dict)
+    assert issues == [], f"Audit issues for {partner_label} at L{level}: {issues}"
+
+    all_partners = [p for p in ([sheet.companion] + list(sheet.additional_partners or [])) if p is not None]
+    assert all_partners, f"Expected at least one partner on sheet for {partner_label} at L{level}"
+
+    if level >= 15:
+        max_ac = max(p.ac for p in all_partners if isinstance(p.ac, (int, float)))
+        assert max_ac >= 32, f"Expected high-level partner AC >= 32 for {partner_label} at L{level}, got {max_ac}"
