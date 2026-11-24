@@ -236,3 +236,30 @@ def test_validator_cleans_dollar_delimiters_cutoffs_and_chained_strike_damage():
     assert out["equipment"]["strikes"][0]["damage_dice"] == "4d4+4"
     assert "$" not in out["feats"][0]["description"]
     assert not out["equipment"]["gear"][0].endswith("Yo...")
+
+
+def test_interrogation_investigator_surfaces_pointed_question_and_folds_spaced_damage():
+    from app.engine.generator import PF2eGenerator
+    from app.engine.validator import sanitize_and_validate_sheet
+
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name="Android",
+        class_name="Investigator",
+        subclass_name="Interrogation",
+        background_name="Junker",
+        archetype_name="Worm Caller",
+        char_name="Cog-99Construct",
+        level=20,
+        use_dedication=True,
+    )
+    data = sheet.model_dump() if hasattr(sheet, "model_dump") else dict(sheet)
+    feat_names = [(f.get("name") if isinstance(f, dict) else getattr(f, "name", "")) for f in (data.get("feats") or [])]
+    assert any("Pointed Question" in n for n in feat_names)
+
+    data.setdefault("equipment", {}).setdefault("strikes", []).append(
+        {"name": "Test Sickle", "damage_dice": "4d4+2 + 4", "damage_type": "Slashing"}
+    )
+    out = sanitize_and_validate_sheet(data)
+    folded = [s["damage_dice"] for s in out["equipment"]["strikes"] if s.get("name") == "Test Sickle"]
+    assert folded == ["4d4+6"]

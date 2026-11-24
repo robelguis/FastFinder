@@ -28,15 +28,16 @@ ATTR_PAIRS = [
 
 
 def _fold_strike_damage_modifiers(dmg_str: str) -> str:
-    """Collapses chained trailing +/- integer modifiers on a dice expression (e.g. '4d4+1+4' -> '4d4+5')."""
+    """Collapses chained trailing +/- integer modifiers on a dice expression (e.g. '4d4+2 + 4' -> '4d4+6')."""
     if not dmg_str or not isinstance(dmg_str, str):
         return dmg_str
     s = dmg_str.strip()
-    m = re.match(r"^(\d+d\d+)((?:[+-]\d+){2,})$", s)
+    m = re.match(r"^(\d+d\d+)\s*((?:\s*[+-]\s*\d+){2,})$", s)
     if not m:
         return s
     dice_part, tail = m.group(1), m.group(2)
-    total_mod = sum(int(tok) for tok in re.findall(r"[+-]\d+", tail))
+    compact_tail = re.sub(r"\s+", "", tail)
+    total_mod = sum(int(tok) for tok in re.findall(r"[+-]\d+", compact_tail))
     if total_mod == 0:
         return dice_part
     return f"{dice_part}{total_mod:+d}"

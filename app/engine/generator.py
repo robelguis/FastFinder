@@ -1593,6 +1593,35 @@ class PF2eGenerator:
                         pass
 
 
+        # Surface core subclass / methodology features as earned entries on the sheet
+        _sub_lower = (sub_name or "").strip().lower()
+        _earned_sub_features = []
+        if cls_name_lower == "investigator" and "interrogation" in _sub_lower:
+            _earned_sub_features.append({
+                "id": "feat-class-feature-pointed-question",
+                "name": "Pointed Question",
+                "level": 1,
+                "category": "Class Feature",
+                "action_cost": 1,
+                "traits": ["concentrate", "investigator", "linguistic", "mental"],
+                "description": (
+                    "1 Action. You press a suspect with a sharp, targeted question. "
+                    "Attempt a Diplomacy or Intimidation check against the target's Will DC "
+                    "(adding your Pursue a Lead investigation bonus if the target relates to an active investigation). "
+                    "On a success, they answer truthfully or reveal a useful clue; on a critical success, "
+                    "they reveal additional details and cannot lie about the answer."
+                ),
+            })
+
+        _existing_feat_names_lower = {
+            (getattr(f, "name", "") or "").strip().lower()
+            for f in (chosen_feats or [])
+        }
+        for _ef in _earned_sub_features:
+            if _ef["name"].lower() not in _existing_feat_names_lower:
+                chosen_feats.append(FeatSummary(**_ef))
+                _existing_feat_names_lower.add(_ef["name"].lower())
+
         # Final pass: ensure any feat with unresolved subchoices (e.g., Deity's Domain) gets its chosen value
         all_feat_names_final = {getattr(f, "name", str(f)) for f in (chosen_feats or [])}
         for f_obj in (chosen_feats or []):
