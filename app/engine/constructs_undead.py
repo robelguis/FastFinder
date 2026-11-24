@@ -169,17 +169,25 @@ UNDEAD_SPECIES: Dict[str, Dict[str, Any]] = {
 UNDEAD_NAMES = ["Grimjaw", "Rattle", "Sepulcher", "Dusk", "Harrow", "Marrow", "Vesper"]
 
 def resolve_undead_companion(level: int = 1) -> PartnerCreatureData:
-    prof_bonus = 2 + level
+    tier_boosts = (
+        (1 if level >= 4 else 0)
+        + (1 if level >= 8 else 0)
+        + (1 if level >= 14 else 0)
+        + (1 if level >= 18 else 0)
+    )
+    rank_bonus = 2 if level >= 14 else (1 if level >= 8 else 0)
+    prof_bonus = 2 + level + rank_bonus
     key = random.choice(list(UNDEAD_SPECIES.keys()))
     cfg = UNDEAD_SPECIES[key]
     name = random.choice(UNDEAD_NAMES)
 
-    con_mod = cfg["con_mod"]
-    str_mod = cfg["str_mod"]
-    dex_mod = cfg["dex_mod"]
-    wis_mod = cfg["wis_mod"]
+    con_mod = cfg["con_mod"] + tier_boosts
+    str_mod = cfg["str_mod"] + tier_boosts
+    dex_mod = cfg["dex_mod"] + (tier_boosts // 2)
+    wis_mod = cfg["wis_mod"] + (tier_boosts // 2)
 
-    ac = 10 + dex_mod + prof_bonus + 2
+    armor_bonus = 2 + (1 if level >= 4 else 0) + (1 if level >= 12 else 0)
+    ac = 10 + dex_mod + prof_bonus + armor_bonus
     hp = cfg["base_hp"] + (level * (6 + con_mod))
 
     fort = prof_bonus + con_mod
@@ -187,13 +195,17 @@ def resolve_undead_companion(level: int = 1) -> PartnerCreatureData:
     will = prof_bonus + wis_mod
     perception = prof_bonus + wis_mod
 
+    potency = 2 if level >= 14 else (1 if level >= 4 else 0)
+    striking_dice = 3 if level >= 15 else (2 if level >= 8 else 1)
     strikes: List[Strike] = []
     for st in cfg["strikes"]:
         is_fin = st.get("finesse", False)
         atk_mod = max(str_mod, dex_mod) if is_fin else str_mod
-        atk_bonus = prof_bonus + atk_mod
-        if level >= 4:
-            atk_bonus += 1
+        atk_bonus = prof_bonus + atk_mod + potency
+
+        die_face = st["dice"].split("d", 1)[1] if "d" in st["dice"] else "6"
+        dmg_bonus = str_mod + (2 if level >= 4 else 0) + (2 if level >= 8 else 0)
+        dmg_str = f"{striking_dice}d{die_face}+{dmg_bonus}" if dmg_bonus > 0 else f"{striking_dice}d{die_face}"
 
         is_agile = "Agile" in st.get("traits", [])
         strikes.append(Strike(
@@ -201,7 +213,7 @@ def resolve_undead_companion(level: int = 1) -> PartnerCreatureData:
             attack_bonus=atk_bonus,
             map_second=atk_bonus - (4 if is_agile else 5),
             map_third=atk_bonus - (8 if is_agile else 10),
-            damage_dice=f"{st['dice']}+{str_mod}",
+            damage_dice=dmg_str,
             damage_type=st["type"],
             traits=st.get("traits", [])
         ))

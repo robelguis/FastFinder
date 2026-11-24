@@ -185,7 +185,12 @@ def sanitize_and_validate_sheet(sheet: Dict[str, Any]) -> Dict[str, Any]:
             default_tier = "mature"
         if "construct" in ctype or "construct" in stage:
             default_tier = "construct"
-        elif "animal companion" in str(entity.get("sub_type", "")).lower() or "specialized" in stage or "incredible" in stage:
+        elif (
+            "animal companion" in str(entity.get("sub_type", "")).lower()
+            or "undead" in ctype
+            or "specialized" in stage
+            or "incredible" in stage
+        ):
             default_tier = "companion"
         tier = str(entity.get("tier") or stage or default_tier).lower()
         caps = next((v for k, v in COMPANION_TIER_CAPS.items() if k in tier), COMPANION_TIER_CAPS[default_tier])
