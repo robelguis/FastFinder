@@ -2241,6 +2241,13 @@ class PF2eGenerator:
         added_feat_names: Set[str] = set()
 
         bg_desc = bg.get("description", "")
+        for _bg_sk in (bg.get("trained_skills") or []):
+            _sk_clean = str(_bg_sk or "").strip().lower()
+            if _sk_clean and "trained_skills" in locals() and isinstance(trained_skills, (set, list)):
+                if isinstance(trained_skills, set):
+                    trained_skills.add(_sk_clean)
+                elif _sk_clean not in trained_skills:
+                    trained_skills.append(_sk_clean)
         bg_feat_name = extract_bg_feat(bg_desc, self.feats)
         if bg_feat_name and any(act_key in bg_feat_name.lower() for act_key in BACKGROUND_CUSTOM_ACTIONS):
             bg_feat_name = ""

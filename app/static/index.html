@@ -340,9 +340,14 @@
     }
     .controls-row-top {
       display: grid;
-      grid-template-columns: 1.4fr 1fr 1fr 1fr 0.8fr;
-      gap: 1rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 0.9rem 1rem;
       align-items: flex-end;
+    }
+    @media (max-width: 760px) {
+      .controls-row-top {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
     }
     .controls-row-bottom {
       display: flex;
