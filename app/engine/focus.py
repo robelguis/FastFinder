@@ -500,6 +500,53 @@ def resolve_focus_spells(
     has_time_mage_focus = any("time mage dedication" in fn for fn in feat_names_lower)
 
     # Standard classes
+    has_beastmaster_focus = any("beastmaster dedication" in fn for fn in feat_names_lower)
+    has_champion_focus = any("champion dedication" in fn for fn in feat_names_lower)
+
+    if cls_key not in CLASS_FOCUS_SPELLS and (has_beastmaster_focus or has_champion_focus):
+        attr_key = "wis" if has_beastmaster_focus else "cha"
+        if attr_key not in attribute_mods:
+            attr_key = "cha" if "cha" in attribute_mods else ("wis" if "wis" in attribute_mods else "int")
+        attr_mod = attribute_mods.get(attr_key, 2)
+        prof_bonus = 2 + level
+        curr_rank = max(1, (level + 1) // 2)
+        ded_spells: List[SpellSummary] = []
+        trad_parts: List[str] = []
+
+        if has_beastmaster_focus:
+            trad_parts.append("Primal (Beastmaster Dedication)")
+            ded_spells.append(SpellSummary(
+                rank=curr_rank,
+                name="Heal Animal",
+                actions="1 action",
+                traits=["Focus", "Healing", "Manipulate", "Primal", "Vitality"],
+                range="Touch",
+                defense="None",
+                description="Granted by Beastmaster Dedication: You heal your companion animal for 1d8 HP per rank and grant a +2 status bonus to AC for 1 round."
+            ))
+        if has_champion_focus:
+            trad_parts.append("Divine (Champion Dedication)")
+            ded_spells.append(SpellSummary(
+                rank=curr_rank,
+                name="Lay on Hands",
+                actions="1 action",
+                traits=["Divine", "Focus", "Healing", "Manipulate", "Vitality"],
+                range="Touch",
+                defense="None",
+                description="Granted by Champion Dedication: Your hands glow with righteous warmth, healing 6 HP per rank and granting +2 status AC for 1 round."
+            ))
+
+        pool = min(3, max(1, len(ded_spells)))
+        return FocusSpellData(
+            focus_points=pool,
+            max_focus_points=pool,
+            tradition=" / ".join(trad_parts),
+            casting_attribute=attr_key.upper(),
+            spell_dc=10 + prof_bonus + attr_mod,
+            spell_attack=prof_bonus + attr_mod,
+            spells=ded_spells,
+        )
+
     if cls_key not in CLASS_FOCUS_SPELLS:
         if has_time_mage_focus:
             attr_key = "int" if attribute_mods.get("int", 0) >= attribute_mods.get("cha", 0) else "cha"

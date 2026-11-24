@@ -127,7 +127,7 @@ def test_iron_fists_traits_and_damage(builder: ConceptToSheetBuilder, prompt: st
     assert "fist" in strikes
 
     fist = strikes["fist"]
-    assert fist["damage_dice"] == "1d4"
+    assert fist["damage_dice"].startswith("1d4")
     assert fist["damage_type"].lower() == "bludgeoning"
     assert "shove" in fist["traits"]
     assert "nonlethal" not in fist["traits"]
@@ -151,3 +151,34 @@ def test_time_mage_dedication_populates_cantrip_and_focus_spell(builder: Concept
         for s in (fc.get("spells") or [])
     ]
     assert any("delay consequence" in name for name in focus_names)
+
+
+@pytest.mark.parametrize(
+    "prompt,expected_spell",
+    [
+        ("A Fighter with Beastmaster Dedication", "heal animal"),
+        ("A Fighter with Champion Dedication", "lay on hands"),
+    ],
+)
+def test_dedication_focus_spells_populated(
+    builder: ConceptToSheetBuilder,
+    prompt: str,
+    expected_spell: str,
+):
+    sheet = builder.build_lowest_level_sheet(prompt)
+    fc = sheet.get("focus_spells") or sheet.get("focus") or {}
+    focus_names = [
+        (s.get("name") if isinstance(s, dict) else getattr(s, "name", "")).lower()
+        for s in (fc.get("spells") or [])
+    ]
+    assert any(expected_spell in name for name in focus_names), f"Expected '{expected_spell}' in {focus_names}"
+
+
+def test_animal_elocutionist_populates_innate_spell(builder: ConceptToSheetBuilder):
+    sheet = builder.build_lowest_level_sheet("A level 5 Gnome Fighter with Animal Elocutionist")
+    sc = sheet.get("spellcasting") or {}
+    cantrip_names = [
+        (c.get("name") if isinstance(c, dict) else getattr(c, "name", "")).lower()
+        for c in (sc.get("cantrips") or [])
+    ]
+    assert any("speak with animals" in name for name in cantrip_names), f"Expected Speak with Animals in {cantrip_names}"

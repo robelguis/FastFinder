@@ -676,6 +676,91 @@ def resolve_spellcasting(
                 rank_1_spells=[]
             )
 
+    # 3. Ancestry & Heritage innate cantrips / spells
+    anc_innate_cantrips: List[SpellSummary] = []
+    if any("animal elocutionist" in fn for fn in feat_names):
+        anc_innate_cantrips.append(SpellSummary(
+            rank=1,
+            name="Speak with Animals (Innate Primal)",
+            actions="2 actions",
+            traits=["Concentrate", "Manipulate", "Primal"],
+            range="Self",
+            defense="None",
+            description="Granted by Animal Elocutionist: You can ask questions of and receive answers from animals as an innate primal spell."
+        ))
+    if any("fey-touched gnome" in fn for fn in feat_names):
+        anc_innate_cantrips.append(SpellSummary(
+            rank=0,
+            name="Frostbite (Innate Primal Cantrip)",
+            actions="2 actions",
+            traits=["Cantrip", "Cold", "Primal"],
+            range="60 feet",
+            defense="Basic Fortitude",
+            description="Granted by Fey-Touched Gnome: Bitter cold deals 2d4 cold damage (fatigued on a critical failure)."
+        ))
+    if any("rite of invocation" in fn for fn in feat_names):
+        anc_innate_cantrips.append(SpellSummary(
+            rank=0,
+            name="Telekinetic Projectile (Innate Cantrip)",
+            actions="2 actions",
+            traits=["Attack", "Cantrip", "Manipulate", "Occult"],
+            range="30 feet",
+            defense="AC",
+            description="Granted by Rite of Invocation: Hurls a loose object dealing 2d6 damage."
+        ))
+    if any("seasage azarketi" in fn for fn in feat_names):
+        anc_innate_cantrips.append(SpellSummary(
+            rank=0,
+            name="Guidance (Innate Primal Cantrip)",
+            actions="1 action",
+            traits=["Cantrip", "Concentrate", "Primal"],
+            range="30 feet",
+            defense="None",
+            description="Granted by Seasage Azarketi: Grants a +1 status bonus to one attack roll, save, or skill check."
+        ))
+    if any("spell-reft anadi" in fn for fn in feat_names):
+        anc_innate_cantrips.append(SpellSummary(
+            rank=0,
+            name="Shield (Innate Primal Cantrip)",
+            actions="1 action",
+            traits=["Cantrip", "Concentrate", "Force", "Primal"],
+            range="Self",
+            defense="None",
+            description="Granted by Spell-Reft Anadi: Raises a magical force shield granting +1 circumstance AC and Shield Block."
+        ))
+    if any("illusionist tanuki" in fn for fn in feat_names):
+        anc_innate_cantrips.append(SpellSummary(
+            rank=0,
+            name="Daze (Innate Occult Cantrip)",
+            actions="2 actions",
+            traits=["Cantrip", "Mental", "Occult"],
+            range="60 feet",
+            defense="Will",
+            description="Granted by Illusionist Tanuki: Jolts the target's mind with mental feedback dealing 2d6 mental damage."
+        ))
+
+    if anc_innate_cantrips:
+        if sc is None:
+            attr_key = "cha" if attribute_mods.get("cha", 0) >= attribute_mods.get("wis", 0) else "wis"
+            if attr_key not in attribute_mods:
+                attr_key = "int" if "int" in attribute_mods else "cha"
+            attr_mod = attribute_mods.get(attr_key, 2)
+            prof_bonus = 2 + level
+            sc = SpellcastingData(
+                tradition="Innate Ancestry / Heritage Magic",
+                casting_attribute=attr_key.upper(),
+                spell_dc=10 + prof_bonus + attr_mod,
+                spell_attack=prof_bonus + attr_mod,
+                cantrips=anc_innate_cantrips,
+                slots=[],
+            )
+        else:
+            existing_names = {c.name.lower() for c in sc.cantrips}
+            for sp in anc_innate_cantrips:
+                if sp.name.lower() not in existing_names:
+                    sc.cantrips.append(sp)
+                    existing_names.add(sp.name.lower())
+
     return sc
 
 
