@@ -1151,18 +1151,45 @@ function updateHeritageDropdown() {
           deityBoxEl.style.display = "block";
           deityTitleEl.textContent = `Deity: ${data.deity.name}`;
           const metaParts = [];
-          if (data.deity.favored_weapon) metaParts.push(`<strong>Favored Weapon:</strong> ${data.deity.favored_weapon}`);
-          if (data.deity.sanctification) metaParts.push(`<strong>Sanctification:</strong> ${data.deity.sanctification}`);
-          if (data.deity.font && data.deity.font.length > 0) metaParts.push(`<strong>Font:</strong> ${data.deity.font.join(" / ")}`);
+          if (data.deity.favored_weapon) {
+            metaParts.push(`<strong>Favored Weapon:</strong> ${data.deity.favored_weapon}`);
+          }
+          const sanct = data.deity.sanctification;
+          if (sanct && typeof sanct === "object") {
+            const whatList = Array.isArray(sanct.what) ? sanct.what.map(w => String(w).charAt(0).toUpperCase() + String(w).slice(1)) : [];
+            if (whatList.length > 0) {
+              const modalTxt = sanct.modal ? `${String(sanct.modal).charAt(0).toUpperCase() + String(sanct.modal).slice(1)} ` : "";
+              metaParts.push(`<strong>Sanctification:</strong> ${modalTxt}${whatList.join(" / ")}`);
+            }
+          } else if (typeof sanct === "string" && sanct.trim()) {
+            metaParts.push(`<strong>Sanctification:</strong> ${sanct}`);
+          }
+          if (data.deity.font && data.deity.font.length > 0) {
+            metaParts.push(`<strong>Font:</strong> ${data.deity.font.join(" / ")}`);
+          }
           deityMetaEl.innerHTML = metaParts.join(" &bull; ");
           deityMetaEl.style.display = metaParts.length > 0 ? "block" : "none";
 
           const badges = [];
+          const chosenSet = new Set((data.deity.chosen_domains || []).map(d => String(d).toLowerCase()));
+          const primaryDoms = (data.deity.domains && Array.isArray(data.deity.domains.primary)) ? data.deity.domains.primary : [];
+          const altDoms = (data.deity.domains && Array.isArray(data.deity.domains.alternate)) ? data.deity.domains.alternate : [];
+
           (data.deity.chosen_domains || []).forEach(dom => {
-            badges.push(`<span style="background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 600;">Domain: ${dom}</span>`);
+            badges.push(`<span style="background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 700;">Active Domain: ${dom}</span>`);
+          });
+          primaryDoms.forEach(dom => {
+            if (!chosenSet.has(String(dom).toLowerCase())) {
+              badges.push(`<span style="background: #f1f5f9; color: #1e293b; border: 1px solid #cbd5e1; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 500;">${dom}</span>`);
+            }
+          });
+          altDoms.forEach(dom => {
+            if (!chosenSet.has(String(dom).toLowerCase()) && !primaryDoms.includes(dom)) {
+              badges.push(`<span style="background: #f8fafc; color: #475569; border: 1px dashed #cbd5e1; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 400;">${dom} (Alt)</span>`);
+            }
           });
           (data.deity.domain_spells || []).forEach(sp => {
-            badges.push(`<span style="background: #e0e7ff; color: #1e3a8a; border: 1px solid #a5b4fc; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 600;">Spell: ${sp}</span>`);
+            badges.push(`<span style="background: #e0e7ff; color: #1e3a8a; border: 1px solid #a5b4fc; padding: 0.15rem 0.45rem; border-radius: 3px; font-weight: 600;">Domain Spell: ${sp}</span>`);
           });
           deityDomEl.innerHTML = badges.join("");
           deityDomEl.style.display = badges.length > 0 ? "flex" : "none";
