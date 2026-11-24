@@ -182,3 +182,19 @@ def test_animal_elocutionist_populates_innate_spell(builder: ConceptToSheetBuild
         for c in (sc.get("cantrips") or [])
     ]
     assert any("speak with animals" in name for name in cantrip_names), f"Expected Speak with Animals in {cantrip_names}"
+
+
+def test_level_20_investigator_legendary_skill_cap(builder: ConceptToSheetBuilder):
+    sheet = builder.build_lowest_level_sheet("A level 20 Android Investigator with Time Mage Dedication")
+    skills = sheet.get("all_skills") or sheet.get("skills") or []
+    legendary_count = sum(
+        1
+        for sk in skills
+        if str(
+            sk.get("rank")
+            if isinstance(sk, dict)
+            else getattr(sk, "rank", getattr(sk, "proficiency", ""))
+        ).upper()
+        in {"L", "LEGENDARY", "8"}
+    )
+    assert legendary_count <= 4, f"Expected at most 4 Legendary skills, got {legendary_count}"

@@ -382,6 +382,23 @@ def resolve_character_skills(
     if any("knight vigilant dedication" in fn for fn in feat_names_lower):
         skill_ranks["Religion"] = max(skill_ranks.get("Religion", 0), 4)
 
+    # Enforce PF2e Legendary skill cap (0 before level 15; max 4 at level 15+)
+    max_legendary = 0 if target_lvl < 15 else 4
+    protected_legendary = {"Crafting"} if cls_name.lower() == "inventor" and target_lvl >= 15 else set()
+    leg_skills = [sk for sk in ALL_PF2E_SKILLS if skill_ranks.get(sk, 0) >= 8]
+    if len(leg_skills) > max_legendary:
+        # Keep protected class-scaled skills and highest-mod/non-protected skills up to max_legendary
+        ranked_leg = sorted(
+            leg_skills,
+            key=lambda s: (
+                0 if s in protected_legendary else 1,
+                -norm_mods.get(SKILL_KEY_ABILITY.get(s, "dex"), 0),
+                s,
+            ),
+        )
+        for demoted in ranked_leg[max_legendary:]:
+            skill_ranks[demoted] = 6 if target_lvl >= 7 else (4 if target_lvl >= 2 else 2)
+
     # 5. Build SkillEntry objects
     result_skills: List[SkillEntry] = []
     for sk_name in ALL_PF2E_SKILLS:
