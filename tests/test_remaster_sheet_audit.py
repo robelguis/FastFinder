@@ -1,3 +1,5 @@
+import pytest
+from app.engine.generator import PF2eGenerator
 import re
 from typing import Any, Dict, List
 
@@ -116,7 +118,12 @@ def test_audit_summoner_levels_and_archetypes(level, archetype_name, subclass_na
         heritage_name="Plain-Runner Centaur",
         subclass_name=subclass_name,
     )
-    issues = audit_remaster_sheet(sheet)
+    sheet_dict = (
+        sheet.model_dump()
+        if hasattr(sheet, "model_dump")
+        else (sheet.dict() if hasattr(sheet, "dict") else dict(sheet))
+    )
+    issues = audit_remaster_sheet(sheet_dict)
     assert issues == [], f"Audit issues for {archetype_name} ({subclass_name}) at L{level}: {issues}"
     assert sheet.companion is not None, f"Expected Eidolon companion for L{level} {archetype_name}"
     assert sheet.companion.ac >= 15 + level, (
