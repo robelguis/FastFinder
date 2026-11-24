@@ -1243,6 +1243,151 @@ def apply_background_starting_package(
             ))
 
 
+
+_EQUIPMENT_WEAPON_LOOKUP: Optional[Dict[str, Dict[str, Any]]] = None
+
+
+def _get_equipment_weapon_lookup() -> Dict[str, Dict[str, Any]]:
+    global _EQUIPMENT_WEAPON_LOOKUP
+    if _EQUIPMENT_WEAPON_LOOKUP is not None:
+        return _EQUIPMENT_WEAPON_LOOKUP
+    lookup: Dict[str, Dict[str, Any]] = {}
+    eq_file = Path(__file__).resolve().parents[2] / "data" / "equipment.json"
+    if eq_file.exists():
+        try:
+            raw_items = json.loads(eq_file.read_text(encoding="utf-8"))
+            if isinstance(raw_items, list):
+                for item in raw_items:
+                    if not isinstance(item, dict):
+                        continue
+                    itype = str(item.get("type") or "").lower()
+                    cat = str(item.get("category") or "").lower()
+                    if itype == "weapon" or cat in ("simple", "martial", "advanced", "unarmed"):
+                        nm = str(item.get("name") or "").strip()
+                        if nm and nm.lower() not in lookup:
+                            lookup[nm.lower()] = item
+        except Exception:
+            pass
+    _EQUIPMENT_WEAPON_LOOKUP = lookup
+    return _EQUIPMENT_WEAPON_LOOKUP
+
+
+def _is_natural_strike(strike_obj: Any) -> bool:
+    name_low = str(getattr(strike_obj, "name", None) or (strike_obj.get("name") if isinstance(strike_obj, dict) else "") or "").lower()
+    raw_traits = getattr(strike_obj, "traits", None) or (strike_obj.get("traits") if isinstance(strike_obj, dict) else []) or []
+    traits_low = " ".join(str(t).lower() for t in raw_traits)
+    natural_markers = (
+        "unarmed", "natural", "claw", "jaws", "fang", "horn", "talon",
+        "beak", "pincer", "tail", "wing", "rage strike", "elemental blast"
+    )
+    return any(m in name_low or m in traits_low for m in natural_markers)
+
+
+def _build_weapon_strike_entry(weapon_name: str, level: int, mods: dict, cls_name: str, strike_cls: Any) -> Any:
+    clean_name = weapon_name.strip().title()
+    w_info = _get_equipment_weapon_lookup().get(clean_name.lower()) or {}
+    dmg_obj = w_info.get("damage") if isinstance(w_info.get("damage"), dict) else {}
+    raw_dice = str(dmg_obj.get("dice") or "1d6").strip()
+    die_part = raw_dice if raw_dice.startswith("1d") or "d" in raw_dice else f"1d{raw_dice}"
+    dmg_type = str(dmg_obj.get("damageType") or dmg_obj.get("type") or "Slashing").title()
+    w_traits = [str(t).title() for t in (w_info.get("traits") or []) if t]
+    if not w_traits:
+        w_traits = ["Martial"] if str(w_info.get("category") or "").lower() == "martial" else ["Simple"]
+
+    traits_low = " ".join(t.lower() for t in w_traits)
+    is_ranged = "range" in traits_low or "thrown" in traits_low or clean_name.lower() in ("shortbow", "longbow", "sling", "crossbow", "dart", "javelin")
+    stat_mod = mods.get("dex", 0) if ("finesse" in traits_low or is_ranged) and mods.get("dex", 0) > mods.get("str", 0) else mods.get("str", 0)
+
+    prof = 2 + level + (2 if level >= 5 else 0) + (2 if level >= 13 else 0) + get_weapon_prof_bonus_delta(cls_name, level)
+    atk = prof + stat_mod
+    is_agile = "agile" in traits_low
+    map2 = atk - (4 if is_agile else 5)
+    map3 = atk - (8 if is_agile else 10)
+
+    potency = 3 if level >= 16 else (2 if level >= 10 else (1 if level >= 2 else 0))
+    dice_mult = 4 if level >= 19 else (3 if level >= 12 else (2 if level >= 4 else 1))
+    striking_label = (
+        "Major Striking " if dice_mult == 4 else
+        ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
+    )
+    prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
+    scaled_dice = die_part.replace("1d", f"{dice_mult}d", 1) if die_part.startswith("1d") else die_part
+
+    dmg_bonus = 0 if (is_ranged and "propulsive" not in traits_low and "thrown" not in traits_low) else stat_mod
+    spec_bonus = get_weapon_spec_bonus(cls_name, level)
+    total_dmg_mod = dmg_bonus + spec_bonus
+    dmg_str = f"{scaled_dice}+{total_dmg_mod}" if total_dmg_mod > 0 else (f"{scaled_dice}{total_dmg_mod}" if total_dmg_mod < 0 else scaled_dice)
+
+    payload = {
+        "name": f"{prefix}{clean_name}",
+        "attack_bonus": f"{atk:+d}",
+        "map_second": f"{map2:+d}",
+        "map_third": f"{map3:+d}",
+        "damage_dice": dmg_str,
+        "damage_type": dmg_type,
+        "traits": w_traits,
+    }
+    return strike_cls.model_validate(payload) if hasattr(strike_cls, "model_validate") else payload
+
+
+def enforce_weapon_loadout(
+    equipment_loadout: Any,
+    deity_summary: Optional[DeitySummary],
+    level: int,
+    mods: dict,
+    cls_name: str,
+) -> None:
+    if not equipment_loadout or not hasattr(equipment_loadout, "strikes"):
+        return
+
+    from app.engine.models import Item as EqItem
+
+    existing_strikes = list(equipment_loadout.strikes or [])
+    strike_cls = type(existing_strikes[0]) if existing_strikes else Strike
+
+    natural_strikes = [s for s in existing_strikes if _is_natural_strike(s)]
+    non_natural_strikes = [s for s in existing_strikes if not _is_natural_strike(s)]
+
+    favored_name = (getattr(deity_summary, "favored_weapon", None) or "").strip()
+    if favored_name:
+        fav_low = favored_name.lower()
+        already_has_fav = any(
+            fav_low in str(getattr(s, "name", None) or (s.get("name") if isinstance(s, dict) else "") or "").lower()
+            for s in non_natural_strikes
+        )
+        if not already_has_fav:
+            fav_strike = _build_weapon_strike_entry(favored_name, level, mods, cls_name, strike_cls)
+            non_natural_strikes.insert(0, fav_strike)
+
+    backup_candidates = ["Dagger", "Shortsword", "Spear", "Shortbow", "Mace", "Greataxe"]
+    for cand in backup_candidates:
+        if len(non_natural_strikes) >= 2:
+            break
+        cand_low = cand.lower()
+        if any(
+            cand_low in str(getattr(s, "name", None) or (s.get("name") if isinstance(s, dict) else "") or "").lower()
+            for s in non_natural_strikes
+        ):
+            continue
+        non_natural_strikes.append(_build_weapon_strike_entry(cand, level, mods, cls_name, strike_cls))
+
+    # Cap non-natural weapons at 2 while keeping all natural attacks
+    capped_non_natural = non_natural_strikes[:2]
+    equipment_loadout.strikes = capped_non_natural + natural_strikes
+
+    # Sync equipment_loadout.weapons list cleanly with the non-natural weapons
+    if hasattr(equipment_loadout, "weapons") and isinstance(equipment_loadout.weapons, list):
+        synced_weapons = []
+        seen_w = set()
+        for s in capped_non_natural:
+            raw_n = str(getattr(s, "name", None) or (s.get("name") if isinstance(s, dict) else "") or "").strip()
+            clean_n = _RE_RUNE_PREFIX.sub("", raw_n).strip()
+            if clean_n and clean_n.lower() not in seen_w:
+                seen_w.add(clean_n.lower())
+                synced_weapons.append(EqItem(name=clean_n))
+        equipment_loadout.weapons = synced_weapons
+
+
 def _build_deity_summary(deity_raw: Optional[Dict[str, Any]], feats: List[FeatSummary]) -> Optional[DeitySummary]:
     if not deity_raw:
         return None
@@ -2071,6 +2216,7 @@ class PF2eGenerator:
         _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
         _fin_deity_raw = select_deity(deity_name=deity_name, class_name=_fin_cls_name, background_name=background_name, ancestry_name=anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", None), subclass_name=sub_name, domain_name=domain_name, concept_text=concept_text)
         deity_summary = _build_deity_summary(_fin_deity_raw, chosen_feats)
+        enforce_weapon_loadout(equipment_loadout, deity_summary, level, mods, cls["name"])
         if deity_summary and domain_name and domain_name.strip().lower() not in ("", "any", "any domain", "none"):
             clean_dom = domain_name.strip().title()
             if clean_dom not in deity_summary.chosen_domains:
