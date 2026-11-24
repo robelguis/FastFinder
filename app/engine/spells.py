@@ -603,6 +603,10 @@ def resolve_spellcasting(
 ) -> Optional[SpellcastingData]:
     sc = _resolve_base_spellcasting(class_name, attribute_mods, level, subclass_name, concept_text=concept_text, feats=feats)
     sc = _apply_dedication_cantrips(sc, feats, attribute_mods, level)
+    feat_names = [
+        (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else "")).lower()
+        for f in (feats or [])
+    ]
     
     # If character has no base spellcasting but has acquired focus spells / divine/occult/primal/arcane dedication
     if not sc and feats:
