@@ -15,6 +15,7 @@ COMPANION_TIER_CAPS = {
     "nimble":   {"max_ac": 38, "max_hp": 260, "max_mod": 32},
     "savage":   {"max_ac": 37, "max_hp": 280, "max_mod": 32},
     "familiar": {"max_ac": 42, "max_hp": 120, "max_mod": 34},
+    "eidolon":  {"max_ac": 46, "max_hp": 450, "max_mod": 38},
 }
 
 ATTR_PAIRS = [
@@ -174,7 +175,12 @@ def sanitize_and_validate_sheet(sheet: Dict[str, Any]) -> Dict[str, Any]:
     for entity in partners:
         ctype = str(entity.get("creature_type", "")).lower()
         stage = str(entity.get("stage", "")).lower()
-        default_tier = "familiar" if ("familiar" in ctype or "pet" in ctype or "familiar" in stage) else "mature"
+        if "eidolon" in ctype or "eidolon" in stage:
+            default_tier = "eidolon"
+        elif "familiar" in ctype or "pet" in ctype or "familiar" in stage:
+            default_tier = "familiar"
+        else:
+            default_tier = "mature"
         tier = str(entity.get("tier") or stage or default_tier).lower()
         caps = next((v for k, v in COMPANION_TIER_CAPS.items() if k in tier), COMPANION_TIER_CAPS[default_tier])
 

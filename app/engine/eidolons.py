@@ -288,31 +288,45 @@ def resolve_eidolon(master_hp: int = 20, level: int = 1, eidolon_type: Optional[
 
     name = random.choice(cfg["name_options"])
     
-    # Eidolons start Expert (+4) in unarmored defense
-    ac_prof = 4 + level
-    ac = 10 + cfg["dex_mod"] + ac_prof
+    # PF2e Remaster Eidolon progression (ability boosts at 5, 10, 15, 20)
+    boost_tiers = sum(1 for thr in (5, 10, 15, 20) if level >= thr)
+    str_mod = cfg["str_mod"] + (boost_tiers if cfg["str_mod"] >= cfg["dex_mod"] else max(0, boost_tiers - 1))
+    dex_mod = cfg["dex_mod"] + (boost_tiers if cfg["dex_mod"] > cfg["str_mod"] else max(0, boost_tiers - 1))
+    con_mod = cfg["con_mod"] + boost_tiers
+    wis_mod = cfg["wis_mod"] + max(0, boost_tiers - 1)
 
-    # Saves: Expert in Fortitude and Will, Trained in Reflex
-    fort = (4 + level) + cfg["con_mod"]
-    ref = (2 + level) + cfg["dex_mod"]
-    will = (4 + level) + cfg["wis_mod"]
-    perception = (2 + level) + cfg["wis_mod"]
+    # Armor proficiency: Expert (+4) at 1, Master (+6) at 11, Legendary (+8) at 19
+    armor_rank = 8 if level >= 19 else (6 if level >= 11 else 4)
+    armor_item = 3 if level >= 18 else (2 if level >= 11 else (1 if level >= 5 else 0))
+    ac = 10 + dex_mod + armor_rank + level + armor_item
 
-    # Attack bonus: Trained in unarmed strikes (+2 + level)
-    atk_prof = 2 + level
+    # Saves & Perception: Expert (+4) Fort/Will at 1, Master (+6) at 13; Reflex Expert (+4) at 9
+    fort_rank = 6 if level >= 13 else 4
+    will_rank = 6 if level >= 13 else 4
+    ref_rank = 4 if level >= 9 else 2
+    perc_rank = 4 if level >= 9 else 2
+    save_item = 3 if level >= 17 else (2 if level >= 11 else (1 if level >= 5 else 0))
+
+    fort = fort_rank + level + con_mod + save_item
+    ref = ref_rank + level + dex_mod + save_item
+    will = will_rank + level + wis_mod + save_item
+    perception = perc_rank + level + wis_mod + save_item
+
+    # Unarmed Strikes: Trained (+2) at 1, Expert (+4) at 5, Master (+6) at 13 + Handwraps potency/striking
+    atk_rank = 6 if level >= 13 else (4 if level >= 5 else 2)
+    potency_bonus = 3 if level >= 16 else (2 if level >= 10 else (1 if level >= 2 else 0))
+    striking_dice = 4 if level >= 19 else (3 if level >= 12 else (2 if level >= 4 else 1))
+    spec_dmg = 6 if level >= 15 else (3 if level >= 7 else 0)
     strikes: List[Strike] = []
 
     for st in cfg["strikes"]:
         is_fin = st.get("finesse", False)
-        atk_mod = max(cfg["str_mod"], cfg["dex_mod"]) if is_fin else cfg["str_mod"]
-        atk_bonus = atk_prof + atk_mod
-        
-        # Level 4 Handwraps / Potency bonus
-        if level >= 4:
-            atk_bonus += 1
+        atk_mod = max(str_mod, dex_mod) if is_fin else str_mod
+        atk_bonus = atk_rank + level + atk_mod + potency_bonus
 
-        dmg_bonus = cfg["str_mod"]
-        dmg_str = f"{st['dice']}+{dmg_bonus}" if dmg_bonus > 0 else st["dice"]
+        die_face = st["dice"].split("d", 1)[1] if "d" in st["dice"] else "6"
+        dmg_bonus = str_mod + spec_dmg
+        dmg_str = f"{striking_dice}d{die_face}+{dmg_bonus}" if dmg_bonus > 0 else f"{striking_dice}d{die_face}"
 
         is_agile = "Agile" in st.get("traits", [])
         map_second = atk_bonus - (4 if is_agile else 5)

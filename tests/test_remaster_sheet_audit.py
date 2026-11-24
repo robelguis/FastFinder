@@ -92,4 +92,4 @@ def test_audit_live_level20_centaur_summoner():
     )
     issues = audit_remaster_sheet(sheet_dict)
     print("\nLive Level 20 Centaur Summoner audit issues:", issues)
-    assert isinstance(issues, list)
+    assert issues == [], f'Unexpected audit issues: {issues}'
