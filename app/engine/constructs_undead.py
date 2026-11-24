@@ -28,14 +28,19 @@ def resolve_construct_companion(master_int_mod: int, level: int = 1) -> PartnerC
     prof_bonus = 2 + level
     mod = random.choice(CONSTRUCT_MODIFICATIONS)
     
-    # Base stats for construct innovation
-    str_mod = 3
-    dex_mod = 1
-    con_mod = 2
-    wis_mod = 1
+    # Scaled stats for construct innovation across levels 1-20
+    tier_boosts = (1 if level >= 5 else 0) + (1 if level >= 10 else 0) + (1 if level >= 15 else 0) + (1 if level >= 20 else 0)
+    rank_bonus = 2 if level >= 14 else (1 if level >= 7 else 0)
+    prof_bonus = 2 + level + rank_bonus
+    str_mod = 3 + tier_boosts
+    dex_mod = 1 + (tier_boosts // 2)
+    con_mod = 2 + tier_boosts
+    wis_mod = 1 + (tier_boosts // 2)
 
     extra_ac = 1 if mod["name"] == "Hardened Plating" else 0
     extra_speed = "40 ft" if mod["name"] == "Accelerated Mobility" else "30 ft"
+    potency = 2 if level >= 14 else (1 if level >= 4 else 0)
+    striking_dice = 3 if level >= 15 else (2 if level >= 8 else 1)
 
     ac = 10 + dex_mod + prof_bonus + 2 + extra_ac # Starts with trained unarmored + frame bonus
     hp = 10 + (level * (8 + con_mod))
@@ -45,9 +50,7 @@ def resolve_construct_companion(master_int_mod: int, level: int = 1) -> PartnerC
     will = prof_bonus + wis_mod
     perception = prof_bonus + wis_mod
 
-    atk_bonus = prof_bonus + str_mod
-    if level >= 4:
-        atk_bonus += 1
+    atk_bonus = prof_bonus + str_mod + potency
 
     strikes = [
         Strike(
@@ -55,7 +58,7 @@ def resolve_construct_companion(master_int_mod: int, level: int = 1) -> PartnerC
             attack_bonus=atk_bonus,
             map_second=atk_bonus - 5,
             map_third=atk_bonus - 10,
-            damage_dice=f"1d8+{str_mod}",
+            damage_dice=f"{striking_dice}d8+{str_mod}",
             damage_type="Bludgeoning",
             traits=["Construct", "Unarmed", "Overdrive Compatible"]
         ),
@@ -64,7 +67,7 @@ def resolve_construct_companion(master_int_mod: int, level: int = 1) -> PartnerC
             attack_bonus=atk_bonus,
             map_second=atk_bonus - 4,
             map_third=atk_bonus - 8,
-            damage_dice=f"1d6+{str_mod}",
+            damage_dice=f"{striking_dice}d6+{str_mod}",
             damage_type="Slashing",
             traits=["Agile", "Construct", "Unarmed"]
         )

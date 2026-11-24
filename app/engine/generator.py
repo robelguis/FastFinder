@@ -626,9 +626,14 @@ def sync_feat_partners(
 
     # 5. Familiars & Pets
     has_marine_ally = "marine ally" in feat_names
+    sub_l = (subclass_name or "").lower()
     is_druid_leaf = (
         (cls_lower == "druid" or (level >= 2 and "druid" in arch_str))
-        and ("selected druidic order: leaf" in all_feat_str or "leaf order" in feat_names)
+        and (
+            "selected druidic order: leaf" in all_feat_str
+            or "leaf order" in feat_names
+            or "leaf order" in sub_l
+        )
     )
     is_leaf_leshy = ("leshy familiar" in all_feat_str) or is_druid_leaf
     has_witch_dedication = level >= 2 and "witch" in arch_str

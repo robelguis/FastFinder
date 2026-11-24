@@ -448,14 +448,17 @@ def resolve_companion(
             }
 
     is_mature = level >= 4 or any("mature" in fn for fn in feat_names)
-    stage = "Mature" if is_mature else "Young"
+    is_specialized = level >= 8
+    stage = "Specialized" if is_specialized else ("Mature" if is_mature else "Young")
     size = cfg["mature_size"] if is_mature else cfg["young_size"]
 
-    prof_bonus = 2 + level
-    con_mod = cfg["con_mod"] + (1 if is_mature else 0)
-    str_mod = cfg["str_mod"] + (1 if is_mature else 0)
-    dex_mod = cfg["dex_mod"] + (1 if is_mature else 0)
-    wis_mod = cfg["wis_mod"] + (1 if is_mature else 0)
+    adv_rank_bonus = 2 if level >= 14 else (1 if level >= 8 else 0)
+    prof_bonus = 2 + level + adv_rank_bonus
+    stat_boosts = (1 if is_mature else 0) + (1 if level >= 8 else 0) + (1 if level >= 14 else 0) + (1 if level >= 18 else 0)
+    con_mod = cfg["con_mod"] + stat_boosts
+    str_mod = cfg["str_mod"] + stat_boosts
+    dex_mod = cfg["dex_mod"] + stat_boosts
+    wis_mod = cfg["wis_mod"] + stat_boosts
 
     hp = cfg["base_hp"] + (level * (6 + con_mod)) + (10 if is_mature else 0)
     ac = 10 + dex_mod + prof_bonus + (1 if is_mature else 0)
@@ -465,14 +468,16 @@ def resolve_companion(
     will_save = prof_bonus + wis_mod + (1 if is_mature else 0)
     perception = prof_bonus + wis_mod
 
+    striking_dice = 3 if level >= 15 else (2 if level >= 8 else 1)
     companion_strikes: List[Strike] = []
     for st in cfg["strikes"]:
         is_fin = st.get("finesse", False)
         atk_mod = max(str_mod, dex_mod) if is_fin else str_mod
         atk_bonus = prof_bonus + atk_mod
 
-        dmg_bonus = str_mod + (2 if is_mature else 0)
-        dmg_str = f"{st['dice']}+{dmg_bonus}" if dmg_bonus > 0 else st['dice']
+        die_face = st["dice"].split("d", 1)[1] if "d" in st["dice"] else "6"
+        dmg_bonus = str_mod + (2 if is_mature else 0) + (2 if is_specialized else 0)
+        dmg_str = f"{striking_dice}d{die_face}+{dmg_bonus}" if dmg_bonus > 0 else f"{striking_dice}d{die_face}"
 
         is_agile = "Agile" in st.get("traits", [])
         map_second = atk_bonus - (4 if is_agile else 5)

@@ -160,7 +160,9 @@ def test_audit_partner_classes_across_levels(level, class_name, subclass_name, e
     issues = audit_remaster_sheet(sheet_dict)
     assert issues == [], f"Audit issues for {class_name} ({subclass_name}) at L{level}: {issues}"
     assert sheet.companion is not None, f"Expected partner for L{level} {class_name} ({subclass_name})"
-    ctype = (sheet.companion.creature_type or "").lower()
+    ctype = (
+        f"{sheet.companion.creature_type or ''} {sheet.companion.sub_type or ''} {sheet.companion.stage or ''}"
+    ).lower()
     assert expected_type_token in ctype, (
         f"Expected '{expected_type_token}' in creature_type='{sheet.companion.creature_type}' "
         f"for L{level} {class_name} ({subclass_name})"
