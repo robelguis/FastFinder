@@ -139,8 +139,10 @@ def sanitize_and_validate_sheet(sheet: Dict[str, Any]) -> Dict[str, Any]:
             warnings.append(f"Adjusted {skill.get('name')} from {skill.get('modifier')} to {expected} ({rank}).")
             skill["modifier"] = expected
 
-    # 2b. Normalize chained flat modifiers on character strikes (e.g. '4d4+1+4' -> '4d4+5')
-    for strike in sheet.get("strikes") or []:
+    # 2b. Normalize chained flat modifiers on character strikes (e.g. '4d4+0+4' -> '4d4+4')
+    equip_obj = sheet.get("equipment") if isinstance(sheet.get("equipment"), dict) else {}
+    all_strikes = list(sheet.get("strikes") or []) + list(equip_obj.get("strikes") or [])
+    for strike in all_strikes:
         if isinstance(strike, dict) and isinstance(strike.get("damage_dice"), str):
             folded = _fold_strike_damage_modifiers(strike["damage_dice"])
             if folded != strike["damage_dice"]:
@@ -205,11 +207,16 @@ def sanitize_and_validate_sheet(sheet: Dict[str, Any]) -> Dict[str, Any]:
             item["description"] = clean_template_text(item["description"])
 
     equip = sheet.get("equipment")
-    if isinstance(equip, dict) and isinstance(equip.get("gear"), list):
-        equip["gear"] = [
-            clean_template_text(g) if isinstance(g, str) else g
-            for g in equip["gear"]
-        ]
+    if isinstance(equip, dict):
+        if isinstance(equip.get("gear"), list):
+            equip["gear"] = [
+                clean_template_text(g) if isinstance(g, str) else g
+                for g in equip["gear"]
+            ]
+        if isinstance(equip.get("consumables"), list):
+            for c in equip["consumables"]:
+                if isinstance(c, dict) and isinstance(c.get("description"), str):
+                    c["description"] = clean_template_text(c["description"])
 
     sheet["validation_warnings"] = warnings
     return sheet

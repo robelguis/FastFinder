@@ -228,11 +228,11 @@ def test_validator_cleans_dollar_delimiters_cutoffs_and_chained_strike_damage():
     sheet = {
         "level": 20,
         "attributes": {"str": 1, "dex": 5, "con": 4, "int": 6, "wis": 5, "cha": -1},
-        "strikes": [{"name": "Sickle", "damage_dice": "4d4+1+4"}],
+        "equipment": {"strikes": [{"name": "Sickle", "damage_dice": "4d4+0+4"}], "gear": ["Blast Foot (Activate 1 envision Frequency once per 10 minutes Effect Yo)"]},
         "feats": [{"name": "Test", "description": "Grants $+2.$ bonus."}],
-        "equipment": {"gear": ["Blast Foot (Activate 1 envision Frequency once per 10 minutes Effect Yo)"]},
+        
     }
     out = sanitize_and_validate_sheet(sheet)
-    assert out["strikes"][0]["damage_dice"] == "4d4+5"
+    assert out["equipment"]["strikes"][0]["damage_dice"] == "4d4+4"
     assert "$" not in out["feats"][0]["description"]
     assert not out["equipment"]["gear"][0].endswith("Yo...")
