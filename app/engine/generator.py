@@ -1412,6 +1412,102 @@ def _is_ranged_weapon_entry(strike_or_name: Any) -> bool:
     return False
 
 
+
+_INHERENT_ANCESTRY_NATURAL_STRIKES = {
+    "minotaur": [
+        {
+            "name": "Horns",
+            "damage_dice": "1d8",
+            "damage_type": "Piercing",
+            "traits": ["Unarmed"],
+            "agile": False,
+            "finesse": False,
+        }
+    ],
+}
+
+_GAIN_UNARMED_RE = re.compile(
+    r"you gain (?:an? |the )([a-z0-9\s\-']+?) unarmed attack[^.]*?deals\s+(\d+d\d+)\s+([a-z]+)\s+damage([^.]*?)\.",
+    re.I,
+)
+
+
+def _extract_natural_strikes_from_build(
+    anc: Any,
+    heritage_name: Optional[str],
+    chosen_feats: Optional[list],
+    level: int,
+    mods: dict,
+    cls_name: str,
+    strike_cls: Any,
+) -> list:
+    anc_name = (anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", "") or "").strip()
+    anc_low = anc_name.lower()
+    her_low = (heritage_name or "").strip().lower()
+
+    prof = 2 + level + (2 if level >= 5 else 0) + (2 if level >= 13 else 0) + get_weapon_prof_bonus_delta(cls_name, level)
+    str_mod = int(mods.get("str", 0) or 0)
+    dex_mod = int(mods.get("dex", 0) or 0)
+
+    candidates = []
+    for key, entries in _INHERENT_ANCESTRY_NATURAL_STRIKES.items():
+        if key in anc_low or (her_low and key in her_low):
+            for ent in entries:
+                candidates.append(dict(ent))
+
+    texts_to_scan = []
+    if isinstance(anc, dict) and anc.get("description"):
+        texts_to_scan.append(str(anc["description"]))
+    for f in (chosen_feats or []):
+        desc = getattr(f, "description", None) or (f.get("description") if isinstance(f, dict) else "") or ""
+        if "unarmed attack" in desc.lower():
+            texts_to_scan.append(desc)
+
+    for text in texts_to_scan:
+        for m in _GAIN_UNARMED_RE.finditer(text):
+            raw_atk_name = re.sub(r"\s+", " ", m.group(1).strip()).title()
+            dice_str = m.group(2).strip().lower()
+            dmg_type = m.group(3).strip().title()
+            tail_low = (m.group(4) or "").lower()
+            is_agile = "agile" in tail_low
+            is_finesse = "finesse" in tail_low
+            traits = ["Unarmed"]
+            for tr in ("agile", "finesse", "shove", "grapple", "trip", "reach", "nonlethal", "sweep", "backswing"):
+                if tr in tail_low and tr.title() not in traits:
+                    traits.append(tr.title())
+            candidates.append(
+                {
+                    "name": raw_atk_name,
+                    "damage_dice": dice_str,
+                    "damage_type": dmg_type,
+                    "traits": traits,
+                    "agile": is_agile,
+                    "finesse": is_finesse,
+                }
+            )
+
+    built = []
+    for cand in candidates:
+        stat_mod = dex_mod if (cand.get("finesse") and dex_mod > str_mod) else str_mod
+        atk_val = prof + stat_mod
+        step = 4 if cand.get("agile") else 5
+        dmg_mod_part = f"{stat_mod:+d}" if stat_mod != 0 else ""
+        full_dmg = f"{cand['damage_dice']}{dmg_mod_part}"
+        built.append(
+            strike_cls(
+                name=cand["name"],
+                attack_bonus=f"{atk_val:+d}",
+                damage=full_dmg,
+                damage_dice=full_dmg,
+                damage_type=cand["damage_type"],
+                traits=cand["traits"],
+                map_second=f"{atk_val - step:+d}",
+                map_third=f"{atk_val - (step * 2):+d}",
+            )
+        )
+    return built
+
+
 def enforce_weapon_loadout(
     equipment_loadout: Any,
     deity_summary: Optional[DeitySummary],
@@ -2322,6 +2418,19 @@ class PF2eGenerator:
         _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
         _fin_deity_raw = select_deity(deity_name=deity_name, class_name=_fin_cls_name, background_name=background_name, ancestry_name=anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", None), subclass_name=sub_name, domain_name=domain_name, concept_text=concept_text)
         deity_summary = _build_deity_summary(_fin_deity_raw, chosen_feats)
+        if equipment_loadout is not None and hasattr(equipment_loadout, "strikes"):
+            _strike_cls = type(equipment_loadout.strikes[0]) if equipment_loadout.strikes else Strike
+            _nat_built = _extract_natural_strikes_from_build(
+                anc,
+                heritage_name,
+                chosen_feats,
+                level,
+                mods,
+                _fin_cls_name or cls.get("name", ""),
+                _strike_cls,
+            )
+            if _nat_built:
+                equipment_loadout.strikes = list(equipment_loadout.strikes or []) + _nat_built
         enforce_weapon_loadout(equipment_loadout, deity_summary, level, mods, cls["name"])
         if deity_summary and domain_name and domain_name.strip().lower() not in ("", "any", "any domain", "none"):
             clean_dom = domain_name.strip().title()
