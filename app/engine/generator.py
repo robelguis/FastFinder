@@ -1380,6 +1380,38 @@ def _dedupe_strikes(strikes: list) -> list:
     return deduped
 
 
+
+_RANGED_KEYWORDS = (
+    "bow", "crossbow", "sling", "blowgun", "dart", "javelin", "chakram",
+    "boomerang", "shuriken", "starknife", "atlatl", "air repeater", "pistol", "musket", "arquebus"
+)
+
+
+def _is_ranged_weapon_entry(strike_or_name: Any) -> bool:
+    if isinstance(strike_or_name, str):
+        raw_name = strike_or_name
+        traits = []
+    else:
+        raw_name = str(getattr(strike_or_name, "name", None) or (strike_or_name.get("name") if isinstance(strike_or_name, dict) else "") or "")
+        traits = [str(t).lower() for t in (getattr(strike_or_name, "traits", None) or (strike_or_name.get("traits") if isinstance(strike_or_name, dict) else []) or [])]
+    clean_low = _RE_RUNE_PREFIX.sub("", raw_name).strip().lower()
+    if not clean_low:
+        return False
+    if any(t.startswith(("ranged", "volley", "reload")) for t in traits):
+        return True
+    if any(k in clean_low for k in _RANGED_KEYWORDS):
+        return True
+    eq_item = _find_weapon_in_equipment(clean_low) if "_find_weapon_in_equipment" in globals() else None
+    if isinstance(eq_item, dict):
+        rng = eq_item.get("range")
+        if (isinstance(rng, (int, float)) and rng > 0) or (isinstance(rng, str) and rng.strip() and rng.strip() not in ("—", "-", "0")):
+            return True
+        eq_traits = [str(t).lower() for t in (eq_item.get("traits") or [])]
+        if any(t.startswith(("ranged", "volley", "reload")) for t in eq_traits):
+            return True
+    return False
+
+
 def enforce_weapon_loadout(
     equipment_loadout: Any,
     deity_summary: Optional[DeitySummary],
@@ -1409,7 +1441,31 @@ def enforce_weapon_loadout(
             fav_strike = _build_weapon_strike_entry(favored_name, level, mods, cls_name, strike_cls)
             non_natural_strikes.insert(0, fav_strike)
 
-    backup_candidates = ["Dagger", "Shortsword", "Spear", "Shortbow", "Mace", "Greataxe"]
+    has_non_ranged_favored = bool(favored_name and not _is_ranged_weapon_entry(favored_name))
+
+    # Whenever favored_name is present and non-ranged, ensure a base of 2 weapons:
+    # slot 1 = deity favored weapon, slot 2 = ranged weapon.
+    if has_non_ranged_favored:
+        existing_ranged = [s for s in non_natural_strikes[1:] if _is_ranged_weapon_entry(s)]
+        if not existing_ranged:
+            ranged_strike = None
+            for r_cand in ("Longbow", "Shortbow", "Composite Shortbow", "Crossbow"):
+                try:
+                    ranged_strike = _build_weapon_strike_entry(r_cand, level, mods, cls_name, strike_cls)
+                    break
+                except Exception:
+                    continue
+            if ranged_strike is not None:
+                if len(non_natural_strikes) >= 2:
+                    non_natural_strikes[1] = ranged_strike
+                else:
+                    non_natural_strikes.append(ranged_strike)
+
+    backup_candidates = (
+        ["Shortbow", "Longbow", "Dagger", "Shortsword", "Spear", "Greataxe"]
+        if has_non_ranged_favored
+        else ["Dagger", "Shortsword", "Spear", "Shortbow", "Mace", "Greataxe"]
+    )
     for cand in backup_candidates:
         if len(non_natural_strikes) >= 2:
             break
