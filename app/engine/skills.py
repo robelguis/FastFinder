@@ -544,12 +544,12 @@ def resolve_character_skills(
 
     # Dynamically extract and award Lore granted by Dedications and Feats
     if feats:
-    DEDICATION_LORE_MAP = {
-        "living monolith dedication": ("Ancient Osirion Lore", True),
-        "hellknight armiger": ("Hell Lore", False),
-        "mammoth lord": ("Mammoth Lore", False),
-        "riftwarden": ("Planes Lore", False),
-    }
+        DEDICATION_LORE_MAP = {
+            "living monolith dedication": ("Ancient Osirion Lore", True),
+            "hellknight armiger": ("Hell Lore", False),
+            "mammoth lord": ("Mammoth Lore", False),
+            "riftwarden": ("Planes Lore", False),
+        }
 
 
         lore_regex = re.compile(
