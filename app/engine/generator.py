@@ -1339,6 +1339,47 @@ def _build_weapon_strike_entry(weapon_name: str, level: int, mods: dict, cls_nam
     return strike_cls.model_validate(payload) if hasattr(strike_cls, "model_validate") else payload
 
 
+
+def _normalize_bonus_str(val: Any) -> str:
+    if val is None:
+        return "+0"
+    s = re.sub(r"\s+", "", str(val).strip())
+    s = re.sub(r"^\++", "+", s)
+    s = re.sub(r"^\+-", "-", s)
+    try:
+        n = int(s)
+        return f"{n:+d}"
+    except ValueError:
+        if not s.startswith(("+", "-")):
+            return f"+{s}"
+        return s
+
+
+def _dedupe_strikes(strikes: list) -> list:
+    deduped = []
+    seen_idx = {}
+    for st in strikes or []:
+        raw_name = str(getattr(st, "name", None) or (st.get("name") if isinstance(st, dict) else "") or "").strip()
+        base_key = _RE_RUNE_PREFIX.sub("", raw_name).strip().lower()
+        if not base_key:
+            deduped.append(st)
+            continue
+        for attr in ("attack_bonus", "map_second", "map_third"):
+            if isinstance(st, dict) and attr in st:
+                st[attr] = _normalize_bonus_str(st[attr])
+            elif hasattr(st, attr):
+                setattr(st, attr, _normalize_bonus_str(getattr(st, attr)))
+        if base_key not in seen_idx:
+            seen_idx[base_key] = len(deduped)
+            deduped.append(st)
+        else:
+            prev = deduped[seen_idx[base_key]]
+            prev_name = str(getattr(prev, "name", None) or (prev.get("name") if isinstance(prev, dict) else "") or "")
+            if len(raw_name) >= len(prev_name):
+                deduped[seen_idx[base_key]] = st
+    return deduped
+
+
 def enforce_weapon_loadout(
     equipment_loadout: Any,
     deity_summary: Optional[DeitySummary],
@@ -1382,7 +1423,7 @@ def enforce_weapon_loadout(
 
     # Cap non-natural weapons at 2 while keeping all natural attacks
     capped_non_natural = non_natural_strikes[:2]
-    equipment_loadout.strikes = capped_non_natural + natural_strikes
+    equipment_loadout.strikes = _dedupe_strikes(capped_non_natural + natural_strikes)
 
     # Sync equipment_loadout.weapons list cleanly with the non-natural weapons
     if hasattr(equipment_loadout, "weapons") and isinstance(equipment_loadout.weapons, list):
