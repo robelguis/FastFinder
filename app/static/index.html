@@ -987,8 +987,13 @@ function updateHeritageDropdown() {
     }
 
     function formatMod(val) {
-      if (val === undefined || val === null) return "+0";
-      return val >= 0 ? `+${val}` : `${val}`;
+      if (val === undefined || val === null || val === "") return "+0";
+      const cleaned = String(val).trim().replace(/^\++/, "+").replace(/^\+-/, "-");
+      const num = Number(cleaned);
+      if (!Number.isNaN(num)) {
+        return num >= 0 ? `+${num}` : `${num}`;
+      }
+      return cleaned.startsWith("+") || cleaned.startsWith("-") ? cleaned : `+${cleaned}`;
     }
 
     function renderSpellList(containerId, spells) {
