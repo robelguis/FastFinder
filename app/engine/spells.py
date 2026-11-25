@@ -616,7 +616,6 @@ def resolve_spellcasting(
             for f in feats
         ]
         has_dedication_spells = any("godling dedication" in fn for fn in feat_names)
-        has_time_mage = any("time mage dedication" in fn for fn in feat_names)
         if has_dedication_spells:
             # Determine attribute modifier (default to Wis or Cha, or Int for Inventor)
             attr_key = "wis" if "wis" in attribute_mods else ("cha" if "cha" in attribute_mods else "int")
@@ -653,24 +652,25 @@ def resolve_spellcasting(
                 cantrips=[],
                 rank_1_spells=[domain_spell]
             )
-        if has_time_mage:
-            attr_key = "int" if attribute_mods.get("int", 0) >= attribute_mods.get("cha", 0) else "cha"
-            if attr_key not in attribute_mods:
-                attr_key = "wis" if "wis" in attribute_mods else "cha"
-            attr_mod = attribute_mods.get(attr_key, 3)
-            prof_bonus = 2 + level
-            spell_dc = 10 + prof_bonus + attr_mod
-            spell_attack = prof_bonus + attr_mod
+    if feats and any("time mage dedication" in fn for fn in feat_names):
+        attr_key = "int" if attribute_mods.get("int", 0) >= attribute_mods.get("cha", 0) else "cha"
+        if attr_key not in attribute_mods:
+            attr_key = "wis" if "wis" in attribute_mods else "cha"
+        attr_mod = attribute_mods.get(attr_key, 3)
+        prof_bonus = 2 + level
+        spell_dc = 10 + prof_bonus + attr_mod
+        spell_attack = prof_bonus + attr_mod
 
-            time_sense = SpellSummary(
-                rank=0,
-                name="Time Sense (Innate Cantrip)",
-                actions="1 action",
-                traits=["Cantrip", "Concentrate", "Prediction"],
-                range="Self",
-                defense="None",
-                description="Granted by Time Mage Dedication: You gain an intuitive awareness of temporal flow and upcoming moments (usable at will as an innate cantrip)."
-            )
+        time_sense = SpellSummary(
+            rank=0,
+            name="Time Sense (Innate Cantrip)",
+            actions="1 action",
+            traits=["Cantrip", "Concentrate", "Prediction"],
+            range="Self",
+            defense="None",
+            description="Granted by Time Mage Dedication: You gain an intuitive awareness of temporal flow and upcoming moments (usable at will as an innate cantrip)."
+        )
+        if sc is None:
             sc = SpellcastingData(
                 tradition="Occult / Arcane (Time Mage Dedication)",
                 casting_attribute=attr_key.upper(),
@@ -679,6 +679,8 @@ def resolve_spellcasting(
                 cantrips=[time_sense],
                 rank_1_spells=[]
             )
+        elif not any("time sense" in (c.name if hasattr(c, "name") else c.get("name", "")).lower() for c in (sc.cantrips or [])):
+            sc.cantrips = list(sc.cantrips or []) + [time_sense]
 
     # 3. Ancestry & Heritage innate cantrips / spells
     anc_innate_cantrips: List[SpellSummary] = []
