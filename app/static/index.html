@@ -1140,14 +1140,50 @@ function updateHeritageDropdown() {
       const archBoxEl = document.getElementById("archetypeBox");
       const archTitleEl = document.getElementById("archetypeBoxTitle");
       const archDescEl = document.getElementById("archetypeBoxDesc");
+      document.querySelectorAll(".extra-dedication-box").forEach(el => el.remove());
       if (archBoxEl) {
-        if (data.archetype && currentLevel >= 2) {
+        const primaryArch = (data.archetype && currentLevel >= 2) ? data.archetype.trim() : "";
+        if (primaryArch) {
           archBoxEl.style.display = "block";
-          archTitleEl.textContent = `${data.archetype} Dedication`;
-          archDescEl.textContent = data.archetype_description || `Grants dedication feats and training for the ${data.archetype} archetype.`;
+          archTitleEl.textContent = `${primaryArch} Dedication`;
+          archDescEl.textContent = data.archetype_description || `Grants dedication feats and training for the ${primaryArch} archetype.`;
         } else {
           archBoxEl.style.display = "none";
         }
+
+        const primaryDedLower = primaryArch ? `${primaryArch.toLowerCase()} dedication` : "";
+        const extraDeds = (data.feats || []).filter(f => {
+          const fname = (f.name || "").trim();
+          const fLow = fname.toLowerCase();
+          const traits = (f.traits || []).map(t => String(t).toLowerCase());
+          const isDed = fLow.includes("dedication") || traits.includes("dedication");
+          return isDed && fLow !== primaryDedLower;
+        });
+
+        let insertAfter = archBoxEl;
+        extraDeds.forEach(dedFeat => {
+          const box = document.createElement("div");
+          box.className = "sheet-box extra-dedication-box";
+          box.style.marginTop = "0.6rem";
+
+          const titleDiv = document.createElement("div");
+          titleDiv.className = "sheet-box-title";
+          titleDiv.textContent = dedFeat.name;
+
+          const contentDiv = document.createElement("div");
+          contentDiv.className = "sheet-box-content";
+          contentDiv.style.padding = "0.45rem 0.55rem";
+
+          const descP = document.createElement("p");
+          descP.style.cssText = "font-size: 0.78rem; line-height: 1.35; color: #1e293b; margin: 0;";
+          descP.textContent = dedFeat.description || `Grants dedication benefits for ${dedFeat.name}.`;
+
+          contentDiv.appendChild(descP);
+          box.appendChild(titleDiv);
+          box.appendChild(contentDiv);
+          insertAfter.insertAdjacentElement("afterend", box);
+          insertAfter = box;
+        });
       }
 
       const deityBoxEl = document.getElementById("deityBox");

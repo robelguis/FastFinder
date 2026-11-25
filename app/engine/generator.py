@@ -969,21 +969,53 @@ def can_take_additional_lore(existing_feat_names: set, cls_name: str, archetype_
     return current_count < (23 if (is_bard or has_bard_ded) else 2)
 
 
+def _is_dedication_feat(feat: object) -> bool:
+    name = (getattr(feat, "name", "") or "").strip().lower()
+    if "dedication" in name:
+        return True
+    traits = [str(t).strip().lower() for t in (getattr(feat, "traits", []) or [])]
+    return "dedication" in traits
+
+
+def _archetype_key_from_dedication_name(feat_name: str) -> str:
+    low = (feat_name or "").strip().lower()
+    if "dedication" in low:
+        low = low.split("dedication", 1)[0].strip()
+    return " ".join(low.split())
+
+
+def _feat_matches_archetype(feat: object, arch_key: str) -> bool:
+    if not arch_key or _is_dedication_feat(feat):
+        return False
+    name = (getattr(feat, "name", "") or "").strip().lower()
+    category = (getattr(feat, "category", "") or "").strip().lower()
+    traits = [str(t).strip().lower() for t in (getattr(feat, "traits", []) or [])]
+    is_arch = ("archetype" in category) or ("archetype" in traits)
+    if not is_arch:
+        return False
+    return (
+        arch_key in name
+        or arch_key in category
+        or any(arch_key in t for t in traits)
+    )
+
+
 def can_take_dedication(feat_name: str, existing_feats: list, existing_feat_names: set) -> bool:
     fn_low = (feat_name or "").strip().lower()
     if "dedication" not in fn_low:
         return True
-    if any(fn_low == existing.strip().lower() for existing in existing_feat_names):
+    if any(fn_low == (existing or "").strip().lower() for existing in existing_feat_names):
         return False
-    dedications = [f for f in existing_feats if "dedication" in (getattr(f, "name", "") or "").lower()]
+    dedications = [f for f in existing_feats if _is_dedication_feat(f)]
     if not dedications:
         return True
-    arch_feats = [
+    last_ded = dedications[-1]
+    last_arch_key = _archetype_key_from_dedication_name(getattr(last_ded, "name", "") or "")
+    qualifying_feats = [
         f for f in existing_feats
-        if "archetype" in (getattr(f, "category", "") or "").lower()
-        or "archetype" in [t.lower() for t in (getattr(f, "traits", []) or [])]
+        if _feat_matches_archetype(f, last_arch_key)
     ]
-    return len(arch_feats) >= 3 * len(dedications)
+    return len(qualifying_feats) >= 2
 
 
 def enrich_feat_description(feat_name: str, raw_desc: str) -> str:
@@ -3017,7 +3049,15 @@ class PF2eGenerator:
 
         # Level 2
         if level >= 2:
-            if archetype_data and archetype_data.get("level_2_dedication"):
+            if (
+                archetype_data
+                and archetype_data.get("level_2_dedication")
+                and can_take_dedication(
+                    archetype_data["level_2_dedication"].get("name", ""),
+                    chosen_feats,
+                    {f.name for f in chosen_feats},
+                )
+            ):
                 ded = archetype_data["level_2_dedication"]
                 chosen_feats.append(FeatSummary(
                     id=ded["id"],
