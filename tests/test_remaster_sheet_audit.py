@@ -300,3 +300,75 @@ def test_audit_all_class_subclasses_across_inflections(level, class_name, subcla
     assert issues == [], (
         f"Audit issues for {class_name} ({subclass_name}) at L{level}: {issues}"
     )
+def _iter_all_archetypes():
+    from app.engine.generator import ARCHETYPES_CATALOG
+
+    for key, spec in ARCHETYPES_CATALOG.items():
+        if isinstance(spec, dict) and spec.get("name"):
+            yield spec["name"]
+        else:
+            yield key.replace("-", " ").title()
+
+
+def _iter_all_ancestry_heritages():
+    from app.engine.generator import ANCESTRY_HERITAGES
+
+    for anc_key, heritages in ANCESTRY_HERITAGES.items():
+        anc_name = anc_key.replace("_", " ").title()
+        if not heritages:
+            yield anc_name, None
+            continue
+        for h in heritages:
+            h_name = h["name"] if isinstance(h, dict) else str(h)
+            yield anc_name, h_name
+
+
+_ALL_ARCHETYPES = list(_iter_all_archetypes())
+_ALL_ANCESTRY_HERITAGES = list(_iter_all_ancestry_heritages())
+
+
+@pytest.mark.parametrize("level", [1, 2, 4, 8, 14, 15, 20])
+@pytest.mark.parametrize("archetype_name", _ALL_ARCHETYPES)
+def test_audit_all_archetypes_across_inflections(level, archetype_name):
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name="Human",
+        class_name="Fighter",
+        background_name="Scholar",
+        archetype_name=archetype_name,
+        char_name=f"Archetype Sweep {archetype_name} L{level}",
+        level=level,
+        use_dedication=True,
+    )
+    sheet_dict = (
+        sheet.model_dump()
+        if hasattr(sheet, "model_dump")
+        else (sheet.dict() if hasattr(sheet, "dict") else dict(sheet))
+    )
+    issues = audit_remaster_sheet(sheet_dict)
+    assert issues == [], f"Audit issues for archetype '{archetype_name}' at L{level}: {issues}"
+
+
+@pytest.mark.parametrize("level", [1, 10, 20])
+@pytest.mark.parametrize("ancestry_name,heritage_name", _ALL_ANCESTRY_HERITAGES)
+def test_audit_all_ancestries_and_heritages(level, ancestry_name, heritage_name):
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name=ancestry_name,
+        class_name="Fighter",
+        background_name="Scholar",
+        archetype_name=None,
+        char_name=f"Ancestry Sweep {ancestry_name} ({heritage_name}) L{level}",
+        level=level,
+        use_dedication=False,
+        heritage_name=heritage_name,
+    )
+    sheet_dict = (
+        sheet.model_dump()
+        if hasattr(sheet, "model_dump")
+        else (sheet.dict() if hasattr(sheet, "dict") else dict(sheet))
+    )
+    issues = audit_remaster_sheet(sheet_dict)
+    assert issues == [], (
+        f"Audit issues for ancestry '{ancestry_name}' heritage '{heritage_name}' at L{level}: {issues}"
+    )
