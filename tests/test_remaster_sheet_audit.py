@@ -202,7 +202,11 @@ def test_audit_steed_ranger_and_undead_companions(
     assert issues == [], f"Audit issues for {partner_label} at L{level}: {issues}"
 
     all_partners = [p for p in ([sheet.companion] + list(sheet.additional_partners or [])) if p is not None]
-    assert all_partners, f"Expected at least one partner on sheet for {partner_label} at L{level}"
+    if level == 1 and archetype_name == "Undead Master":
+        # Undead Master Dedication is a Level 2 feat, so Level 1 Wizard properly has no undead companion yet
+        assert all_partners == [], f"Unexpected Level 1 partner before Level 2 Undead Master Dedication: {all_partners}"
+    else:
+        assert all_partners, f"Expected at least one partner on sheet for {partner_label} at L{level}"
 
     if level >= 15:
         max_ac = max(p.ac for p in all_partners if isinstance(p.ac, (int, float)))
