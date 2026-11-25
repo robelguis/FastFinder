@@ -264,3 +264,39 @@ def test_audit_partner_inflection_levels(
             f"Expected at least one partner at L{level} for {class_name} "
             f"(sub={subclass_name}, arch={archetype_name}, ded={use_dedication})"
         )
+def _iter_all_class_subclasses():
+    from app.engine.subclasses import CLASS_SUBCLASSES
+
+    for cls_key, spec in CLASS_SUBCLASSES.items():
+        cls_name = cls_key.replace("_", " ").title()
+        for opt in spec.get("options", []):
+            sub_name = opt["name"] if isinstance(opt, dict) else str(opt)
+            yield cls_name, sub_name
+
+
+_ALL_CLASS_SUBCLASSES = list(_iter_all_class_subclasses())
+
+
+@pytest.mark.parametrize("level", [1, 2, 4, 8, 14, 15, 20])
+@pytest.mark.parametrize("class_name,subclass_name", _ALL_CLASS_SUBCLASSES)
+def test_audit_all_class_subclasses_across_inflections(level, class_name, subclass_name):
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name="Human",
+        class_name=class_name,
+        background_name="Scholar",
+        archetype_name=None,
+        char_name=f"Sweep {class_name} ({subclass_name}) L{level}",
+        level=level,
+        use_dedication=False,
+        subclass_name=subclass_name,
+    )
+    sheet_dict = (
+        sheet.model_dump()
+        if hasattr(sheet, "model_dump")
+        else (sheet.dict() if hasattr(sheet, "dict") else dict(sheet))
+    )
+    issues = audit_remaster_sheet(sheet_dict)
+    assert issues == [], (
+        f"Audit issues for {class_name} ({subclass_name}) at L{level}: {issues}"
+    )
