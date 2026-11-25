@@ -203,8 +203,14 @@ def test_audit_steed_ranger_and_undead_companions(
 
     all_partners = [p for p in ([sheet.companion] + list(sheet.additional_partners or [])) if p is not None]
     if level == 1 and archetype_name == "Undead Master":
-        # Undead Master Dedication is a Level 2 feat, so Level 1 Wizard properly has no undead companion yet
-        assert all_partners == [], f"Unexpected Level 1 partner before Level 2 Undead Master Dedication: {all_partners}"
+        # Undead Master Dedication is a Level 2 feat, so Level 1 Wizard must not have an undead companion yet
+        # (though a Level 1 Wizard may legally take the Level 1 Familiar class feat)
+        undead_partners = [
+            p for p in all_partners
+            if "undead" in (getattr(p, "creature_type", "") or "").lower()
+            or "companion" in (getattr(p, "creature_type", "") or "").lower()
+        ]
+        assert undead_partners == [], f"Unexpected Level 1 undead companion before Level 2 Undead Master Dedication: {undead_partners}"
     else:
         assert all_partners, f"Expected at least one partner on sheet for {partner_label} at L{level}"
 
