@@ -211,3 +211,56 @@ def test_audit_steed_ranger_and_undead_companions(
     if level >= 15:
         max_ac = max(p.ac for p in all_partners if isinstance(p.ac, (int, float)))
         assert max_ac >= 32, f"Expected high-level partner AC >= 32 for {partner_label} at L{level}, got {max_ac}"
+@pytest.mark.parametrize("level", [1, 2, 4, 8, 14, 15, 20])
+@pytest.mark.parametrize(
+    "ancestry_name,class_name,subclass_name,archetype_name,use_dedication,requires_partner_at_l1",
+    [
+        ("Yaoguai", "Summoner", "Beast Eidolon", "Beastmaster", True, True),
+        ("Leshy", "Druid", "Leaf Order", None, False, True),
+        ("Centaur", "Champion", "Paladin (Holy)", "Cavalier", True, True),
+        ("Human", "Inventor", "Construct Innovation", None, False, True),
+        ("Human", "Fighter", None, "Beastmaster", True, False),
+        ("Human", "Fighter", None, "Beastmaster", False, False),
+    ],
+)
+def test_audit_partner_inflection_levels(
+    level,
+    ancestry_name,
+    class_name,
+    subclass_name,
+    archetype_name,
+    use_dedication,
+    requires_partner_at_l1,
+):
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name=ancestry_name,
+        class_name=class_name,
+        background_name="Scholar",
+        archetype_name=archetype_name,
+        char_name=f"Inflection {class_name} {archetype_name or subclass_name} L{level}",
+        level=level,
+        use_dedication=use_dedication,
+        subclass_name=subclass_name,
+    )
+    sheet_dict = (
+        sheet.model_dump()
+        if hasattr(sheet, "model_dump")
+        else (sheet.dict() if hasattr(sheet, "dict") else dict(sheet))
+    )
+    issues = audit_remaster_sheet(sheet_dict)
+    assert issues == [], (
+        f"Audit issues for {ancestry_name} {class_name} "
+        f"(sub={subclass_name}, arch={archetype_name}, ded={use_dedication}) at L{level}: {issues}"
+    )
+
+    all_partners = [p for p in ([sheet.companion] + list(sheet.additional_partners or [])) if p is not None]
+    if level == 1 and not requires_partner_at_l1:
+        assert all_partners == [], (
+            f"Expected no partner at L1 when dedication/partner isn't granted at L1: {all_partners}"
+        )
+    elif level >= 2 and (class_name in {"Summoner", "Druid", "Champion", "Inventor"} or use_dedication):
+        assert all_partners, (
+            f"Expected at least one partner at L{level} for {class_name} "
+            f"(sub={subclass_name}, arch={archetype_name}, ded={use_dedication})"
+        )
