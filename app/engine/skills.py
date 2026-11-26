@@ -130,11 +130,20 @@ def resolve_character_skills(
             plain_desc = re.sub(r"<[^>]+>", " ", str(bg.get("description", "")))
             plain_desc = re.sub(r"\s+", " ", plain_desc).strip()
             matches = re.findall(r"([A-Z][A-Za-z'\-]*(?:\s+(?:of|the|and|[A-Z][A-Za-z'\-]*))*\s+Lore)", plain_desc)
-            filtered = [
-                m.strip()
-                for m in matches
-                if m.strip().lower() != f"{str(bg.get('name', '')).lower()} lore"
-            ]
+            blocked_bg_lores = {
+                "lore",
+                "additional lore",
+                "your lore",
+                "any lore",
+                "that lore",
+                "chosen lore",
+                f"{str(bg.get('name', '')).lower()} lore",
+            }
+            filtered = []
+            for m in matches:
+                cleaned_m = re.sub(r"^(?:the|a|an|your|any)\s+", "", m.strip(), flags=re.IGNORECASE).strip()
+                if cleaned_m and cleaned_m.lower() not in blocked_bg_lores and "additional" not in cleaned_m.lower():
+                    filtered.append(cleaned_m)
             if filtered:
                 lore_opts = filtered
 
@@ -142,6 +151,9 @@ def resolve_character_skills(
             chosen_lore = random.choice(lore_opts)
         else:
             chosen_lore = f"{bg.get('name', 'Settler')} Lore"
+
+    if str(chosen_lore or "").strip().lower() in {"", "lore", "additional lore", "your lore", "any lore"}:
+        chosen_lore = f"{bg.get('name', 'Settler')} Lore"
 
     # 2. Map existing skills
     existing_map: Dict[str, int] = {}
