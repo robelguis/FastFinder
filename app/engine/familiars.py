@@ -134,7 +134,8 @@ def resolve_familiar(
     aquatic_only: bool = False,
     is_pet: bool = False,
     forced_species: Optional[str] = None,
-    description_text: Optional[str] = None
+    description_text: Optional[str] = None,
+    archetype_name: Optional[str] = None,
 ) -> PartnerCreatureData:
     if forced_species == "elemental":
         pool = [k for k, v in FAMILIAR_SPECIES.items() if v.get("elemental")]
@@ -169,7 +170,11 @@ def resolve_familiar(
     hp = 5 * level
 
     if is_pet:
-        ability_tags = list(cfg["innate_abilities"])[:2]
+        ability_tags = list(cfg.get("innate_abilities") or [])[:2]
+        if aquatic_only:
+            for req_ab in ("Darkvision", "Tough"):
+                if req_ab not in ability_tags:
+                    ability_tags.append(req_ab)
         ability_summary = ", ".join(ability_tags) if ability_tags else "Amphibious, Tough"
         primary_text = (
             f"Pet Abilities: {ability_summary}. Tiny minion (Perception +{3 + level}, other skills +{level}, "
@@ -184,7 +189,8 @@ def resolve_familiar(
         ability_summary = ", ".join(ability_tags)
         primary_text = f"Familiar Abilities: {ability_summary}. {chosen_pool_abilities[0]['name']}: {chosen_pool_abilities[0]['desc']}"
         secondary_text = f"{chosen_pool_abilities[1]['name']}: {chosen_pool_abilities[1]['desc']}"
-        stage_label = "Patron Conduit" if class_name.lower() == "witch" else ("Marine Bond" if aquatic_only else "Mystical Bond")
+        is_witch_partner = class_name.lower() == "witch" or "witch" in str(archetype_name or "").lower()
+        stage_label = "Patron Conduit" if is_witch_partner else ("Marine Bond" if aquatic_only else "Mystical Bond")
         sub_label = f"{species_label} Familiar"
 
     eff_perception = (3 + level) if is_pet else master_perception

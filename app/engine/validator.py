@@ -1000,6 +1000,49 @@ def _check_synthetic_feats(
     return issues
 
 
+
+def _check_class_invariants(data: Dict[str, Any]) -> List[ValidationIssue]:
+    issues: List[ValidationIssue] = []
+    cls_low = str(data.get("class_name") or "").strip().lower()
+    sub = data.get("subclass")
+    sub_name = (sub.get("name") if isinstance(sub, dict) else str(sub or "")).strip().lower()
+    feat_names = {
+        str(f.get("name") if isinstance(f, dict) else getattr(f, "name", "")).strip().lower()
+        for f in (data.get("feats") or [])
+    }
+
+    if cls_low == "bard":
+        sc = data.get("spellcasting") or {}
+        cantrips = sc.get("cantrips") or []
+        r1 = sc.get("rank_1_spells") or []
+        r1_names = {str(s.get("name") if isinstance(s, dict) else getattr(s, "name", "")).strip().lower() for s in r1}
+        if len(cantrips) < 5:
+            issues.append(ValidationIssue("class_invariants", "BARD_CANTRIP_COUNT", f"Bard has {len(cantrips)} cantrips (expected >= 5)."))
+        if len(r1) < 3:
+            issues.append(ValidationIssue("class_invariants", "BARD_RANK1_COUNT", f"Bard has {len(r1)} Rank 1 spells (expected >= 3)."))
+
+        fp = data.get("focus_spells") or {}
+        f_names = {str(s.get("name") if isinstance(s, dict) else getattr(s, "name", "")).strip().lower() for s in (fp.get("spells") or [])}
+        for req_focus in ("courageous anthem", "counter performance"):
+            if req_focus not in f_names:
+                issues.append(ValidationIssue("class_invariants", "BARD_MISSING_FOCUS", f"Bard missing required composition spell: {req_focus.title()}."))
+
+        muse_reqs = {
+            "warrior": ("martial performance", "fear"),
+            "enigma": ("bardic lore", "sure strike"),
+            "maestro": ("lingering composition", "soothe"),
+            "polymath": ("versatile performance", "phantasmal minion"),
+        }
+        for m_key, (req_feat, req_spell) in muse_reqs.items():
+            if m_key in sub_name:
+                if not any(req_feat in fn for fn in feat_names):
+                    issues.append(ValidationIssue("class_invariants", "BARD_MISSING_MUSE_FEAT", f"Bard ({m_key.title()}) missing Muse feat: {req_feat.title()}."))
+                if req_spell not in r1_names:
+                    issues.append(ValidationIssue("class_invariants", "BARD_MISSING_MUSE_SPELL", f"Bard ({m_key.title()}) missing Muse spell: {req_spell.title()}."))
+
+    return issues
+
+
 def audit_character_sheet(sheet: Any) -> ValidationResult:
     """
     Standalone PF2e Remaster Invariant Checker.
@@ -1016,6 +1059,7 @@ def audit_character_sheet(sheet: Any) -> ValidationResult:
     issues.extend(_check_skills_and_lores(data))
     issues.extend(_check_strike_math(data, weapon_catalog))
     issues.extend(_check_synthetic_feats(data, by_id, by_name))
+    issues.extend(_check_class_invariants(data))
 
     summary: Dict[str, int] = {
         "feat_slots": 0,
@@ -1023,6 +1067,7 @@ def audit_character_sheet(sheet: Any) -> ValidationResult:
         "skill_sync": 0,
         "strike_math": 0,
         "synthetic_feats": 0,
+        "class_invariants": 0,
     }
     for iss in issues:
         summary[iss.category] = summary.get(iss.category, 0) + 1
@@ -1063,6 +1108,7 @@ def run_fuzz_audit(
         "skill_sync": 0,
         "strike_math": 0,
         "synthetic_feats": 0,
+        "class_invariants": 0,
     }
     category_issue_totals: Dict[str, int] = dict(category_build_failures)
     code_counts: Dict[str, int] = {}

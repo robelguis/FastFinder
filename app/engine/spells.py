@@ -182,7 +182,8 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Daze", "actions": "2 actions", "traits": ["Cantrip", "Mental", "Occult"], "range": "60 feet", "defense": "Will", "description": "Jolts the target's mind with mental feedback dealing 2d6 mental damage (stupefied 1 on crit fail)."},
             {"name": "Telekinetic Projectile", "actions": "2 actions", "traits": ["Attack", "Cantrip", "Manipulate", "Occult"], "range": "30 feet", "defense": "AC", "description": "Hurls a loose object dealing 2d6 damage."},
             {"name": "Shield", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Force", "Occult"], "range": "Self", "defense": "None", "description": "Grants +1 circumstance bonus to AC and Shield Block."},
-            {"name": "Void Warp", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Occult", "Void"], "range": "30 feet", "defense": "Basic Fortitude", "description": "Assaults the target with entropic void energy dealing 2d4 void damage."}
+            {"name": "Void Warp", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Occult", "Void"], "range": "30 feet", "defense": "Basic Fortitude", "description": "Assaults the target with entropic void energy dealing 2d4 void damage."},
+            {"name": "Figment", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Illusion", "Manipulate", "Occult"], "range": "30 feet", "defense": "None", "description": "Creates a simple illusory sound or image to distract foes or aid Create a Diversion."}
         ],
         "rank_1": [
             {"name": "Soothe", "actions": "2 actions", "traits": ["Emotion", "Healing", "Mental", "Occult"], "range": "30 feet", "defense": "None", "description": "Soothes the mind to restore 1d10+4 HP and grant +2 status bonus to saves vs mental effects."},
@@ -1003,6 +1004,19 @@ def _resolve_base_spellcasting(
     else:
         cantrips = [SpellSummary(rank=0, **s) for s in cat_data["cantrips"]]
         rank_1 = [SpellSummary(rank=1, **s) for s in cat_data["rank_1"]]
+        if cls_key == "bard" and subclass_name:
+            muse_low = subclass_name.lower()
+            muse_spell = None
+            if "warrior" in muse_low:
+                muse_spell = SpellSummary(rank=1, name="Fear", actions="2 actions", traits=["Concentrate", "Emotion", "Fear", "Manipulate", "Mental", "Occult"], range="30 feet", defense="Will", description="You plant fear in the target, making it frightened 1 on a success, frightened 2 on a failure, or frightened 3 and fleeing on a critical failure.")
+            elif "enigma" in muse_low:
+                muse_spell = SpellSummary(rank=1, name="Sure Strike", actions="1 action", traits=["Concentrate", "Fortune", "Occult"], range="Self", defense="None", description="Roll twice on your next attack roll this turn and take the better result.")
+            elif "maestro" in muse_low:
+                muse_spell = SpellSummary(rank=1, name="Soothe", actions="2 actions", traits=["Emotion", "Healing", "Mental", "Occult"], range="30 feet", defense="None", description="Soothes the mind to restore 1d10+4 HP and grant +2 status bonus to saves vs mental effects.")
+            elif "polymath" in muse_low:
+                muse_spell = SpellSummary(rank=1, name="Phantasmal Minion", actions="3 actions", traits=["Illusion", "Occult"], range="60 feet", defense="None", description="Creates an illusory servant capable of simple physical tasks.")
+            if muse_spell and not any(s.name.lower() == muse_spell.name.lower() for s in rank_1):
+                rank_1 = rank_1[:2] + [muse_spell]
         rank_2 = [SpellSummary(rank=2, **s) for s in cat_data.get("rank_2", [])] if level >= 3 else []
         rank_3 = [SpellSummary(rank=3, **s) for s in cat_data.get("rank_3", [])] if level >= 5 else []
         rank_4 = [SpellSummary(rank=4, **s) for s in cat_data.get("rank_4", [])] if level >= 7 else []

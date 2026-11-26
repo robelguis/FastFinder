@@ -118,6 +118,84 @@ def _scale_dice_expression(base_dice: str, dice_count: int) -> str:
     return "1d6"
 
 
+
+_TRAIT_EXACT_MAP = {
+    "agile": "Agile",
+    "finesse": "Finesse",
+    "disarm": "Disarm",
+    "trip": "Trip",
+    "grapple": "Grapple",
+    "shove": "Shove",
+    "parry": "Parry",
+    "reach": "Reach",
+    "sweep": "Sweep",
+    "forceful": "Forceful",
+    "propulsive": "Propulsive",
+    "jousting": "Jousting",
+    "backstabber": "Backstabber",
+    "unarmed": "Unarmed",
+    "brawling": "Brawling",
+    "monk": "Monk",
+    "deadly": "Deadly",
+    "fatal": "Fatal",
+    "thrown": "Thrown",
+    "versatile": "Versatile",
+}
+
+
+def _normalize_weapon_trait(raw_trait: Any) -> str:
+    s = str(raw_trait or "").strip()
+    if not s:
+        return ""
+    if ":" in s or "(" in s:
+        return s
+
+    m_deadly = re.match(r"^deadly[\s\-]+d?(\d+)$", s, flags=re.IGNORECASE)
+    if m_deadly:
+        return f"Deadly d{m_deadly.group(1)}"
+
+    m_fatal = re.match(r"^fatal[\s\-]+d?(\d+)$", s, flags=re.IGNORECASE)
+    if m_fatal:
+        return f"Fatal d{m_fatal.group(1)}"
+
+    m_two_hand = re.match(r"^two[\s\-]+hand[\s\-]+d?(\d+)$", s, flags=re.IGNORECASE)
+    if m_two_hand:
+        return f"Two-Hand d{m_two_hand.group(1)}"
+
+    m_thrown = re.match(r"^thrown[\s\-]+(\d+)(?:\s*(?:ft|feet))?$", s, flags=re.IGNORECASE)
+    if m_thrown:
+        return f"Thrown {m_thrown.group(1)} ft"
+
+    m_range = re.match(r"^range[\s\-]+(\d+)(?:\s*(?:ft|feet))?$", s, flags=re.IGNORECASE)
+    if m_range:
+        return f"Range {m_range.group(1)} ft"
+
+    m_volley = re.match(r"^volley[\s\-]+(\d+)(?:\s*(?:ft|feet))?$", s, flags=re.IGNORECASE)
+    if m_volley:
+        return f"Volley {m_volley.group(1)} ft"
+
+    m_versatile = re.match(r"^versatile[\s\-]+([bps])$", s, flags=re.IGNORECASE)
+    if m_versatile:
+        return f"Versatile {m_versatile.group(1).upper()}"
+
+    low = re.sub(r"\s+", " ", s.lower()).strip()
+    if low in _TRAIT_EXACT_MAP:
+        return _TRAIT_EXACT_MAP[low]
+
+    return s
+
+
+def _normalize_weapon_traits(traits: Sequence[Any]) -> List[str]:
+    out: List[str] = []
+    seen: set[str] = set()
+    for t in (traits or []):
+        norm = _normalize_weapon_trait(t)
+        if norm and norm.lower() not in seen:
+            seen.add(norm.lower())
+            out.append(norm)
+    return out
+
+
 def compute_strike(
     *,
     name: str,
@@ -202,7 +280,7 @@ def compute_strike(
         damage=dmg_summary,
         damage_dice=dmg_dice_str,
         damage_type=damage_type or "Slashing",
-        traits=trait_list,
+        traits=_normalize_weapon_traits(trait_list),
     )
 
 
@@ -311,7 +389,7 @@ def dedupe_and_recompute_strikes(
                 damage=str(st_dict.get("damage") or st_dict.get("damage_dice") or "1d8"),
                 damage_dice=str(st_dict.get("damage_dice") or "1d8"),
                 damage_type=str(st_dict.get("damage_type") or "Fire"),
-                traits=list(st_dict.get("traits") or []),
+                traits=_normalize_weapon_traits(st_dict.get("traits") or []),
             )
             key = low_name
             if key not in seen_keys:

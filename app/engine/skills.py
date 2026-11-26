@@ -100,6 +100,21 @@ def resolve_character_skills(
         for f in all_feats
     )
 
+    # Normalize string slug / pack JSON background into dict with description
+    if isinstance(bg, str):
+        slug = bg.strip().lower().replace(" ", "_")
+        bg_json_path = Path("source_data/packs/pf2e/backgrounds") / f"{slug}.json"
+        if bg_json_path.exists():
+            raw_bg = json.loads(bg_json_path.read_text(encoding="utf-8"))
+            desc_val = raw_bg.get("system", {}).get("description", {}).get("value", "")
+            bg = {"name": raw_bg.get("name") or bg, "description": re.sub(r"<[^>]+>", " ", desc_val)}
+        else:
+            bg = {"name": bg, "description": ""}
+    elif isinstance(bg, dict) and not bg.get("description") and isinstance(bg.get("system"), dict):
+        desc_val = bg["system"].get("description", {}).get("value", "")
+        if desc_val:
+            bg = {**bg, "description": re.sub(r"<[^>]+>", " ", desc_val)}
+
     # 1. Extract and preserve Lore
     chosen_lore = existing_lore
     if not chosen_lore:
@@ -112,10 +127,14 @@ def resolve_character_skills(
                 lore_opts = [t_lore.strip()]
 
         if not lore_opts and bg.get("description"):
-            # Extract lore skills mentioned in the description (e.g. "Netherworld Lore or Nidal Lore")
-            matches = re.findall(r"([A-Z][a-zA-Z'\-]+(?:\s+[A-Z][a-zA-Z'\-]+)*\s+Lore)", bg.get("description", ""))
-            # Exclude self-named lore (e.g. "Shadowcaller Outcast Lore")
-            filtered = [m.strip() for m in matches if m.strip().lower() != f"{bg.get('name', '').lower()} lore"]
+            plain_desc = re.sub(r"<[^>]+>", " ", str(bg.get("description", "")))
+            plain_desc = re.sub(r"\s+", " ", plain_desc).strip()
+            matches = re.findall(r"([A-Z][A-Za-z'\-]*(?:\s+(?:of|the|and|[A-Z][A-Za-z'\-]*))*\s+Lore)", plain_desc)
+            filtered = [
+                m.strip()
+                for m in matches
+                if m.strip().lower() != f"{str(bg.get('name', '')).lower()} lore"
+            ]
             if filtered:
                 lore_opts = filtered
 
@@ -255,13 +274,9 @@ def resolve_character_skills(
             "champion": 2,
             "necromancer": 2,
         }
-        base_count = bg.get("class_skill_count") or CLASS_BASE_SKILL_COUNTS.get(cls_name.lower(), 3)
-        total_picks = max(2, base_count + len(mandatory) + int_mod)
-
-        available_pool = [s for s in ALL_PF2E_SKILLS if s not in mandatory]
-        random.shuffle(available_pool)
-        needed = max(0, total_picks - len(mandatory))
+        base_count = (bg.get("class_skill_count") if isinstance(bg, dict) else None) or CLASS_BASE_SKILL_COUNTS.get(cls_name.lower(), 3)
         mandatory = mandatory.union(class_req_skills)
+        total_picks = max(2, base_count + int_mod)
         available_pool = [s for s in ALL_PF2E_SKILLS if s not in mandatory]
         random.shuffle(available_pool)
         needed = max(0, total_picks - len(mandatory))

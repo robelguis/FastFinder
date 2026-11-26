@@ -214,6 +214,14 @@ CLASS_FOCUS_SPELLS: Dict[str, Dict[str, Any]] = {
                 "range": "60-foot emanation",
                 "defense": "None",
                 "description": "Inspires your allies. You and all allies in the emanation gain a +1 status bonus to attack rolls, damage rolls, and saves against fear for 1 round."
+            },
+            {
+                "name": "Counter Performance",
+                "actions": "Reaction",
+                "traits": ["Composition", "Focus", "Fortune", "Mental", "Occult"],
+                "range": "60-foot emanation",
+                "defense": "None",
+                "description": "Trigger: You or an ally within 60 feet rolls a saving throw against an auditory or visual effect. Roll a Performance check; you and allies in the area can use the better result."
             }
         ]
     },

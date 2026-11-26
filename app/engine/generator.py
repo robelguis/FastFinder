@@ -622,7 +622,8 @@ def sync_feat_partners(
         "familiar", "marine ally", "leshy familiar", "elemental familiar",
         "shadow familiar", "spirit guide", "glyph familiar", "call wizardly tools",
     )
-    has_pet_feat = "pet" in feat_names
+    has_friend_of_the_sea = "friend of the sea" in feat_names or "friend of the sea" in all_feat_str
+    has_pet_feat = ("pet" in feat_names) or has_friend_of_the_sea
     is_animal_partner_class = cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names))
 
     if (
@@ -651,12 +652,13 @@ def sync_feat_partners(
                 master_will=master_will, master_perception=master_perception,
                 class_name=class_name, level=level, aquatic_only=has_marine_ally,
                 is_pet=False, forced_species=forced_sp, description_text=concept_text,
+                archetype_name=archetype_name,
             ))
         elif has_pet_feat:
             _append_unique(resolve_familiar(
                 master_ac=master_ac, master_fort=master_fort, master_ref=master_ref,
                 master_will=master_will, master_perception=3 + level,
-                class_name=class_name, level=level, aquatic_only=False, is_pet=True,
+                class_name=class_name, level=level, aquatic_only=has_friend_of_the_sea, is_pet=True,
                 description_text=concept_text,
             ))
 
@@ -2613,7 +2615,29 @@ class PF2eGenerator:
                         f_obj.description = enrich_feat_description(updated_n, getattr(f_obj, "description", "") or "")
 
         _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
-        _fin_deity_raw = select_deity(deity_name=deity_name, class_name=_fin_cls_name, background_name=background_name, ancestry_name=anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", None), subclass_name=sub_name, domain_name=domain_name, concept_text=concept_text)
+        _fin_cls_low = (_fin_cls_name or "").strip().lower()
+        _explicit_deity = bool(deity_name and str(deity_name).strip().lower() not in ("", "any", "any deity", "none"))
+        _explicit_domain = bool(domain_name and str(domain_name).strip().lower() not in ("", "any", "any domain", "none"))
+        _feat_names_low = " ".join((getattr(f, "name", "") or "").lower() for f in chosen_feats)
+        _needs_deity = (
+            _fin_cls_low in ("cleric", "champion")
+            or _explicit_deity
+            or _explicit_domain
+            or any(k in _feat_names_low for k in ("cleric dedication", "champion dedication", "domain initiate", "deity's domain", "deitys domain", "blessed one", "splinter faith"))
+        )
+        _fin_deity_raw = (
+            select_deity(
+                deity_name=deity_name,
+                class_name=_fin_cls_name,
+                background_name=background_name,
+                ancestry_name=anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", None),
+                subclass_name=sub_name,
+                domain_name=domain_name,
+                concept_text=concept_text,
+            )
+            if _needs_deity
+            else None
+        )
         deity_summary = _build_deity_summary(_fin_deity_raw, chosen_feats)
         if deity_summary and domain_name and domain_name.strip().lower() not in ("", "any", "any domain", "none"):
             clean_dom = domain_name.strip().title()
@@ -3216,6 +3240,20 @@ class PF2eGenerator:
                     f1 = pick_weighted_feat(lvl1_feats, cls["name"], {f.name for f in chosen_feats}, skills_l1, mods, 1, subclass_name=sub_n_val, archetype_name=arch_n_val)
                     if f1:
                         _record_feat(f1, "Class (Level 1)")
+
+        # Level 1: Bard Muse Feat (RAW Player Core)
+        if cls_name_lower == "bard" and sub_n_val:
+            muse_feat_map = {
+                "warrior": "Martial Performance",
+                "enigma": "Bardic Lore",
+                "maestro": "Lingering Composition",
+                "polymath": "Versatile Performance",
+            }
+            muse_target = next((v for k, v in muse_feat_map.items() if k in sub_n_val.lower()), None)
+            if muse_target and muse_target.lower() not in added_feat_names:
+                muse_f = next((f for f in self.feats if f.get("name", "").lower() == muse_target.lower()), None)
+                if muse_f:
+                    _record_feat(muse_f, "Class Feature (Muse)")
 
         # Levels 2..9 Selection Loop (Level 10..20 handled in _grant_tier3_feats below)
         for cur_lvl in range(2, min(level, 9) + 1):
