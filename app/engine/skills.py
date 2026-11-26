@@ -274,6 +274,21 @@ def resolve_character_skills(
             if untrained:
                 trained_skills.add(untrained[0])
 
+    # Generic feat-granted skill trainings (e.g., Minotaur Lore -> Society & Stealth)
+    _skill_lookup = {s.lower(): s for s in ALL_PF2E_SKILLS}
+    for _feat in (feats or []):
+        _f_desc = (getattr(_feat, "description", None) or (_feat.get("description") if isinstance(_feat, dict) else "") or "")
+        if not _f_desc:
+            continue
+        for _m_tr in re.finditer(
+            r"you become trained in\s+([a-z]+)(?:\s+and\s+([a-z]+))?",
+            _f_desc,
+            flags=re.IGNORECASE,
+        ):
+            for _grp in (_m_tr.group(1), _m_tr.group(2)):
+                if _grp and _grp.lower() in _skill_lookup:
+                    _grant_trained_or_substitute(_skill_lookup[_grp.lower()])
+
     # 4. Calculate skill ranks and apply increases
     num_increases = get_skill_increases_count(cls_name, target_lvl)
     skill_ranks: Dict[str, int] = {s: (2 if s in trained_skills else 0) for s in ALL_PF2E_SKILLS}

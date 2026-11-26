@@ -619,17 +619,23 @@ USER CONCEPT: "{concept_text}"
             ("glaive", "Glaive", "1d8", "Slashing", ["Deadly d8", "Forceful", "Reach"], True),
             ("laive", "Glaive", "1d8", "Slashing", ["Deadly d8", "Forceful", "Reach"], True),
             ("greatsword", "Greatsword", "1d12", "Slashing", ["Versatile P"], True),
+            ("great sword", "Greatsword", "1d12", "Slashing", ["Versatile P"], True),
             ("bastard sword", "Bastard Sword", "1d8", "Slashing", ["Two-Hand d12"], True),
             ("shortsword", "Shortsword", "1d6", "Piercing", ["Agile", "Finesse", "Versatile S"], True),
             ("longsword", "Longsword", "1d8", "Slashing", ["Versatile P"], True),
             ("sword", "Longsword", "1d8", "Slashing", ["Versatile P"], True),
             ("rapier", "Rapier", "1d6", "Piercing", ["Deadly d8", "Disarm", "Finesse"], True),
             ("greataxe", "Greataxe", "1d12", "Slashing", ["Sweep"], True),
+            ("great axe", "Greataxe", "1d12", "Slashing", ["Sweep"], True),
+            ("battle axe", "Battleaxe", "1d8", "Slashing", ["Sweep"], True),
             ("battleaxe", "Battleaxe", "1d8", "Slashing", ["Sweep"], True),
             ("axe", "Battleaxe", "1d8", "Slashing", ["Sweep"], True),
             ("maul", "Maul", "1d12", "Bludgeoning", ["Shove"], True),
             ("warhammer", "Warhammer", "1d8", "Bludgeoning", ["Shove"], True),
+            ("war hammer", "Warhammer", "1d8", "Bludgeoning", ["Shove"], True),
             ("longbow", "Longbow", "1d8", "Piercing", ["Deadly d10", "Volley 30 ft"], True),
+            ("long bow", "Longbow", "1d8", "Piercing", ["Deadly d10", "Volley 30 ft"], True),
+            ("short bow", "Shortbow", "1d6", "Piercing", ["Deadly d10"], True),
             ("shortbow", "Shortbow", "1d6", "Piercing", ["Deadly d10"], True),
             ("bow", "Shortbow", "1d6", "Piercing", ["Deadly d10"], True),
             ("dagger", "Dagger", "1d4", "Piercing", ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"], False),
@@ -652,12 +658,29 @@ USER CONCEPT: "{concept_text}"
                 added_weapons.add(wname)
                 is_ranged = "bow" in wname.lower() or "crossbow" in wname.lower()
                 best_mod = sheet.attributes.dexterity if is_ranged else (max(sheet.attributes.strength, sheet.attributes.dexterity) if "Finesse" in wtraits else sheet.attributes.strength)
-                prof_bonus = 4 if cls_key_eq == "fighter" else 2
-                atk = best_mod + sheet.level + prof_bonus
-                dmg_mod = 0 if is_ranged else sheet.attributes.strength
-                dmg_str = f"{wdice}+{dmg_mod}" if dmg_mod > 0 else (f"{wdice}{dmg_mod}" if dmg_mod < 0 else wdice)
+                from app.engine.progression import get_weapon_prof_bonus_delta, get_weapon_spec_bonus
+                lvl_eq = int(sheet.level or 1)
+                base_prof = 4 if cls_key_eq in ("fighter", "gunslinger") else 2
+                prof_delta = get_weapon_prof_bonus_delta(cls_key_eq, lvl_eq)
+                # Fighter/Gunslinger already start at Expert (+4), so avoid double-counting +2
+                if cls_key_eq in ("fighter", "gunslinger"):
+                    prof_bonus = 2 + max(2, prof_delta)
+                else:
+                    prof_bonus = base_prof + prof_delta
+                potency = 3 if lvl_eq >= 16 else (2 if lvl_eq >= 10 else (1 if lvl_eq >= 2 else 0))
+                dice_mult = 4 if lvl_eq >= 19 else (3 if lvl_eq >= 12 else (2 if lvl_eq >= 4 else 1))
+                striking_label = (
+                    "Major Striking " if dice_mult == 4 else
+                    ("Greater Striking " if dice_mult == 3 else ("Striking " if dice_mult == 2 else ""))
+                )
+                rune_prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
+                scaled_dice = re.sub(r"^\d+(?=d\d+)", str(dice_mult), wdice)
+                atk = best_mod + lvl_eq + prof_bonus + potency
+                spec_dmg = get_weapon_spec_bonus(cls_key_eq, lvl_eq)
+                dmg_mod = (0 if is_ranged else sheet.attributes.strength) + spec_dmg
+                dmg_str = f"{scaled_dice}+{dmg_mod}" if dmg_mod > 0 else (f"{scaled_dice}{dmg_mod}" if dmg_mod < 0 else scaled_dice)
                 strike_data = {
-                    "name": wname,
+                    "name": f"{rune_prefix}{wname}",
                     "attack_bonus": str(atk),
                     "map_second": str(atk - 5),
                     "map_third": str(atk - 10),
@@ -741,15 +764,19 @@ USER CONCEPT: "{concept_text}"
             if not strict_only_weapon and len(phys_after_dedup) == 1 and not has_any_ranged:
                 base_strike = phys_after_dedup[0]
                 strike_cls = type(base_strike) if hasattr(base_strike, "attack_bonus") else None
-                lvl_val = getattr(sheet, "level", 1) or 1
-                dex_mod = int(getattr(getattr(sheet, "mods", {}), "get", lambda k, d=0: getattr(getattr(sheet, "mods", None), k, d))("dex", 0) or 0)
-                atk_bonus = 2 + lvl_val + dex_mod
+                from app.engine.progression import get_weapon_prof_bonus_delta, get_weapon_spec_bonus
+                lvl_val = int(getattr(sheet, "level", 1) or 1)
+                dex_mod = int(getattr(getattr(sheet, "attributes", None), "dexterity", 0) or 0)
+                prof_delta = get_weapon_prof_bonus_delta(cls_key_eq, lvl_val)
+                prof_bonus = (2 + max(2, prof_delta)) if cls_key_eq in ("fighter", "gunslinger") else (2 + prof_delta)
+                atk_bonus = prof_bonus + lvl_val + dex_mod
+                spec_dmg = get_weapon_spec_bonus(cls_key_eq, lvl_val)
                 backup_payload = {
                     "name": "Shortbow",
                     "attack_bonus": str(atk_bonus),
                     "map_second": str(atk_bonus - 5),
                     "map_third": str(atk_bonus - 10),
-                    "damage_dice": "1d6",
+                    "damage_dice": f"1d6+{spec_dmg}" if spec_dmg else "1d6",
                     "damage_type": "Piercing",
                     "traits": ["Deadly d10", "Range 60 ft"],
                 }

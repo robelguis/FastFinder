@@ -474,8 +474,22 @@ def _apply_extra_weapon_stats(equipment_loadout: Any, class_name: str, level: in
     spec_dmg = get_weapon_spec_bonus(class_name, level)
     if spec_dmg:
         for strike in equipment_loadout.strikes:
-            if f"+{spec_dmg}" not in strike.damage_dice and "Weapon Spec" not in strike.damage_dice:
-                strike.damage_dice = f"{strike.damage_dice} + {str(spec_dmg)}"
+            if getattr(strike, "_spec_applied", False):
+                continue
+            m_dmg = re.match(r"^(\d+d\d+)\s*([+-]\s*\d+)?(.*)$", (strike.damage_dice or "").strip())
+            if m_dmg:
+                dice_part = m_dmg.group(1)
+                cur_mod = int(m_dmg.group(2).replace(" ", "")) if m_dmg.group(2) else 0
+                tail = m_dmg.group(3) or ""
+                new_mod = cur_mod + spec_dmg
+                sign = f"+{new_mod}" if new_mod > 0 else (str(new_mod) if new_mod < 0 else "")
+                strike.damage_dice = f"{dice_part}{sign}{tail}"
+            else:
+                strike.damage_dice = f"{strike.damage_dice}+{spec_dmg}"
+            try:
+                object.__setattr__(strike, "_spec_applied", True)
+            except Exception:
+                pass
 
 
 def _build_archer_bow_strike(level: int, dex_mod: int) -> Strike:
@@ -2601,6 +2615,26 @@ class PF2eGenerator:
             )
             if _nat_built:
                 equipment_loadout.strikes = list(equipment_loadout.strikes or []) + _nat_built
+            # Deduplicate singular/plural Horn vs Horns and ensure backup ranged weapons have full prof + Weapon Spec
+            _s_names = {(s.name or "").strip().lower() for s in (equipment_loadout.strikes or [])}
+            if "horn" in _s_names and "horns" in _s_names:
+                equipment_loadout.strikes = [
+                    s for s in equipment_loadout.strikes if (s.name or "").strip().lower() != "horn"
+                ]
+            _cls_st = locals().get("_fin_cls_name") or locals().get("character_class") or ""
+            _prof_st = 2 + get_weapon_prof_bonus_delta(_cls_st, level)
+            _spec_st = get_weapon_spec_bonus(_cls_st, level)
+            _dex_st = mods.get("dex", 0) if isinstance(mods, dict) else 0
+            for _st in (equipment_loadout.strikes or []):
+                _sn = (_st.name or "").strip().lower()
+                if _sn in ("shortbow", "longbow", "crossbow", "sling"):
+                    _min_atk = level + _prof_st + _dex_st
+                    if _parse_int_bonus(_st.attack_bonus, 0) < _min_atk:
+                        _st.attack_bonus = str(_min_atk)
+                        _st.map_second = str(_min_atk - 5)
+                        _st.map_third = str(_min_atk - 10)
+                    if _spec_st and "+" not in (_st.damage_dice or ""):
+                        _st.damage_dice = f"{_st.damage_dice}+{_spec_st}"
         enforce_weapon_loadout(equipment_loadout, deity_summary, level, mods, cls["name"])
         if deity_summary and domain_name and domain_name.strip().lower() not in ("", "any", "any domain", "none"):
             clean_dom = domain_name.strip().title()
@@ -3641,6 +3675,42 @@ class PF2eGenerator:
                     equipment_loadout.strikes.append(new_bow)
 
         _attach_named_artillery_strike(chosen_feats, equipment_loadout, level, mods)
+        # Apply feat-granted skill trainings (e.g., Minotaur Lore -> Society & Stealth)
+        _sk_by_low = {s.name.lower(): s for s in all_skills if getattr(s, "name", None)}
+        _attr_map = {"STR": "str", "DEX": "dex", "CON": "con", "INT": "int", "WIS": "wis", "CHA": "cha"}
+        for _ft in (chosen_feats or []):
+            _fd = getattr(_ft, "description", "") or ""
+            for _m in re.finditer(r"you become trained in\s+([a-z]+)(?:\s+and\s+([a-z]+))?", _fd, flags=re.IGNORECASE):
+                for _g in (_m.group(1), _m.group(2)):
+                    if not _g:
+                        continue
+                    _sk_obj = _sk_by_low.get(_g.lower())
+                    if _sk_obj and _sk_obj.rank < 2:
+                        _sk_obj.rank = 2
+                        _sk_obj.rank_letter = "T"
+                        _sk_obj.modifier = mods.get(_attr_map.get(_sk_obj.attribute, "int"), 0) + level + 2
+
+        # Deduplicate singular/plural Horn vs Horns and ensure backup Shortbow has full prof + Weapon Spec
+        if equipment_loadout and getattr(equipment_loadout, "strikes", None):
+            _s_names = {(s.name or "").strip().lower() for s in equipment_loadout.strikes}
+            if "horn" in _s_names and "horns" in _s_names:
+                equipment_loadout.strikes = [
+                    s for s in equipment_loadout.strikes if (s.name or "").strip().lower() != "horn"
+                ]
+            _prof_r = 2 + get_weapon_prof_bonus_delta(cls["name"], level)
+            _spec_r = get_weapon_spec_bonus(cls["name"], level)
+            _dex_r = mods.get("dex", 0)
+            for _st in equipment_loadout.strikes:
+                _sn = (_st.name or "").strip().lower()
+                if _sn in ("shortbow", "longbow", "crossbow", "sling"):
+                    _min_atk = level + _prof_r + _dex_r
+                    if _parse_int_bonus(_st.attack_bonus, 0) < _min_atk:
+                        _st.attack_bonus = str(_min_atk)
+                        _st.map_second = str(_min_atk - 5)
+                        _st.map_third = str(_min_atk - 10)
+                    if _spec_r and "+" not in (_st.damage_dice or ""):
+                        _st.damage_dice = f"{_st.damage_dice}+{_spec_r}"
+
         self._enforce_granted_feat_skill_prereqs(
             chosen_feats,
             all_skills,
