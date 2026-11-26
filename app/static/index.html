@@ -1599,6 +1599,9 @@ function updateHeritageDropdown() {
       }
       if (nameInput) params.append('name', nameInput);
       if (anc) params.append('ancestry', anc);
+      if (heritageVal && !["any", "any heritage", "none"].includes(heritageVal.toLowerCase())) {
+        params.append('heritage', heritageVal);
+      }
       if (cls) params.append('class_name', cls);
       if (sub && !["any", "any subclass", "none"].includes(sub.toLowerCase())) {
         params.append('subclass', sub);

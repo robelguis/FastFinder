@@ -72,6 +72,7 @@ def get_options():
 def generate_character(
     name: Optional[str] = None,
     ancestry: Optional[str] = None,
+    heritage: Optional[str] = None,
     class_name: Optional[str] = None,
     subclass: Optional[str] = None,
     background: Optional[str] = None,
@@ -83,8 +84,10 @@ def generate_character(
 ):
     try:
         clean_arch = _normalize_archetype(archetype)
+        clean_heritage = heritage.strip() if heritage and heritage.strip() and heritage.strip().lower() not in ("any", "any heritage", "none") else None
         return generator.generate(
             ancestry_name=ancestry,
+            heritage_name=clean_heritage,
             class_name=class_name,
             subclass_name=subclass,
             background_name=background,
