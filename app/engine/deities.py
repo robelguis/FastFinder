@@ -387,6 +387,14 @@ def select_deity(
             alt_matches = len(alt_low & domain_hints)
             score += prim_matches * 7.0 + alt_matches * 3.5
 
+        # Favored weapon alignment with concept text (handles "great axe" -> "greataxe")
+        fav_wep = str(d.get("favored_weapon") or "").strip().lower()
+        if fav_wep and concept_low:
+            norm_concept = re.sub(r"[\s\-]+", "", concept_low)
+            norm_wep = re.sub(r"[\s\-]+", "", fav_wep)
+            if fav_wep in concept_low or (len(norm_wep) >= 4 and norm_wep in norm_concept):
+                score += 65.0
+
         # Background / concept keyword overlap with deity name, skills, or description
         desc_low = str(d.get("description") or "").lower()
         skills_low = {str(s).lower() for s in (d.get("skills") or []) if s}

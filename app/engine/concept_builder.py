@@ -190,7 +190,7 @@ Return ONLY valid JSON with these exact keys (use null or [] if not mentioned):
   "requested_spells": [string],
   "requested_skills": {{"skill_name": "T|E|M|L"}},
   "wants_companion": boolean,
-  "": "animal|familiar|eidolon|construct|undead|plant|null"
+  "companion_kind": "animal|familiar|eidolon|construct|undead|plant|null"
 }}
 
 USER CONCEPT: "{concept_text}"
@@ -306,20 +306,23 @@ USER CONCEPT: "{concept_text}"
         # Word-boundary matching so "pet" doesn't hit "carpet" and "mount" doesn't hit "mountain".
         # "leshy" is intentionally NOT a companion keyword (it is an ancestry).
         companion_keywords = ("companion", "familiar", "eidolon", "mount", "steed", "pet", "horseback")
+        CONSTRUCT_WORDS = {"metal", "iron", "steel", "robot", "robotic", "golem", "mechanical", "clockwork", "construct", "brass", "mechanism"}
+        UNDEAD_WORDS = {"undead", "skeletal", "zombie", "ghostly", "spectral"}
+        PLANT_WORDS = {"plant", "vine", "treant", "wooden", "leafy"}
+        COMPANION_ANIMALS = (
+            "dog|hound|wolf|bear|cat|panther|tiger|lion|bird|hawk|owl|raven|crow|eagle|"
+            "horse|pony|boar|badger|ape|snake|spider|drake|dragon|lizard|fox|beetle|scorpion|rat|bat|frog|toad"
+        )
+        _all_mod_words = "|".join(sorted(CONSTRUCT_WORDS | UNDEAD_WORDS | PLANT_WORDS))
+        m_mod_animal = re.search(rf"\b({_all_mod_words})\s+(?:{COMPANION_ANIMALS})s?\b", text_lower)
         has_mount_term = bool(re.search(r"\b(?:mount|steed|horseback|warhorse)\b", text_lower))
         has_pet_term = bool(re.search(r"\b(?:pet|familiar)\b", text_lower))
-        if llm_data.get("wants_companion") or any(
+        if llm_data.get("wants_companion") or m_mod_animal or any(
             re.search(rf"\b{kw}\b", text_lower) for kw in companion_keywords
         ):
             spec.wants_companion = True
             spec.companion_kind = llm_data.get("companion_kind")
-            
-            # Check for direct descriptive words right before companion/pet (e.g., "metal companion")
-            CONSTRUCT_WORDS = {"metal", "iron", "steel", "robot", "robotic", "golem", "mechanical", "clockwork", "construct", "brass", "mechanism"}
-            UNDEAD_WORDS = {"undead", "skeletal", "zombie", "ghostly", "spectral"}
-            PLANT_WORDS = {"plant", "vine", "treant", "wooden", "leafy"}
-
-            m_desc = re.search(r"\b([a-z\-]+)\s+(?:animal\s+)?(?:companion|pet)\b", text_lower)
+            m_desc = re.search(r"\b([a-z\-]+)\s+(?:animal\s+)?(?:companion|pet)\b", text_lower) or m_mod_animal
             desc = m_desc.group(1) if m_desc else ""
 
             if desc in CONSTRUCT_WORDS:

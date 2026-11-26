@@ -383,6 +383,28 @@ def calculate_feat_weight(
             if not shares_family:
                 return 0.0
 
+    # 1c-2. Forward Feat-Chain Completion Bonus:
+    # Favor feats that serve as prerequisites for downstream feats (especially when
+    # the character already holds a related/earlier feat in that chain or archetype).
+    cand_name_low = feat_name_lower
+    cand_clean_low = clean_feat_name
+    if cand_name_low or cand_clean_low:
+        chain_payoff_count = 0
+        for other_name_low, other_prereqs in globals().get("_FEAT_PREREQ_INDEX", {}).items():
+            if other_name_low == cand_name_low or other_name_low in owned_lower:
+                continue
+            if (cand_name_low and cand_name_low in other_prereqs) or (
+                cand_clean_low and len(cand_clean_low) > 4 and cand_clean_low in other_prereqs
+            ):
+                chain_payoff_count += 1
+        if chain_payoff_count > 0:
+            has_any_chain_anchor = any(
+                (cand_clean_low and len(cand_clean_low) > 4 and cand_clean_low in o)
+                or any(tok in o for tok in cand_clean_low.split() if len(tok) > 5)
+                for o in owned_lower
+            )
+            weight *= (3.5 if has_any_chain_anchor else 1.8) * min(2.0, 1.0 + 0.25 * chain_payoff_count)
+
     # 1d. Monk Ki Discipline Selection Balancing
     if cls_key == "monk":
         is_ki_candidate = any(k in clean_feat_name for k in ["ki", "qi", "wholeness", "abundant"]) or "focus" in [t.lower() for t in feat.get("traits", [])]
@@ -419,3 +441,23 @@ def calculate_feat_weight(
         weight *= 2.0
 
     return max(0.1, weight)
+
+
+_FEAT_PREREQ_INDEX: Dict[str, str] = {}
+
+
+def build_feat_prereq_index(feats_catalog: list) -> None:
+    """Populates lowercase prerequisite text lookup for forward chain-completion weighting."""
+    idx: Dict[str, str] = {}
+    for f in (feats_catalog or []):
+        if not isinstance(f, dict):
+            continue
+        nm = (f.get("name") or "").strip().lower()
+        if not nm:
+            continue
+        raw_p = f.get("prerequisites") or f.get("prerequisite") or []
+        p_txt = " ".join(str(x) for x in raw_p).lower() if isinstance(raw_p, list) else str(raw_p).lower()
+        if p_txt:
+            idx[nm] = p_txt
+    _FEAT_PREREQ_INDEX.clear()
+    _FEAT_PREREQ_INDEX.update(idx)
