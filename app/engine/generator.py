@@ -2615,28 +2615,14 @@ class PF2eGenerator:
                         f_obj.description = enrich_feat_description(updated_n, getattr(f_obj, "description", "") or "")
 
         _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
-        _fin_cls_low = (_fin_cls_name or "").strip().lower()
-        _explicit_deity = bool(deity_name and str(deity_name).strip().lower() not in ("", "any", "any deity", "none"))
-        _explicit_domain = bool(domain_name and str(domain_name).strip().lower() not in ("", "any", "any domain", "none"))
-        _feat_names_low = " ".join((getattr(f, "name", "") or "").lower() for f in chosen_feats)
-        _needs_deity = (
-            _fin_cls_low in ("cleric", "champion")
-            or _explicit_deity
-            or _explicit_domain
-            or any(k in _feat_names_low for k in ("cleric dedication", "champion dedication", "domain initiate", "deity's domain", "deitys domain", "blessed one", "splinter faith"))
-        )
-        _fin_deity_raw = (
-            select_deity(
-                deity_name=deity_name,
-                class_name=_fin_cls_name,
-                background_name=background_name,
-                ancestry_name=anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", None),
-                subclass_name=sub_name,
-                domain_name=domain_name,
-                concept_text=concept_text,
-            )
-            if _needs_deity
-            else None
+        _fin_deity_raw = select_deity(
+            deity_name=deity_name,
+            class_name=_fin_cls_name,
+            background_name=background_name,
+            ancestry_name=anc.get("name") if isinstance(anc, dict) else getattr(anc, "name", None),
+            subclass_name=sub_name,
+            domain_name=domain_name,
+            concept_text=concept_text,
         )
         deity_summary = _build_deity_summary(_fin_deity_raw, chosen_feats)
         if deity_summary and domain_name and domain_name.strip().lower() not in ("", "any", "any domain", "none"):
