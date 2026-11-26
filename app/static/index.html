@@ -1102,8 +1102,17 @@ function updateHeritageDropdown() {
       document.getElementById('sheetClass').textContent = classDisplay;
       
       const archBadge = document.getElementById('sheetArchetypeBadge');
+      const ownedDedFeat = (data.feats || []).find(f => {
+        const fname = (f.name || "").trim();
+        const fLow = fname.toLowerCase();
+        const traits = (f.traits || []).map(t => String(t).toLowerCase());
+        return Boolean(fname) && (fLow.includes("dedication") || traits.includes("dedication"));
+      });
       if (data.archetype && currentLevel >= 2) {
         archBadge.textContent = `${data.archetype} Dedication`;
+        archBadge.style.display = 'inline-block';
+      } else if (ownedDedFeat) {
+        archBadge.textContent = (ownedDedFeat.name || "").trim();
         archBadge.style.display = 'inline-block';
       } else {
         archBadge.style.display = 'none';
