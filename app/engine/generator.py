@@ -1808,6 +1808,9 @@ class PF2eGenerator:
             and len(f.get("traits", [])) > 0
             and f.get("name") not in ["Speedrun Strats"]
         ]
+        for _ft_item in self.feats:
+            if isinstance(_ft_item, dict) and _ft_item.get("target_level") is None:
+                _ft_item["target_level"] = int(_ft_item.get("level") or 1)
 
         build_feat_prereq_index(self.feats)
         self._bg_names_with_feat: Set[str] = {
@@ -2014,44 +2017,50 @@ class PF2eGenerator:
                                     break
                         break
 
-                    matched = False
-                    for sk in skills_list:
-                        sk_low = (sk.get("name", "") if isinstance(sk, dict) else getattr(sk, "name", "") or "").strip().lower()
-                        if sk_low == target_sk or (target_sk == "lore" and "lore" in sk_low):
-                            matched = True
-                            cur_r = int((sk.get("rank") if isinstance(sk, dict) else getattr(sk, "rank", 0)) or 0)
-                            if cur_r < req_rank:
-                                delta = req_rank - cur_r
-                                if isinstance(sk, dict):
-                                    sk["rank"] = req_rank
-                                    sk["rank_letter"] = req_letter
-                                    sk["modifier"] = int(sk.get("modifier") or 0) + delta
-                                else:
-                                    sk.rank = req_rank
-                                    sk.rank_letter = req_letter
-                                    sk.modifier = int(getattr(sk, "modifier", 0) or 0) + delta
+                    sub_targets = [
+                        part.strip()
+                        for part in re.split(r"\s+and\s+|,\s*", target_sk)
+                        if part.strip()
+                    ]
+                    for sub_t in sub_targets:
+                        matched = False
+                        for sk in skills_list:
+                            sk_low = (sk.get("name", "") if isinstance(sk, dict) else getattr(sk, "name", "") or "").strip().lower()
+                            if sk_low == sub_t or (sub_t == "lore" and "lore" in sk_low):
+                                matched = True
+                                cur_r = int((sk.get("rank") if isinstance(sk, dict) else getattr(sk, "rank", 0)) or 0)
+                                if cur_r < req_rank:
+                                    delta = (req_rank + level) if cur_r == 0 else (req_rank - cur_r)
+                                    if isinstance(sk, dict):
+                                        sk["rank"] = req_rank
+                                        sk["rank_letter"] = req_letter
+                                        sk["modifier"] = int(sk.get("modifier") or 0) + delta
+                                    else:
+                                        sk.rank = req_rank
+                                        sk.rank_letter = req_letter
+                                        sk.modifier = int(getattr(sk, "modifier", 0) or 0) + delta
 
-                    if not matched:
-                        lore_label = fallback_lore_name if target_sk == "lore" else target_sk.title()
-                        attr_code = "INT" if ("lore" in lore_label.lower() or "crafting" in target_sk) else "WIS"
-                        attr_mod = int((attrs or {}).get(attr_code.lower(), 0) or 0)
-                        sample = skills_list[0] if skills_list else None
-                        if isinstance(sample, dict):
-                            skills_list.append({
-                                "name": lore_label,
-                                "attribute": attr_code,
-                                "rank": req_rank,
-                                "rank_letter": req_letter,
-                                "modifier": level + req_rank + attr_mod,
-                            })
-                        else:
-                            skills_list.append(SkillEntry(
-                                name=lore_label,
-                                attribute=attr_code,
-                                rank=req_rank,
-                                rank_letter=req_letter,
-                                modifier=level + req_rank + attr_mod,
-                            ))
+                        if not matched and "lore" in sub_t:
+                            lore_label = fallback_lore_name if sub_t == "lore" else sub_t.title()
+                            attr_code = "INT"
+                            attr_mod = int((attrs or {}).get("int", 0) or 0)
+                            sample = skills_list[0] if skills_list else None
+                            if isinstance(sample, dict):
+                                skills_list.append({
+                                    "name": lore_label,
+                                    "attribute": attr_code,
+                                    "rank": req_rank,
+                                    "rank_letter": req_letter,
+                                    "modifier": level + req_rank + attr_mod,
+                                })
+                            else:
+                                skills_list.append(SkillEntry(
+                                    name=lore_label,
+                                    attribute=attr_code,
+                                    rank=req_rank,
+                                    rank_letter=req_letter,
+                                    modifier=level + req_rank + attr_mod,
+                                ))
                     break
 
     def _grant_natural_ambition_class_feat(
@@ -2873,6 +2882,17 @@ class PF2eGenerator:
                 if fl_low in mods and fl_low != key_attr:
                     mods[fl_low] -= 1
 
+        bg_req_attr_min: Dict[str, int] = {}
+        _bg_feat_pre = extract_bg_feat(bg.get("description", ""), self.feats)
+        if _bg_feat_pre:
+            _bg_f_pre = next((f for f in self.feats if f.get("name", "").lower() == _bg_feat_pre.lower()), None)
+            if _bg_f_pre:
+                _bg_p_pre = " ".join(str(p) for p in (_bg_f_pre.get("prerequisites") or [])).lower()
+                for ak, ab in ATTR_FULL_TO_SHORT:
+                    m_req = re.search(rf"\b{ak}\s*\+(\d+)\b", _bg_p_pre)
+                    if m_req:
+                        bg_req_attr_min[ab] = max(bg_req_attr_min.get(ab, 0), int(m_req.group(1)))
+
         applied_bg_boosts: Set[str] = set()
         for boost_option in bg.get("boosts", []):
             valid_targets = [
@@ -2882,7 +2902,8 @@ class PF2eGenerator:
             if not valid_targets:
                 valid_targets = [a for a in ATTRIBUTES if a not in applied_bg_boosts and mods[a] < 4]
             if valid_targets:
-                chosen_target = _pick_attr(valid_targets)
+                prereq_targets = [a for a in valid_targets if a in bg_req_attr_min and mods[a] < bg_req_attr_min[a]]
+                chosen_target = prereq_targets[0] if prereq_targets else _pick_attr(valid_targets)
                 mods[chosen_target] += 1
                 applied_bg_boosts.add(chosen_target)
 
@@ -4167,7 +4188,9 @@ class PF2eGenerator:
                         existing_feat_names.add(cf5["name"])
 
             elif lvl == 6:
-                lvl6_class_feats = [f for f in self.feats if f.get("target_level") in (4, 6) and _is_lu_class_feat(f) and _lu_valid(f, 6)]
+                lvl6_class_feats = [f for f in self.feats if f.get("target_level") in (4, 6) and _is_lu_class_feat(f) and f["name"] not in existing_feat_names and _lu_valid(f, 6)]
+                if not lvl6_class_feats:
+                    lvl6_class_feats = [f for f in self.feats if f.get("target_level", 1) <= 6 and _is_lu_class_feat(f) and f["name"] not in existing_feat_names and _lu_valid(f, 6)]
                 cf6 = pick_weighted_feat(lvl6_class_feats, cls["name"], existing_feat_names, lu_skill_ranks, mods, 6, subclass_name=lu_sub_name, archetype_name=resolved_arch_name)
                 if cf6:
                     chosen_feats.append(FeatSummary(
@@ -4181,7 +4204,7 @@ class PF2eGenerator:
                     existing_feat_names.add(cf6["name"])
 
             elif lvl == 7:
-                if "Weapon Specialization" not in existing_feat_names:
+                if "Weapon Specialization" not in existing_feat_names and get_weapon_spec_bonus(cls["name"], 7) > 0:
                     chosen_feats.append(FeatSummary(
                         id="class-feat-weapon-specialization",
                         name="Weapon Specialization",
@@ -4252,11 +4275,11 @@ class PF2eGenerator:
                         existing_feat_names.add(cf8["name"])
 
             elif lvl == 9:
-                anc_name_lower = (current_char.get("ancestry") or "").lower().strip()
+                anc_name_lower = (anc.get("name") or "").lower().strip()
                 lvl9_anc_feats = [
                     f for f in self.feats
                     if f.get("category") == "ancestry"
-                    and f.get("target_level") in (1, 5, 9)
+                    and f.get("target_level", 1) <= 9
                     and (not anc_name_lower or anc_name_lower in [t.lower() for t in f.get("traits", [])])
                     and f["name"] not in existing_feat_names
                     and _lu_valid(f, 9)
@@ -4304,7 +4327,9 @@ class PF2eGenerator:
                         ))
                         existing_feat_names.add(af10_name)
                 else:
-                    lvl10_class_feats = [f for f in self.feats if f.get("target_level") in (8, 10) and _is_lu_class_feat(f) and _lu_valid(f, 10)]
+                    lvl10_class_feats = [f for f in self.feats if f.get("target_level") in (8, 10) and _is_lu_class_feat(f) and f["name"] not in existing_feat_names and _lu_valid(f, 10)]
+                    if not lvl10_class_feats:
+                        lvl10_class_feats = [f for f in self.feats if f.get("target_level", 1) <= 10 and _is_lu_class_feat(f) and f["name"] not in existing_feat_names and _lu_valid(f, 10)]
                     cf10 = pick_weighted_feat(lvl10_class_feats, cls["name"], existing_feat_names, lu_skill_ranks, mods, 10, subclass_name=lu_sub_name, archetype_name=resolved_arch_name)
                     if cf10:
                         chosen_feats.append(FeatSummary(
@@ -4317,26 +4342,7 @@ class PF2eGenerator:
                         ))
                         existing_feat_names.add(cf10["name"])
 
-                skill_feats_10 = [
-                    f for f in self.feats
-                    if f.get("category") == "skill"
-                    and f.get("name", "").lower() != "cushion landing"
-                    and "archetype" not in [t.lower() for t in f.get("traits", [])]
-                    and f.get("target_level", 1) <= 10
-                    and f["name"] not in existing_feat_names
-                    and _lu_valid(f, 10)
-                ]
-                sf10 = pick_weighted_feat(skill_feats_10, cls["name"], existing_feat_names, lu_skill_ranks, mods, 10, subclass_name=lu_sub_name, archetype_name=resolved_arch_name)
-                if sf10:
-                    chosen_feats.append(FeatSummary(
-                        id=sf10["id"],
-                        name=sf10["name"],
-                        category="Skill Feat (Level 10)",
-                        action_cost=safe_action_cost(sf10.get("action_cost")),
-                        traits=sf10.get("traits", ["skill"]),
-                        description=clean_pf2e_text(sf10.get("description", "")),
-                    ))
-                    existing_feat_names.add(sf10["name"])
+                # Level 10 Skill Feat is handled by the standard even-level skill-feat pass
 
             elif 11 <= lvl <= 20:
                 total_hp, _ = self._grant_tier3_feats(

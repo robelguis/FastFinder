@@ -154,11 +154,13 @@ def _get_property_runes_and_crit_spec(weapon_name: str, traits: list, level: int
     dice = tiers.get("dice_count", 1)
 
     prop_runes: list[str] = []
-    if pot >= 3 or dice >= 4:
+    if pot >= 3 and level >= 11:
         prop_runes = ["Flaming", "Shock", "Holy"]
-    elif pot >= 2 or dice >= 3:
+    elif pot >= 2 and level >= 11:
         prop_runes = ["Flaming", "Holy"]
-    elif pot >= 1 or dice >= 2:
+    elif pot >= 2 and level >= 8:
+        prop_runes = ["Flaming", "Shock"]
+    elif pot >= 1 and level >= 8:
         prop_runes = ["Flaming"]
 
     if "shortsword" in w_low or "short sword" in w_low:
@@ -1020,19 +1022,44 @@ def resolve_equipment(
         armor_item = Item(name=armor_name, bulk="0", cost_sp=0)
         calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + armor_pot
 
+    def _clean_gear_desc(text: str) -> str:
+        if not text:
+            return ""
+        t = re.sub(r"<[^>]+>", " ", str(text))
+        t = re.sub(r"\[\[/[a-zA-Z]+\s+[^\]]*?(?:#([^\]]+))?\]\]", lambda m: (m.group(1) or "").strip(), t)
+        t = re.sub(r"@UUID\[[^\]]+\]\{([^}]+)\}", r"\1", t)
+        t = re.sub(r"@(?:Check|Damage|Template|Localize)\[[^\]]+\](?:\{([^}]+)\})?", lambda m: (m.group(1) or "").strip(), t)
+        t = t.replace("[[", "").replace("]]", "")
+        return re.sub(r"\s+", " ", t).strip()
+
     gear: List[str] = ["Adventurer's Pack (Backpack, Bedroll, Rations, Torches, Waterskin, Rope)"]
     num_perm = wealth_cfg.get("permanent_count", 0)
     if num_perm > 0:
         eligible_items = []
         for l in range(1, min(lvl, max(COMPENDIUM_MAGIC_ITEMS.keys())) + 1):
             for item in COMPENDIUM_MAGIC_ITEMS.get(l, []):
+                i_name_low = (item.get("name") or "").lower()
+                i_traits = [str(tr).lower() for tr in (item.get("traits") or [])]
+                if "rune" in i_name_low or "rune" in i_traits or "graft" in i_name_low or "graft" in i_traits:
+                    continue
                 if can_equip_item(item, cls_key, str_mod, dex_mod, lvl):
                     eligible_items.append(item)
         if not eligible_items:
             eligible_items = [i for i in PERMANENT_MAGIC_ITEMS if i["level"] <= lvl and can_equip_item(i, cls_key, str_mod, dex_mod, lvl)]
-        chosen_items = random.sample(eligible_items, min(num_perm, len(eligible_items)))
+        random.shuffle(eligible_items)
+        seen_bases = set()
+        chosen_items = []
+        for item in eligible_items:
+            base = re.sub(r"\s*\((?:minor|lesser|moderate|greater|major|true)\)\s*$", "", (item.get("name") or "").strip(), flags=re.IGNORECASE).lower()
+            if base in seen_bases:
+                continue
+            seen_bases.add(base)
+            chosen_items.append(item)
+            if len(chosen_items) >= num_perm:
+                break
         for item in chosen_items:
-            gear.append(f"{item['name']} ({item['description']})")
+            clean_desc = _clean_gear_desc(item.get("description", ""))
+            gear.append(f"{item['name']} ({clean_desc})" if clean_desc else item["name"])
 
     consumables: List[ConsumableItem] = []
 

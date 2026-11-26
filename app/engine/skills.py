@@ -342,6 +342,7 @@ def resolve_character_skills(
 
     # Generic feat-granted skill trainings (e.g., Minotaur Lore -> Society & Stealth)
     _skill_lookup = {s.lower(): s for s in ALL_PF2E_SKILLS}
+    feat_expert_skills = set()
     for _feat in all_feats:
         _fn_low = (getattr(_feat, "name", None) or (_feat.get("name") if isinstance(_feat, dict) else "") or "").lower()
         if "hobnobber" in _fn_low:
@@ -361,10 +362,23 @@ def resolve_character_skills(
             for _grp in (_m_tr.group(1), _m_tr.group(2)):
                 if _grp and _grp.lower() in _skill_lookup:
                     _grant_trained_or_substitute(_skill_lookup[_grp.lower()])
+        for _m_ex in re.finditer(
+            r"you become an expert in\s+([a-z]+)(?:\s+and\s+([a-z]+))?",
+            _f_desc,
+            flags=re.IGNORECASE,
+        ):
+            for _grp in (_m_ex.group(1), _m_ex.group(2)):
+                if _grp and _grp.lower() in _skill_lookup:
+                    _sk_ex_name = _skill_lookup[_grp.lower()]
+                    trained_skills.add(_sk_ex_name)
+                    feat_expert_skills.add(_sk_ex_name)
 
     # 4. Calculate skill ranks and apply increases
     num_increases = get_skill_increases_count(cls_name, target_lvl)
-    skill_ranks: Dict[str, int] = {s: (2 if s in trained_skills else 0) for s in ALL_PF2E_SKILLS}
+    skill_ranks: Dict[str, int] = {
+        s: (4 if s in feat_expert_skills else (2 if s in trained_skills else 0))
+        for s in ALL_PF2E_SKILLS
+    }
 
     if existing_map:
         # Restore existing increases from highest rank downward so Legendary/Master skills are never demoted
