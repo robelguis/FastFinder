@@ -82,6 +82,11 @@ import re
 import random
 from typing import Dict, Any, List, Tuple, Optional
 from app.engine.models import EquipmentLoadout, Item, Strike, Wealth, ConsumableItem
+from app.engine.strikes import (
+    compute_alchemical_bomb_strike,
+    compute_strike,
+    format_runed_strike_name,
+)
 
 # PF2e Remaster Character Wealth by Level (Lump sum alternative)
 # Level: (lump_sum_gp, min_consumables, typical_permanent_items)
@@ -189,16 +194,7 @@ def _get_property_runes_and_crit_spec(weapon_name: str, traits: list, level: int
 
 
 def format_runed_weapon_name(base_name: str, level: int) -> str:
-    if level <= 2:
-        return base_name
-    tiers = get_fundamental_rune_tiers(level)
-    parts = []
-    if tiers["wep_potency"]:
-        parts.append(f"+{tiers['wep_potency']}")
-    if tiers["striking_label"]:
-        parts.append(tiers["striking_label"])
-    parts.append(base_name)
-    return " ".join(parts)
+    return format_runed_strike_name(base_name, level, apply_prefix=True)
 
 
 def format_runed_armor_name(base_name: str, level: int) -> str:
@@ -688,14 +684,49 @@ def resolve_equipment(
     archetype_name: str = "",
     existing_weapons: Optional[List[Any]] = None,
     feats: Optional[List[Any]] = None,
+    requested_weapons: Optional[List[str]] = None,
+    strict_only_weapon: bool = False,
+    wants_shield: Optional[bool] = None,
+    shield_kind: Optional[str] = None,
+    requested_armor: Optional[str] = None,
 ) -> Tuple[EquipmentLoadout, int, int]:
     cls_key = class_name.lower()
     lvl = max(1, min(20, int(level)))
     wealth_cfg = WEALTH_BY_LEVEL.get(lvl, WEALTH_BY_LEVEL[1])
     tiers = get_fundamental_rune_tiers(lvl)
+    attrs_map = {"str": str_mod, "dex": dex_mod}
+
+    martial_capable = {
+        "alchemist", "animist", "barbarian", "bard", "champion", "commander",
+        "exemplar", "fighter", "gunslinger", "inventor", "investigator",
+        "kineticist", "magus", "monk", "ranger", "rogue", "runesmith",
+        "summoner", "swashbuckler", "thaumaturge", "vindicator",
+    }
+    arch_low = (archetype_name or "").lower()
+    has_martial_prof = cls_key in martial_capable or any(
+        m in arch_low for m in ("fighter", "ranger", "barbarian", "champion", "monk", "rogue", "swashbuckler", "gunslinger", "archer", "mauler")
+    )
 
     raw_weps = []
-    if existing_weapons:
+    if requested_weapons:
+        martial_set = {w["name"].lower() for w in (MARTIAL_TWO_HANDED + MARTIAL_ONE_HANDED + MARTIAL_FINESSE + MARTIAL_RANGED)}
+        for rw_name in requested_weapons:
+            base_w = find_base_weapon(rw_name)
+            if not base_w:
+                continue
+            if base_w["name"].lower() in martial_set and not has_martial_prof:
+                continue
+            if base_w not in raw_weps:
+                raw_weps.append(base_w)
+        if raw_weps and not strict_only_weapon and len(raw_weps) == 1:
+            p_traits = " ".join(raw_weps[0].get("traits", []))
+            if "Range" not in p_traits and "bow" not in raw_weps[0]["name"].lower() and "crossbow" not in raw_weps[0]["name"].lower():
+                backup_name = "Shortbow" if has_martial_prof else "Crossbow"
+                backup_w = find_base_weapon(backup_name)
+                if backup_w and backup_w not in raw_weps:
+                    raw_weps.append(backup_w)
+
+    if not raw_weps and existing_weapons:
         for ew in existing_weapons:
             w_name = ew.get("name") if isinstance(ew, dict) else getattr(ew, "name", "")
             base_w = find_base_weapon(w_name)
@@ -712,8 +743,8 @@ def resolve_equipment(
             feats=feats,
         )
 
-    # Enforce Level 2 (and low-level) weapon wealth budget (Level 2 lump sum = 30 gp)
-    if lvl <= 2:
+    # Enforce Level 1-2 weapon wealth budget unless explicit weapons were requested
+    if lvl <= 2 and not requested_weapons:
         max_gp = float(wealth_cfg.get("lump_gp", 15 if lvl == 1 else 30))
         spent_gp = 0.0
         affordable_weps = []
@@ -722,7 +753,6 @@ def resolve_equipment(
             if spent_gp + w_cost_gp <= max_gp or not affordable_weps:
                 affordable_weps.append(w)
                 spent_gp += w_cost_gp
-    if lvl <= 2:
         if len(affordable_weps) > 2:
             affordable_weps = affordable_weps[:2]
         raw_weps = affordable_weps
@@ -730,40 +760,26 @@ def resolve_equipment(
     weapons: List[Item] = []
     strikes: List[Strike] = []
 
-    potency_bonus = 0 if lvl <= 2 else tiers["wep_potency"]
-    dice_count = tiers["dice_count"]
-
     for w in raw_weps:
         w_name = format_runed_weapon_name(w["name"], lvl)
         weapons.append(Item(name=w_name, bulk="1", cost_sp=10))
-
-        is_finesse = "Finesse" in w.get("traits", [])
-        is_ranged = "Range" in " ".join(w.get("traits", []))
-        atk_stat = dex_mod if (is_finesse or is_ranged) else max(str_mod, dex_mod if is_finesse else -99)
-
-        base_prof = 4 if cls_key == "fighter" else 2
-        total_atk = base_prof + lvl + atk_stat + potency_bonus
-
-        dice_str = f"{dice_count}{w['dice'][1:]}"
-        dmg_str = f"{dice_str}{str_mod:+d}" if not is_ranged else dice_str
-
-        is_agile = "Agile" in w.get("traits", [])
         prop_runes, crit_note = _get_property_runes_and_crit_spec(w["name"], w.get("traits", []), lvl, cls_key)
         enriched_traits = list(w.get("traits", []))
         if prop_runes:
             enriched_traits.append("Runes: " + ", ".join(prop_runes))
         if crit_note:
             enriched_traits.append(crit_note)
-        strikes.append(Strike(
-            name=w_name,
-            attack_bonus=total_atk,
-            map_second=total_atk - (4 if is_agile else 5),
-            map_third=total_atk - (8 if is_agile else 10),
-            damage_dice=dmg_str,
+        strikes.append(compute_strike(
+            name=w["name"],
+            base_dice=w["dice"],
             damage_type=w["type"],
-            traits=enriched_traits
+            traits=enriched_traits,
+            level=lvl,
+            class_name=class_name,
+            attrs=attrs_map,
+            is_unarmed=False,
+            weapon_entry=w,
         ))
-
 
     # Broad structural rule: inspect ancestry, heritage, and feat names/descriptions for natural/unarmed strike definitions
     feat_entries = []
@@ -779,7 +795,6 @@ def resolve_equipment(
     anc_her_text = f"{ancestry_name or ''} {heritage_name or ''}".lower()
     all_feat_text = " ".join(f"{n} {d}" for n, d in feat_entries).lower()
 
-    # Identify feat/heritage descriptions that explicitly grant or describe an unarmed/natural attack or strike
     attack_grant_snippets = []
     for n, d in feat_entries:
         combined = f"{n} {d}".lower()
@@ -790,35 +805,34 @@ def resolve_equipment(
             attack_grant_snippets.append(combined)
 
     ancestry_search_blob = f"{anc_her_text} {all_feat_text} {' '.join(attack_grant_snippets)}".strip()
-
-    # Propagate natural strike keywords found in ancestry/heritage text or attack-granting feat descriptions
     strike_source_text = f"{anc_her_text} {' '.join(attack_grant_snippets)}"
     for tok in ("horn", "hoof", "hooves", "fang", "jaw", "claw", "pincer", "talon", "tail", "venom", "poison", "spine", "quill", "thorn", "fist"):
         if re.search(r"\b" + tok + r"s?\b", strike_source_text) and tok not in ancestry_search_blob:
             ancestry_search_blob += f" {tok}"
 
-    base_anc_atk = 2 + lvl + max(str_mod, dex_mod)
-    ancestry_strikes_to_add = []
+    ancestry_strikes_to_add: List[Strike] = []
     if re.search(r"\b(?:automaton|armament|pincer)\b", ancestry_search_blob):
         if re.search(r"\bpincers?\b", ancestry_search_blob):
-            ancestry_strikes_to_add.append(Strike(
+            ancestry_strikes_to_add.append(compute_strike(
                 name="Pincer (Automaton Armament)",
-                attack_bonus=base_anc_atk,
-                map_second=base_anc_atk - 5,
-                map_third=base_anc_atk - 10,
-                damage_dice="1d6",
+                base_dice="1d6",
                 damage_type="Piercing",
-                traits=["brawling", "grapple", "unarmed"]
+                traits=["brawling", "grapple", "unarmed"],
+                level=lvl,
+                class_name=class_name,
+                attrs=attrs_map,
+                is_unarmed=True,
             ))
         elif re.search(r"\b(?:automaton|armament|claws?)\b", ancestry_search_blob):
-            ancestry_strikes_to_add.append(Strike(
+            ancestry_strikes_to_add.append(compute_strike(
                 name="Claw (Automaton Armament)",
-                attack_bonus=base_anc_atk,
-                map_second=base_anc_atk - 4,
-                map_third=base_anc_atk - 8,
-                damage_dice="1d4",
+                base_dice="1d4",
                 damage_type="Slashing",
-                traits=["agile", "finesse", "unarmed", "brawling"]
+                traits=["agile", "finesse", "unarmed", "brawling"],
+                level=lvl,
+                class_name=class_name,
+                attrs=attrs_map,
+                is_unarmed=True,
             ))
 
     stance_attack_specs = [
@@ -829,15 +843,15 @@ def resolve_equipment(
     ]
     for tokens, st_name, st_dice, st_type, st_traits in stance_attack_specs:
         if any(tok in ancestry_search_blob for tok in tokens) and not any(st_name.lower() in s.name.lower() for s in ancestry_strikes_to_add):
-            is_ag = "agile" in st_traits
-            ancestry_strikes_to_add.append(Strike(
+            ancestry_strikes_to_add.append(compute_strike(
                 name=st_name,
-                attack_bonus=base_anc_atk,
-                map_second=base_anc_atk - (4 if is_ag else 5),
-                map_third=base_anc_atk - (8 if is_ag else 10),
-                damage_dice=st_dice,
+                base_dice=st_dice,
                 damage_type=st_type,
                 traits=st_traits,
+                level=lvl,
+                class_name=class_name,
+                attrs=attrs_map,
+                is_unarmed=True,
             ))
 
     natural_attack_specs = [
@@ -845,7 +859,7 @@ def resolve_equipment(
         (("hoof", "hooves"), "Hoof", "1d6", "Bludgeoning", ["unarmed"]),
         (("fang", "fangs", "bite"), "Fangs", "1d6", "Piercing", ["finesse", "unarmed"]),
         (("jaw", "jaws"), "Jaws", "1d6", "Piercing", ["unarmed"]),
-        (("claw", "claws"), "Claws", "1d4", "Slashing", ["agile", "finesse", "unarmed"]),
+        (("claw", "claws"), "Claw", "1d4", "Slashing", ["agile", "finesse", "unarmed"]),
         (("talon", "talons"), "Talons", "1d4", "Slashing", ["agile", "finesse", "unarmed"]),
         (("tail",), "Tail", "1d4", "Bludgeoning", ["agile", "finesse", "unarmed"]),
         (("venom", "poison"), "Venomous Strike", "1d4", "Poison", ["unarmed", "poison"]),
@@ -862,16 +876,15 @@ def resolve_equipment(
                 for s in (strikes + ancestry_strikes_to_add)
             )
             if not already_present:
-                is_ag = "agile" in nat_traits
-                nat_dmg = f"{nat_dice}+{str_mod}" if str_mod > 0 else (f"{nat_dice}{str_mod}" if str_mod < 0 else nat_dice)
-                ancestry_strikes_to_add.append(Strike(
+                ancestry_strikes_to_add.append(compute_strike(
                     name=nat_name,
-                    attack_bonus=base_anc_atk,
-                    map_second=base_anc_atk - (4 if is_ag else 5),
-                    map_third=base_anc_atk - (8 if is_ag else 10),
-                    damage_dice=nat_dmg,
+                    base_dice=nat_dice,
                     damage_type=nat_type,
                     traits=[t.title() for t in nat_traits],
+                    level=lvl,
+                    class_name=class_name,
+                    attrs=attrs_map,
+                    is_unarmed=True,
                 ))
 
     for ast in ancestry_strikes_to_add:
@@ -881,33 +894,77 @@ def resolve_equipment(
     if cls_key == "alchemist":
         bomb_tier = "greater" if lvl >= 11 else ("moderate" if lvl >= 3 else "lesser")
         tier_list = ALCHEMICAL_BOMBS.get(bomb_tier, ALCHEMICAL_BOMBS["moderate"])
-        chosen_bomb = tier_list[0]
-        bomb_prof = 2
-        bomb_atk = bomb_prof + lvl + dex_mod + chosen_bomb["item_bonus"]
-        dmg_desc = f"{chosen_bomb['dice']} + {chosen_bomb['persistent']} + {chosen_bomb['splash']}"
-        strikes.insert(0, Strike(
-            name=chosen_bomb["name"],
-            attack_bonus=bomb_atk,
-            map_second=bomb_atk - 5,
-            map_third=bomb_atk - 10,
-            damage_dice=dmg_desc,
-            damage_type=chosen_bomb["type"],
-            traits=chosen_bomb["traits"]
-        ))
+        strikes.insert(0, compute_alchemical_bomb_strike(tier_list[0], lvl, class_name, attrs_map))
 
     shield_bonus = 0
     shield_item = None
     armor_pot = tiers["armor_potency"]
     is_cloistered = cls_key == "cleric" and "cloistered" in (subclass_name or "").lower()
-    use_shield = _should_equip_shield(
-        cls_key=cls_key,
-        raw_weps=raw_weps,
-        subclass_name=subclass_name,
-        archetype_name=archetype_name,
-        feats=feats,
-    )
+    if wants_shield is False:
+        use_shield = False
+    elif wants_shield is True:
+        # Still forbid shields if primary weapon is two-handed
+        two_hand_names = (
+            {w["name"].lower() for w in MARTIAL_TWO_HANDED}
+            | {w["name"].lower() for w in TWO_HANDED_SNIPER_FIREARMS}
+            | {w["name"].lower() for w in VANGUARD_FIREARMS}
+            | {"longspear", "elven curve blade", "elven branched spear", "halfling sling staff", "crossbow"}
+        )
+        p_name = raw_weps[0].get("name", "").lower() if raw_weps else ""
+        use_shield = p_name not in two_hand_names and "bow" not in p_name and "crossbow" not in p_name
+    else:
+        use_shield = _should_equip_shield(
+            cls_key=cls_key,
+            raw_weps=raw_weps,
+            subclass_name=subclass_name,
+            archetype_name=archetype_name,
+            feats=feats,
+        )
 
-    if is_cloistered:
+    # Check explicit armor request (within class/archetype armor proficiency rules)
+    explicit_armor_spec = None
+    if requested_armor:
+        armor_catalog = {
+            "full plate": ("Full Plate", "heavy", 6, 0, "3"),
+            "half plate": ("Half Plate", "heavy", 5, 1, "3"),
+            "splint mail": ("Splint Mail", "heavy", 5, 1, "3"),
+            "breastplate": ("Breastplate", "medium", 4, 1, "2"),
+            "chain mail": ("Chain Mail", "medium", 4, 1, "2"),
+            "scale mail": ("Scale Mail", "medium", 3, 2, "2"),
+            "hide armor": ("Hide Armor", "medium", 3, 2, "2"),
+            "studded leather armor": ("Studded Leather Armor", "light", 2, 3, "1"),
+            "leather armor": ("Leather Armor", "light", 1, 4, "1"),
+            "padded armor": ("Padded Armor", "light", 1, 3, "1"),
+            "explorer's clothing": ("Explorer's Clothing", "unarmored", 0, 5, "L"),
+        }
+        cand = armor_catalog.get(requested_armor.strip().lower())
+        if cand:
+            heavy_classes = {"champion", "fighter", "guardian"}
+            medium_classes = heavy_classes | {"barbarian", "cleric", "druid", "inventor", "magus", "ranger", "thaumaturge", "vindicator", "commander"}
+            light_classes = medium_classes | {"alchemist", "animist", "bard", "gunslinger", "investigator", "kineticist", "oracle", "rogue", "summoner", "swashbuckler"}
+            has_heavy = cls_key in heavy_classes or "sentinel" in arch_low
+            has_medium = has_heavy or cls_key in medium_classes or any(a in arch_low for a in ("champion", "fighter", "guardian"))
+            has_light = has_medium or cls_key in light_classes
+            acat = cand[1]
+            if (acat == "heavy" and has_heavy) or (acat == "medium" and has_medium) or (acat == "light" and has_light) or acat == "unarmored":
+                explicit_armor_spec = cand
+
+    if explicit_armor_spec:
+        aname, acat, item_ac, dex_cap, abulk = explicit_armor_spec
+        armor_name = format_runed_armor_name(aname, lvl)
+        armor_item = Item(name=armor_name, bulk=abulk, cost_sp=50)
+        if cls_key == "monk" and acat == "unarmored":
+            arm_prof = (8 + lvl) if lvl >= 17 else ((6 + lvl) if lvl >= 13 else (4 + lvl))
+        elif cls_key == "thaumaturge" and lvl >= 11:
+            arm_prof = 4 + lvl
+        else:
+            arm_prof = 2 + lvl
+        calculated_ac = 10 + item_ac + min(dex_mod, dex_cap) + arm_prof + armor_pot
+        if use_shield:
+            sh_base = shield_kind or "Steel Shield"
+            shield_bonus = 1 if "buckler" in sh_base.lower() else 2
+            shield_item = Item(name=format_scaled_shield_name(sh_base, lvl), bulk="L" if shield_bonus == 1 else "1", cost_sp=20)
+    elif is_cloistered:
         armor_name = format_runed_armor_name("Explorer's Clothing", lvl)
         armor_item = Item(name=armor_name, bulk="L", cost_sp=1)
         calculated_ac = 10 + 0 + min(dex_mod, 5) + (2 + lvl) + armor_pot
@@ -916,15 +973,17 @@ def resolve_equipment(
         armor_item = Item(name=armor_name, bulk="2", cost_sp=80)
         calculated_ac = 10 + 4 + min(dex_mod, 1) + (2 + lvl) + armor_pot
         if use_shield:
-            shield_item = Item(name=format_scaled_shield_name("Steel Shield", lvl), bulk="1", cost_sp=20)
-            shield_bonus = 2
+            sh_base = shield_kind or "Steel Shield"
+            shield_bonus = 1 if "buckler" in sh_base.lower() else 2
+            shield_item = Item(name=format_scaled_shield_name(sh_base, lvl), bulk="L" if shield_bonus == 1 else "1", cost_sp=20)
     elif cls_key in ["rogue", "ranger", "bard", "swashbuckler", "investigator", "gunslinger", "alchemist", "animist"]:
         armor_name = format_runed_armor_name("Leather Armor", lvl)
         armor_item = Item(name=armor_name, bulk="1", cost_sp=20)
         calculated_ac = 10 + 1 + min(dex_mod, 4) + (2 + lvl) + armor_pot
         if use_shield:
-            shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
-            shield_bonus = 2
+            sh_base = shield_kind or "Wooden Shield"
+            shield_bonus = 1 if "buckler" in sh_base.lower() else 2
+            shield_item = Item(name=format_scaled_shield_name(sh_base, lvl), bulk="L" if shield_bonus == 1 else "1", cost_sp=10)
     elif cls_key in ["wizard", "witch", "sorcerer", "oracle", "psychic", "necromancer", "monk"]:
         armor_name = format_runed_armor_name("Explorer's Clothing", lvl)
         armor_item = Item(name=armor_name, bulk="L", cost_sp=1)
@@ -934,8 +993,9 @@ def resolve_equipment(
             unarm_prof = (2 + lvl)
         calculated_ac = 10 + 0 + min(dex_mod, 5) + unarm_prof + armor_pot
         if use_shield:
-            shield_item = Item(name=format_scaled_shield_name("Wooden Shield", lvl), bulk="1", cost_sp=10)
-            shield_bonus = 2
+            sh_base = shield_kind or "Wooden Shield"
+            shield_bonus = 1 if "buckler" in sh_base.lower() else 2
+            shield_item = Item(name=format_scaled_shield_name(sh_base, lvl), bulk="L" if shield_bonus == 1 else "1", cost_sp=10)
     else:
         arm_prof = (4 + lvl) if (cls_key == "thaumaturge" and lvl >= 11) else (2 + lvl)
         if dex_mod >= 4:
@@ -951,8 +1011,9 @@ def resolve_equipment(
             armor_item = Item(name=armor_name, bulk="2", cost_sp=20)
             calculated_ac = 10 + 3 + min(dex_mod, 2) + arm_prof + armor_pot
         if use_shield:
-            shield_item = Item(name=format_scaled_shield_name("Steel Shield" if cls_key in ("commander", "exemplar", "barbarian") else "Wooden Shield", lvl), bulk="1", cost_sp=10)
-            shield_bonus = 2
+            sh_base = shield_kind or ("Steel Shield" if cls_key in ("commander", "exemplar", "barbarian") else "Wooden Shield")
+            shield_bonus = 1 if "buckler" in sh_base.lower() else 2
+            shield_item = Item(name=format_scaled_shield_name(sh_base, lvl), bulk="L" if shield_bonus == 1 else "1", cost_sp=10)
 
     if "hardshell" in (heritage_name or "").lower() and (ancestry_name or "").lower() in ("surki", "sukri"):
         armor_name = format_runed_armor_name("Hardshell Surki Carapace", lvl)

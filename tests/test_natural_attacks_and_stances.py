@@ -107,7 +107,7 @@ def test_lizardfolk_iruxi_gets_claw_strike(builder: ConceptToSheetBuilder):
     sheet = builder.build_lowest_level_sheet("A Lizardfolk fighter")
     strikes = _strike_map(sheet)
     assert "claw" in strikes
-    assert strikes["claw"]["damage_dice"] == "1d4"
+    assert strikes["claw"]["damage_dice"].startswith("1d4")
     assert strikes["claw"]["damage_type"].lower() == "slashing"
 
 
@@ -127,7 +127,8 @@ def test_iron_fists_traits_and_damage(builder: ConceptToSheetBuilder, prompt: st
     assert "fist" in strikes
 
     fist = strikes["fist"]
-    assert fist["damage_dice"].startswith("1d4")
+    expected_dice_prefix = "2d4" if "level 11" in prompt.lower() else "1d4"
+    assert fist["damage_dice"].startswith(expected_dice_prefix)
     assert fist["damage_type"].lower() == "bludgeoning"
     assert "shove" in fist["traits"]
     assert "nonlethal" not in fist["traits"]

@@ -102,11 +102,19 @@ def get_weapon_spec_bonus(class_name: str, level: int) -> int:
         return 4
     return 2 if level >= 7 else 0
 
-def apply_remaster_level_boosts(base_mods: Dict[str, int], key_attr: str, target_level: int) -> Dict[str, int]:
+def apply_remaster_level_boosts(
+    base_mods: Dict[str, int],
+    key_attr: str,
+    target_level: int,
+    preferred_attr: str = "",
+) -> Dict[str, int]:
     # PF2e Remaster: 4 boosts at levels 5, 10, 15, 20; attributes >= +4 require 2 boosts per +1
     mods = dict(base_mods)
     partials: Set[str] = set()
-    priority = [key_attr, "con", "dex", "wis", "str", "int", "cha"]
+    priority: List[str] = []
+    for a in (key_attr, preferred_attr, "con", "dex", "wis", "str", "int", "cha"):
+        if a and a in mods and a not in priority:
+            priority.append(a)
 
     for milestone in (5, 10, 15, 20):
         if target_level >= milestone:

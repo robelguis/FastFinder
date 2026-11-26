@@ -1,7 +1,32 @@
+import json
+from pathlib import Path
 import re
 from typing import List, Dict, Any, Optional, Set
 import random
 from app.engine.models import SkillEntry
+
+_FEAT_PREREQ_CACHE: Optional[Dict[str, List[str]]] = None
+
+
+def _get_feat_prereq_lookup() -> Dict[str, List[str]]:
+    global _FEAT_PREREQ_CACHE
+    if _FEAT_PREREQ_CACHE is not None:
+        return _FEAT_PREREQ_CACHE
+    lookup: Dict[str, List[str]] = {}
+    feats_file = Path(__file__).resolve().parent.parent.parent / "data" / "feats.json"
+    if feats_file.exists():
+        try:
+            raw = json.loads(feats_file.read_text(encoding="utf-8"))
+            items = raw if isinstance(raw, list) else raw.get("feats", [])
+            for f in items:
+                if isinstance(f, dict) and f.get("name"):
+                    prereqs = f.get("prerequisites") or []
+                    if prereqs:
+                        lookup[f["name"].strip().lower()] = [str(p) for p in prereqs]
+        except Exception:
+            pass
+    _FEAT_PREREQ_CACHE = lookup
+    return _FEAT_PREREQ_CACHE
 
 ALL_PF2E_SKILLS = [
     "Acrobatics", "Arcana", "Athletics", "Crafting", "Deception",
@@ -129,10 +154,52 @@ def resolve_character_skills(
         "thaumaturge": ["Arcana", "Nature", "Occultism", "Religion"],
     }
     class_req_skills = set(CLASS_MANDATORY_SKILLS.get(cls_name.lower(), []))
+    arch_low = (planned_archetype or "").strip().lower()
+    if "living monolith" in arch_low:
+        class_req_skills.add("Crafting")
+    elif "medic" in arch_low:
+        class_req_skills.add("Medicine")
+    elif "beastmaster" in arch_low or "mammoth" in arch_low:
+        class_req_skills.add("Nature")
+    elif "sentinel" in arch_low or "bastion" in arch_low or "mauler" in arch_low or "cavalier" in arch_low:
+        class_req_skills.add("Athletics")
+    elif "assassin" in arch_low or "shadowdancer" in arch_low:
+        class_req_skills.add("Stealth")
+    elif "marshal" in arch_low:
+        class_req_skills.update({"Diplomacy"})
+
+    req_skills_dict = kwargs.get("requested_skills") or {}
+    for rk_name in req_skills_dict.keys():
+        for std_s in ALL_PF2E_SKILLS:
+            if std_s.lower() == str(rk_name).strip().lower():
+                class_req_skills.add(std_s)
+                break
+
     feat_names_lower = {
         (f.name if hasattr(f, "name") else (f.get("name") if isinstance(f, dict) else "")).lower()
         for f in all_feats
     }
+    # Ensure background feats' required skills from feats.json prerequisites are trained
+    prereq_lookup = _get_feat_prereq_lookup()
+    for _bf in all_feats:
+        _bcat = (getattr(_bf, "category", None) or (_bf.get("category") if isinstance(_bf, dict) else "") or "").lower()
+        _bname = (getattr(_bf, "name", None) or (_bf.get("name") if isinstance(_bf, dict) else "") or "").lower()
+        if "background" in _bcat:
+            _base_bname = _bname.split("(", 1)[0].strip()
+            for _pr in prereq_lookup.get(_bname) or prereq_lookup.get(_base_bname) or []:
+                _pm = re.search(r"\btrained in ([^.\n;]+)", _pr.lower())
+                if _pm:
+                    for _opt in re.split(r",|\bor\b", _pm.group(1)):
+                        _oc = _opt.strip().title()
+                        if _oc in ALL_PF2E_SKILLS:
+                            class_req_skills.add(_oc)
+                            break
+            if "natural medicine" in _bname:
+                class_req_skills.add("Nature")
+            elif "assurance" in _bname and "(" in _bname and ")" in _bname:
+                _ak = _bname.split("(", 1)[1].rsplit(")", 1)[0].strip().title()
+                if _ak in ALL_PF2E_SKILLS:
+                    class_req_skills.add(_ak)
 
     trained_skills: Set[str] = set(class_req_skills)
     if existing_map:
@@ -144,12 +211,11 @@ def resolve_character_skills(
         if not bg_skills and bg.get("trained_skills"):
             bg_skills.extend(bg.get("trained_skills"))
 
-        # Fallback: scan description for standard PF2e skill grants (e.g. "trained in the Arcana skill")
+        # Fallback: scan description for standard PF2e skill grants (e.g. "trained in the Arcana skill" or "trained in Athletics")
         desc = bg.get("description", "")
         if desc:
             for s in ALL_PF2E_SKILLS:
-                pattern = rf"\b{s}\s+skill\b"
-                if re.search(pattern, desc, re.IGNORECASE):
+                if re.search(rf"\b{s}\s+skill\b", desc, re.IGNORECASE) or re.search(rf"\btrained\s+in\s+(?:the\s+)?{s}\b", desc, re.IGNORECASE):
                     bg_skills.append(s)
 
         mandatory = set()
@@ -276,7 +342,14 @@ def resolve_character_skills(
 
     # Generic feat-granted skill trainings (e.g., Minotaur Lore -> Society & Stealth)
     _skill_lookup = {s.lower(): s for s in ALL_PF2E_SKILLS}
-    for _feat in (feats or []):
+    for _feat in all_feats:
+        _fn_low = (getattr(_feat, "name", None) or (_feat.get("name") if isinstance(_feat, dict) else "") or "").lower()
+        if "hobnobber" in _fn_low:
+            trained_skills.add("Diplomacy")
+        if "natural medicine" in _fn_low:
+            trained_skills.add("Nature")
+        if "yaoguai historian" in _fn_low:
+            trained_skills.add("Occultism")
         _f_desc = (getattr(_feat, "description", None) or (_feat.get("description") if isinstance(_feat, dict) else "") or "")
         if not _f_desc:
             continue
@@ -294,18 +367,29 @@ def resolve_character_skills(
     skill_ranks: Dict[str, int] = {s: (2 if s in trained_skills else 0) for s in ALL_PF2E_SKILLS}
 
     if existing_map:
-        # Determine prioritised skills that already had increases
-        boosted_names = [name for name in trained_skills if existing_map.get(name, 2) > 2]
-        
+        # Restore existing increases from highest rank downward so Legendary/Master skills are never demoted
+        boosted_names = sorted(
+            [
+                name for name in trained_skills
+                if existing_map.get(name, 2) > 2
+                and not (cls_name.lower() == "inventor" and name == "Crafting")
+            ],
+            key=lambda n: (-existing_map.get(n, 2), 0 if n in class_req_skills else 1, n),
+        )
+
         increases_applied = 0
         # Re-apply boosts to the exact same skills up to the new num_increases limit
         for name in boosted_names:
             if increases_applied >= num_increases:
                 break
             prev_val = existing_map.get(name, 2)
-            
+
+            # Can we restore Legendary? (Requires level 15+ and 3 increases)
+            if prev_val >= 8 and target_lvl >= 15 and (num_increases - increases_applied) >= 3:
+                skill_ranks[name] = 8
+                increases_applied += 3
             # Can we restore Master? (Requires level 7+ and 2 increases)
-            if prev_val >= 6 and target_lvl >= 7 and (num_increases - increases_applied) >= 2:
+            elif prev_val >= 6 and target_lvl >= 7 and (num_increases - increases_applied) >= 2:
                 skill_ranks[name] = 6
                 increases_applied += 2
             # Otherwise, can we restore Expert? (Requires level 2+ and 1 increase)
@@ -313,24 +397,39 @@ def resolve_character_skills(
                 skill_ranks[name] = 4
                 increases_applied += 1
 
+        def _inc_sort_key(sk_n: str) -> tuple:
+            return (0 if sk_n in class_req_skills else 1, -norm_mods.get(SKILL_KEY_ABILITY.get(sk_n, "dex"), 0), sk_n)
+
+        max_leg_core = 0 if target_lvl < 15 else (3 if cls_name.lower() == "inventor" else 4)
         remaining = num_increases - increases_applied
         while remaining > 0:
-            eligible_legendary = [s for s in trained_skills if skill_ranks[s] == 6 and target_lvl >= 15]
-            if eligible_legendary:
-                pick = eligible_legendary[0]
-                skill_ranks[pick] = 8
-                remaining -= 1
-                continue
-            eligible_master = [s for s in trained_skills if skill_ranks[s] == 4 and target_lvl >= 7]
+            cur_leg_core = sum(
+                1 for s in ALL_PF2E_SKILLS
+                if skill_ranks[s] >= 8 and not (cls_name.lower() == "inventor" and s == "Crafting")
+            )
+            if target_lvl >= 15 and cur_leg_core < max_leg_core:
+                eligible_legendary = sorted(
+                    [s for s in trained_skills if skill_ranks[s] == 6 and not (cls_name.lower() == "inventor" and s == "Crafting")],
+                    key=_inc_sort_key,
+                )
+                if eligible_legendary:
+                    skill_ranks[eligible_legendary[0]] = 8
+                    remaining -= 1
+                    continue
+            eligible_master = sorted(
+                [s for s in trained_skills if skill_ranks[s] == 4 and target_lvl >= 7],
+                key=_inc_sort_key,
+            )
             if eligible_master:
-                pick = eligible_master[0]
-                skill_ranks[pick] = 6
+                skill_ranks[eligible_master[0]] = 6
                 remaining -= 1
                 continue
-            eligible_expert = [s for s in trained_skills if skill_ranks[s] == 2 and target_lvl >= 2]
+            eligible_expert = sorted(
+                [s for s in trained_skills if skill_ranks[s] == 2 and target_lvl >= 2],
+                key=_inc_sort_key,
+            )
             if eligible_expert:
-                pick = eligible_expert[0]
-                skill_ranks[pick] = 4
+                skill_ranks[eligible_expert[0]] = 4
                 remaining -= 1
                 continue
             break
@@ -402,11 +501,12 @@ def resolve_character_skills(
     protected_legendary = {"Crafting"} if cls_name.lower() == "inventor" and target_lvl >= 15 else set()
     leg_skills = [sk for sk in ALL_PF2E_SKILLS if skill_ranks.get(sk, 0) >= 8]
     if len(leg_skills) > max_legendary:
-        # Keep protected class-scaled skills and highest-mod/non-protected skills up to max_legendary
+        # Keep protected class-scaled skills and previously Legendary skills up to max_legendary
         ranked_leg = sorted(
             leg_skills,
             key=lambda s: (
                 0 if s in protected_legendary else 1,
+                0 if existing_map.get(s, 0) >= 8 else 1,
                 -norm_mods.get(SKILL_KEY_ABILITY.get(s, "dex"), 0),
                 s,
             ),
@@ -530,10 +630,6 @@ def resolve_character_skills(
             if not feat_lore_name.lower().endswith("lore"):
                 feat_lore_name = f"{feat_lore_name} Lore"
 
-            # Prevent duplicate if already added
-            if any(s.name.lower() == feat_lore_name.lower() for s in result_skills):
-                continue
-
             # Additional Lore auto-scaling: Trained (1-2), Expert (3-6), Master (7-14), Legendary (15+)
             if target_lvl >= 15:
                 al_rank = 8
@@ -546,6 +642,19 @@ def resolve_character_skills(
 
             al_prof = al_rank + target_lvl
             al_total = al_prof + norm_mods.get("int", 0)
+
+            existing_idx = next((i for i, s in enumerate(result_skills) if s.name.lower() == feat_lore_name.lower()), None)
+            if existing_idx is not None:
+                cur_s = result_skills[existing_idx]
+                if cur_s.rank < al_rank:
+                    result_skills[existing_idx] = SkillEntry(
+                        name=cur_s.name,
+                        rank=al_rank,
+                        rank_letter=RANK_LETTER_MAP.get(al_rank, "T"),
+                        modifier=(al_rank + target_lvl) + norm_mods.get("int", 0),
+                        attribute=cur_s.attribute or "INT",
+                    )
+                continue
 
             result_skills.append(
                 SkillEntry(
@@ -564,6 +673,7 @@ def resolve_character_skills(
             "hellknight armiger": ("Hell Lore", False),
             "mammoth lord": ("Mammoth Lore", False),
             "riftwarden": ("Planes Lore", False),
+            "yaoguai historian": ("Yaoguai Lore", False),
         }
 
 
@@ -571,7 +681,7 @@ def resolve_character_skills(
             r"(?:become trained in|trained in|gain the|gain)\s+(?:your choice of\s+[^;.]+and\s+)?([A-Za-z][A-Za-z\s\-]+?\s+Lore)(?=[.,;\n]|\s+or\b|$)",
             re.IGNORECASE,
         )
-        for f_obj in feats:
+        for f_obj in all_feats:
             f_nm = f_obj.get("name", "") if isinstance(f_obj, dict) else getattr(f_obj, "name", "")
             if "additional lore" in f_nm.lower():
                 continue

@@ -519,7 +519,7 @@ def resolve_dynamic_archetype(archetype_name: str, feats_list: List[Dict[str, An
 
     # Find the Dedication feat
     dedication_feat = None
-    target_trait = target.replace("-", " ").replace(" multiclass", "").strip()
+    target_trait = target.replace("-", " ").replace(" multiclass", "").replace(" dedication", "").strip()
     for ft in feats_list:
         ft_name = ft.get("name", "")
         traits = [t.lower() for t in ft.get("traits", [])]

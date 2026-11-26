@@ -136,14 +136,29 @@ def _match_single_term(
     attribute_mods: Dict[str, int],
     active_blob: str,
     perception_rank: int = 2,
+    languages_lower: Optional[Set[str]] = None,
 ) -> bool:
-    """Evaluates a single atomic prerequisite term (skill, attribute, subclass, or owned feat/feature)."""
+    """Evaluates a single atomic prerequisite term (skill, attribute, language, subclass, or owned feat/feature)."""
     t_clean = term.strip().rstrip(".")
     if "assassin dedication" in t_clean.lower() and ("rogue dedication" in owned_lower or "rogue" in active_blob):
         return True
     t_lower = t_clean.lower()
     if not t_lower:
         return True
+
+    # 0. Language prerequisite (e.g. "Ancient Osiriani and Sphinx languages", "Draconic language")
+    if re.search(r"\blanguages?\b", t_lower):
+        lang_blob = re.sub(r"\blanguages?\b", "", t_lower).strip()
+        req_langs = [
+            x.strip()
+            for x in re.split(r",|\band\b", lang_blob)
+            if x.strip() and x.strip() not in {"any", "one", "two", "three", "at least"}
+        ]
+        if not req_langs:
+            return True
+        if languages_lower is None:
+            return True
+        return all(any(rl in lang for lang in languages_lower) for rl in req_langs)
 
     # 1. Generic skill checks ("trained in at least one skill", "trained in Lore", Recall Knowledge skills)
     if "recall knowledge" in t_lower:
@@ -181,7 +196,18 @@ def _match_single_term(
         target_mod = (int(legacy_attr.group(2)) - 10) // 2
         return attribute_mods.get(attr_key, 0) >= target_mod
 
-    # 4. Armor / proficiency / generic trait phrases
+    # 4. Armor / proficiency / spellcasting / generic trait phrases
+    if "spellcasting class feature" in t_lower or "cast spells from spell slots" in t_lower or "ability to cast spells" in t_lower:
+        caster_classes = (
+            "animist", "bard", "cleric", "druid", "magus", "necromancer",
+            "oracle", "psychic", "sorcerer", "summoner", "witch", "wizard",
+        )
+        if any(re.search(rf"\b{c}\b", active_blob) for c in caster_classes) or any(
+            "spellcasting" in o for o in owned_lower
+        ):
+            return True
+        return False
+
     if t_lower in {"medium armor", "heavy armor", "light armor", "unarmored defense", "martial weapons", "simple weapons"} or any(
         phrase in t_lower for phrase in ("follower of a specific religion", "laws of mortality", "deity who grants", "patron deity")
     ):
@@ -254,8 +280,10 @@ def check_feat_prerequisites(
     subclass_name: str = "",
     archetype_name: str = "",
     perception_rank: int = 2,
+    languages: Optional[Set[str]] = None,
 ) -> bool:
     skill_ranks = {str(k).strip().lower(): int(v) for k, v in (skill_ranks or {}).items()}
+    languages_lower = {str(l).strip().lower() for l in languages} if languages is not None else None
     """Validates whether a character meets all prerequisites for a feat (including Remaster modifiers, OR/AND lists, and subclasses)."""
     prereqs = _extract_prereq_clauses(feat)
     owned_lower = {f.lower().strip() for f in owned_feat_names}
@@ -317,7 +345,15 @@ def check_feat_prerequisites(
             return False
 
         # Single atomic prerequisite term (handles both capitalized and lowercase terms!)
-        if not _match_single_term(p_clean, skill_ranks, owned_lower, attribute_mods, active_blob, perception_rank=perception_rank):
+        if not _match_single_term(
+            p_clean,
+            skill_ranks,
+            owned_lower,
+            attribute_mods,
+            active_blob,
+            perception_rank=perception_rank,
+            languages_lower=languages_lower,
+        ):
             return False
 
     return True
@@ -389,14 +425,17 @@ def calculate_feat_weight(
     cand_name_low = feat_name_lower
     cand_clean_low = clean_feat_name
     if cand_name_low or cand_clean_low:
-        chain_payoff_count = 0
-        for other_name_low, other_prereqs in globals().get("_FEAT_PREREQ_INDEX", {}).items():
-            if other_name_low == cand_name_low or other_name_low in owned_lower:
-                continue
-            if (cand_name_low and cand_name_low in other_prereqs) or (
-                cand_clean_low and len(cand_clean_low) > 4 and cand_clean_low in other_prereqs
-            ):
-                chain_payoff_count += 1
+        cache_key = (cand_name_low, cand_clean_low)
+        downstream = _DOWNSTREAM_CACHE.get(cache_key)
+        if downstream is None:
+            downstream = {
+                other_name_low
+                for other_name_low, other_prereqs in _FEAT_PREREQ_INDEX.items()
+                if (cand_name_low and cand_name_low in other_prereqs)
+                or (cand_clean_low and len(cand_clean_low) > 4 and cand_clean_low in other_prereqs)
+            }
+            _DOWNSTREAM_CACHE[cache_key] = downstream
+        chain_payoff_count = len(downstream - owned_lower - {cand_name_low})
         if chain_payoff_count > 0:
             has_any_chain_anchor = any(
                 (cand_clean_low and len(cand_clean_low) > 4 and cand_clean_low in o)
@@ -444,6 +483,7 @@ def calculate_feat_weight(
 
 
 _FEAT_PREREQ_INDEX: Dict[str, str] = {}
+_DOWNSTREAM_CACHE: Dict[tuple, Set[str]] = {}
 
 
 def build_feat_prereq_index(feats_catalog: list) -> None:
@@ -461,3 +501,4 @@ def build_feat_prereq_index(feats_catalog: list) -> None:
             idx[nm] = p_txt
     _FEAT_PREREQ_INDEX.clear()
     _FEAT_PREREQ_INDEX.update(idx)
+    _DOWNSTREAM_CACHE.clear()
