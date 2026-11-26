@@ -66,7 +66,8 @@ SPELL_CATALOG: Dict[str, Dict[str, List[Dict[str, Any]]]] = {
             {"name": "Divine Lance", "actions": "2 actions", "traits": ["Attack", "Divine", "Holy"], "range": "30 feet", "defense": "AC", "description": "You launch a beam of sanctified divine energy dealing 2d4 spirit damage."},
             {"name": "Guidance", "actions": "1 action", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Grants a +1 status bonus to one attack roll, Perception check, saving throw, or skill check."},
             {"name": "Forbidding Ward", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine"], "range": "30 feet", "defense": "None", "description": "Target ally gains a +1 status bonus to AC and saves against attacks from a designated enemy."},
-            {"name": "Vitality Lash", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Vitality"], "range": "30 feet", "defense": "Basic Fortitude", "description": "A lash of radiant energy deals 2d6 vitality damage to an undead target."}
+            {"name": "Vitality Lash", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Vitality"], "range": "30 feet", "defense": "Basic Fortitude", "description": "A lash of radiant energy deals 2d6 vitality damage to an undead target."},
+            {"name": "Light", "actions": "2 actions", "traits": ["Cantrip", "Concentrate", "Divine", "Light", "Manipulate"], "range": "Touch", "defense": "None", "description": "An object sheds bright light in a 20-foot radius for 1 hour."}
         ],
         "rank_1": [
             {"name": "Heal", "actions": "1 to 3 actions", "traits": ["Divine", "Healing", "Vitality"], "range": "Varies", "defense": "None", "description": "Channels positive energy to heal living creatures or harm undead (1d8 HP per action/rank)."},
@@ -1027,7 +1028,7 @@ def _resolve_base_spellcasting(
         rank_9 = [SpellSummary(rank=9, **s) for s in cat_data.get("rank_9", [])] if level >= 17 else []
         rank_10 = [SpellSummary(rank=10, **s) for s in cat_data.get("rank_10", [])] if level >= 19 else []
 
-    slots = [SpellSlotTracker(rank=1, max_slots=3 if level >= 3 else 2)]
+    slots = [SpellSlotTracker(rank=1, max_slots=3)]
     if level >= 3:
         slots.append(SpellSlotTracker(rank=2, max_slots=3 if level >= 5 else 2))
     if level >= 5:
