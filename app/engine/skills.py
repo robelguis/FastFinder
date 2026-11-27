@@ -394,7 +394,7 @@ def resolve_character_skills(
         if not _f_desc:
             continue
         for _m_tr in re.finditer(
-            r"you become trained in\s+([a-z]+)(?:\s+and\s+([a-z]+))?",
+            r"(?:you become trained in|you gain the trained proficiency rank in)\s+([a-z]+)(?:\s+and\s+([a-z]+))?",
             _f_desc,
             flags=re.IGNORECASE,
         ):
