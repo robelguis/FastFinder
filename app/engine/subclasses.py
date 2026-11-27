@@ -84,11 +84,11 @@ CLASS_SUBCLASSES: Dict[str, Dict[str, Any]] = {
         ]
     },
     "exemplar": {
-        "title": "Ikons",
+        "title": "Ikon",
         "options": [
-            {"name": "Gleaming Blade, Scar of the Survivor, Mirrored Aegis", "description": "Three Level 1 Ikons: a radiant melee weapon, a self-healing body ikon, and a protective shield ikon."},
-            {"name": "Barrow's Edge, Skin Hard as Horn, Victor's Wreath", "description": "Three Level 1 Ikons: a life-draining blade, hardened skin, and an inspiring battlefield wreath."},
-            {"name": "Starshot, Gaze Sharp as Steel, Thousand-League Sandals", "description": "Three Level 1 Ikons: a ranged weapon ikon, keen-eyed precision, and swift-striding sandals."}
+            {"name": "Body Ikon", "description": "Your physical vessel channels your divine spark for resilience and supernatural might."},
+            {"name": "Weapon Ikon", "description": "Your weapon channels your divine spark for mythological strikes."},
+            {"name": "Worn Ikon", "description": "Your armor, shield, or relic channels your divine spark for protection and authority."}
         ]
     },
     "gunslinger": {
