@@ -141,9 +141,11 @@ def resolve_character_skills(
             }
             filtered = []
             for m in matches:
-                cleaned_m = re.sub(r"^(?:the|a|an|your|any)\s+", "", m.strip(), flags=re.IGNORECASE).strip()
-                if cleaned_m and cleaned_m.lower() not in blocked_bg_lores and "additional" not in cleaned_m.lower():
-                    filtered.append(cleaned_m)
+                parts = re.split(r"\s+and\s+", m.strip(), flags=re.IGNORECASE)
+                for part in parts:
+                    cleaned_m = re.sub(r"^(?:the|a|an|your|any)\s+", "", part.strip(), flags=re.IGNORECASE).strip()
+                    if cleaned_m and cleaned_m.lower().endswith("lore") and cleaned_m.lower() not in blocked_bg_lores and "additional" not in cleaned_m.lower():
+                        filtered.append(cleaned_m)
             if filtered:
                 lore_opts = filtered
 
