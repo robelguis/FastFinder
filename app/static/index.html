@@ -1455,7 +1455,8 @@ function updateHeritageDropdown() {
       };
 
       const displayActions = [...actionFeats];
-      const clsLow = String(data.class_name || data.class || '').toLowerCase();
+      const rawClsStr = String(data.class_name || data.class || data.class_display || '');
+      const clsLow = rawClsStr.toLowerCase();
       if (clsLow.includes('ranger')) {
         const existingNames = new Set(displayActions.map(x => String(x.name || '').toLowerCase()));
         if (!existingNames.has('hunt prey')) {
@@ -1467,14 +1468,18 @@ function updateHeritageDropdown() {
             description: 'Designate a creature you can see or track as your prey. Gain +2 circumstance to Seek/Sense Motive and +2 to Track against it, and ignore the second range increment penalty on ranged attacks against your prey.'
           });
         }
-        const subName = String(data.subclass || data.sub_class || '').trim();
+        let subName = String(data.subclass_name || data.subclass || data.sub_class || '').trim();
+        if (!subName && rawClsStr.includes('(') && rawClsStr.includes(')')) {
+          subName = rawClsStr.slice(rawClsStr.indexOf('(') + 1, rawClsStr.lastIndexOf(')')).trim();
+        }
         const edgeTitle = subName ? `Hunter's Edge: ${subName}` : "Hunter's Edge";
         if (!existingNames.has(edgeTitle.toLowerCase())) {
-          const edgeDesc = subName.toLowerCase().includes('flurry')
+          const subLow = subName.toLowerCase();
+          const edgeDesc = subLow.includes('flurry')
             ? 'Your multiple attack penalty on subsequent attacks against your hunted prey is -4 (-8 on third attack), or -3 (-6) with an agile weapon.'
-            : subName.toLowerCase().includes('precision')
+            : subLow.includes('precision')
             ? 'The first time you hit your hunted prey in a round, you deal an additional 1d8 precision damage.'
-            : subName.toLowerCase().includes('outwit')
+            : subLow.includes('outwit')
             ? 'Gain +2 circumstance bonus to Deception, Intimidation, and Stealth checks against your prey, and +2 circumstance bonus to AC against its attacks.'
             : 'Apply your chosen Ranger Hunter’s Edge benefit against your hunted prey.';
           displayActions.push({
