@@ -20,6 +20,7 @@ from app.engine.companions import resolve_companion
 from app.engine.constructs_undead import resolve_construct_companion, resolve_undead_companion
 from app.engine.eidolons import resolve_eidolon
 from app.engine.equipment import get_fundamental_rune_tiers, resolve_equipment
+from app.engine.equipment import sync_ammo_to_weapons
 from app.engine.familiars import resolve_familiar
 from app.engine.feat_prereqs import (
     build_feat_prereq_index,
@@ -2806,6 +2807,8 @@ class PF2eGenerator:
                                 seen_w2.add(cn2.lower())
                                 synced_weapons.append(EqItem(name=cn2))
                 equipment_loadout.weapons = synced_weapons
+                if hasattr(equipment_loadout, "consumables"):
+                    sync_ammo_to_weapons(equipment_loadout.weapons, equipment_loadout.strikes, equipment_loadout.consumables)
 
         if companion_species and collected_partners:
             comp0 = collected_partners[0]
