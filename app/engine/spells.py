@@ -746,6 +746,16 @@ def resolve_spellcasting(
             defense="Will",
             description="Granted by Illusionist Tanuki: Jolts the target's mind with mental feedback dealing 2d6 mental damage."
         ))
+    if any("awakened jewel" in fn for fn in feat_names):
+        anc_innate_cantrips.append(SpellSummary(
+            rank=0,
+            name="Telekinetic Projectile (Innate Occult Cantrip)",
+            actions="2 actions",
+            traits=["Attack", "Cantrip", "Manipulate", "Occult"],
+            range="30 feet",
+            defense="AC",
+            description="Granted by Awakened Jewel: Hurls a loose object at will as an innate occult cantrip dealing 2d6 bludgeoning, piercing, or slashing damage."
+        ))
 
     if anc_innate_cantrips:
         if sc is None:

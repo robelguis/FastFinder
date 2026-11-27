@@ -818,7 +818,10 @@ def apply_feat_granted_lores(all_skills: list, chosen_feats: list, level: int, i
         ):
             continue
 
-        for lore_name in extract_lores_from_feat(f_name, f_desc):
+        extra_lores = extract_lores_from_feat(f_name, f_desc)
+        if f_name.strip().lower() == "sarangay lore" and "Sarangay Lore" not in extra_lores:
+            extra_lores.append("Sarangay Lore")
+        for lore_name in extra_lores:
             l_low = lore_name.lower()
             sk = existing_by_low.get(l_low)
             if sk is not None:
@@ -2672,6 +2675,28 @@ class PF2eGenerator:
             sneak_dice_val = get_sneak_attack_dice(level, is_archetype=is_arch_sneak)
 
         if equipment_loadout is not None and hasattr(equipment_loadout, "strikes"):
+            if any("haft striker stance" in f.name.lower() for f in chosen_feats):
+                filtered_strikes = []
+                replaced_sickle = False
+                for st in (equipment_loadout.strikes or []):
+                    st_name = (getattr(st, "name", None) if not isinstance(st, dict) else st.get("name", "")) or ""
+                    if "sickle" in st_name.lower():
+                        if not replaced_sickle:
+                            haft_s = compute_strike(
+                                name="Glaive / Haft Strike",
+                                base_dice="1d8",
+                                damage_type="Slashing",
+                                traits=["Deadly d8", "Reach", "Two-Hand d10", "Agile", "Finesse"],
+                                level=level,
+                                class_name=cls["name"],
+                                attrs=mods,
+                                is_unarmed=False,
+                            )
+                            filtered_strikes.append(haft_s.model_dump() if isinstance(st, dict) else haft_s)
+                            replaced_sickle = True
+                    else:
+                        filtered_strikes.append(st)
+                equipment_loadout.strikes = filtered_strikes
             equipment_loadout.strikes = dedupe_and_recompute_strikes(
                 equipment_loadout.strikes,
                 level=level,
