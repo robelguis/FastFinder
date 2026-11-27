@@ -818,6 +818,22 @@ def resolve_equipment(
             affordable_weps = affordable_weps[:2]
         raw_weps = affordable_weps
 
+    if lvl == 1 and not requested_weapons and raw_weps:
+        def _has_range_prop(w: Dict[str, Any]) -> bool:
+            tr = " ".join(str(t).lower() for t in (w.get("traits") or []))
+            nm = str(w.get("name", "")).lower()
+            return "range " in tr or any(k in nm for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle", "blunderbuss", "blowgun", "dart"))
+
+        if not _has_range_prop(raw_weps[0]) and not any(_has_range_prop(w) for w in raw_weps[1:]):
+            if has_martial_prof:
+                rng_wep = {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
+            else:
+                rng_wep = {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]}
+            if len(raw_weps) >= 2:
+                raw_weps[1] = rng_wep
+            else:
+                raw_weps.append(rng_wep)
+
     weapons: List[Item] = []
     strikes: List[Strike] = []
 
