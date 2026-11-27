@@ -3296,7 +3296,21 @@ class PF2eGenerator:
                 and f["name"].lower() not in added_feat_names
                 and check_feat_prerequisites(f, skills_l1, {cf.name for cf in chosen_feats}, mods, 1, subclass_name=sub_n_val, languages=assigned_langs_set)
             ]
-            if not lvl1_anc_feats:
+            if lvl1_anc_feats:
+                _record_feat(random.choice(lvl1_anc_feats), "Ancestry (Level 1)")
+            elif "awakened animal" in anc_l1:
+                her_name_txt = heritage_data.get("name", "Awakened Animal")
+                her_desc_txt = clean_pf2e_text(heritage_data.get("description", ""))
+                chosen_feats.append(FeatSummary(
+                    id="feat-awakened-animal-species",
+                    name=f"Awakened {her_name_txt}",
+                    category="Ancestry (Level 1)",
+                    action_cost=None,
+                    traits=["awakened animal"],
+                    description=her_desc_txt or "Your awakened animal nature grants keen instincts and a natural unarmed attack.",
+                ))
+                added_feat_names.add(f"awakened {her_name_txt}".lower())
+            else:
                 lvl1_anc_feats = [
                     f for f in self.feats
                     if f.get("category") == "ancestry"
@@ -3304,8 +3318,8 @@ class PF2eGenerator:
                     and f["name"].lower() not in added_feat_names
                     and check_feat_prerequisites(f, skills_l1, {cf.name for cf in chosen_feats}, mods, 1, subclass_name=sub_n_val, languages=assigned_langs_set)
                 ]
-            if lvl1_anc_feats:
-                _record_feat(random.choice(lvl1_anc_feats), "Ancestry (Level 1)")
+                if lvl1_anc_feats:
+                    _record_feat(random.choice(lvl1_anc_feats), "Ancestry (Level 1)")
 
         # Level 1 Heritage bonus feats (Versatile Human / Ancient Elf)
         her_low = heritage_data.get("name", "").lower()
@@ -3337,9 +3351,27 @@ class PF2eGenerator:
             if pinned_cls1 and check_feat_prerequisites(pinned_cls1, skills_l1, {cf.name for cf in chosen_feats}, mods, 1, subclass_name=sub_n_val, archetype_name=arch_n_val, languages=assigned_langs_set):
                 _record_feat(pinned_cls1, "Class (Level 1)")
             else:
+                _eq_local = locals().get("equipment_loadout")
+                _wep_blob = " ".join(
+                    [str(getattr(w, "name", "") or (w.get("name") if isinstance(w, dict) else "")).lower() for w in (getattr(_eq_local, "weapons", None) or [])]
+                    + [str(getattr(s, "name", "") or (s.get("name") if isinstance(s, dict) else "")).lower() for s in (getattr(_eq_local, "strikes", None) or [])]
+                )
+                def _wep_feat_ok(f_obj: dict) -> bool:
+                    if not _wep_blob:
+                        return True
+                    fn_low = (f_obj.get("name") or "").lower()
+                    fd_low = (f_obj.get("description") or "").lower()
+                    if "crossbow" in fn_low and "crossbow" not in _wep_blob:
+                        return False
+                    if ("bow" in fn_low or "shortbow" in fn_low or "longbow" in fn_low) and not any(b in _wep_blob for b in ("bow", "shortbow", "longbow")):
+                        return False
+                    if "crossbow" in fd_low and "requires you are wielding a crossbow" in fd_low and "crossbow" not in _wep_blob:
+                        return False
+                    return True
+
                 lvl1_feats = [
                     f for f in self.feats
-                    if f.get("level") == 1 and _is_valid_class_feat(f)
+                    if f.get("level") == 1 and _is_valid_class_feat(f) and _wep_feat_ok(f)
                     and check_feat_prerequisites(f, skills_l1, {cf.name for cf in chosen_feats}, mods, 1, subclass_name=sub_n_val, archetype_name=arch_n_val, languages=assigned_langs_set)
                 ]
                 if lvl1_feats:
