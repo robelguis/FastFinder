@@ -1245,15 +1245,32 @@ def resolve_equipment(
                 description=b_desc,
             ))
 
-    all_wep_names = " ".join(
-        [str(w.get("name", "") if isinstance(w, dict) else getattr(w, "name", "")).lower() for w in weapons]
-        + [str(getattr(s, "name", "")).lower() for s in strikes]
-    )
-    if any(k in all_wep_names for k in ("longbow", "shortbow", "bow")) and not any("arrow" in c.name.lower() for c in consumables):
+    wep_name_list = [
+        str(w.get("name", "") if isinstance(w, dict) else getattr(w, "name", "")).lower()
+        for w in weapons
+    ] + [str(getattr(s, "name", "")).lower() for s in strikes]
+    has_bow = any(any(tok in nm for tok in ("longbow", "shortbow", "composite bow", "war bow")) or nm == "bow" for nm in wep_name_list)
+    has_crossbow = any("crossbow" in nm for nm in wep_name_list)
+    has_sling = any("sling" in nm and "sling staff" not in nm for nm in wep_name_list)
+
+    # Strip ammunition that does not match any equipped ranged weapon
+    filtered_consumables = []
+    for c in consumables:
+        c_low = str(getattr(c, "name", "") or "").lower()
+        if "arrow" in c_low and not has_bow:
+            continue
+        if "bolt" in c_low and not has_crossbow:
+            continue
+        if "sling bullet" in c_low and not has_sling:
+            continue
+        filtered_consumables.append(c)
+    consumables[:] = filtered_consumables
+
+    if has_bow and not any("arrow" in c.name.lower() for c in consumables):
         consumables.append(ConsumableItem(name="Arrows", quantity=10, bulk="L", description="Standard ammunition for bows (1 sp per 10 arrows)."))
-    if "crossbow" in all_wep_names and not any("bolt" in c.name.lower() for c in consumables):
+    if has_crossbow and not any("bolt" in c.name.lower() for c in consumables):
         consumables.append(ConsumableItem(name="Bolts", quantity=10, bulk="L", description="Standard ammunition for crossbows (1 sp per 10 bolts)."))
-    if "sling" in all_wep_names and not any("sling bullet" in c.name.lower() for c in consumables):
+    if has_sling and not any("sling bullet" in c.name.lower() for c in consumables):
         consumables.append(ConsumableItem(name="Sling Bullets", quantity=10, bulk="L", description="Ammunition for slings (1 cp per 10 bullets)."))
 
     if lvl == 1:
