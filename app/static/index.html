@@ -1455,7 +1455,10 @@ function updateHeritageDropdown() {
       };
 
       const displayActions = [...actionFeats];
-      const rawClsStr = String(data.class_name || data.class || data.class_display || '');
+      const rawClsStr = String(
+        data.class_name || data.class || data.class_display ||
+        (data.class_info && (data.class_info.name || data.class_info.class_name)) || ''
+      );
       const clsLow = rawClsStr.toLowerCase();
       if (clsLow.includes('ranger')) {
         const existingNames = new Set(displayActions.map(x => String(x.name || '').toLowerCase()));
