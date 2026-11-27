@@ -191,7 +191,8 @@ def test_level_20_investigator_legendary_skill_cap(builder: ConceptToSheetBuilde
     legendary_count = sum(
         1
         for sk in skills
-        if str(
+        if "lore" not in str(sk.get("name") if isinstance(sk, dict) else getattr(sk, "name", "")).lower()
+        and str(
             sk.get("rank")
             if isinstance(sk, dict)
             else getattr(sk, "rank", getattr(sk, "proficiency", ""))

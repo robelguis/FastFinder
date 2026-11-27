@@ -174,15 +174,26 @@ def resolve_character_skills(
 
     # 3. Determine baseline trained skills
     CLASS_MANDATORY_SKILLS = {
+        "alchemist": ["Crafting"],
+        "animist": ["Religion"],
+        "barbarian": ["Athletics"],
+        "bard": ["Occultism", "Performance"],
+        "champion": ["Religion"],
         "cleric": ["Religion"],
         "druid": ["Nature"],
-        "wizard": ["Arcana"],
-        "witch": ["Occultism"],
-        "psychic": ["Occultism"],
-        "bard": ["Occultism"],
+        "exemplar": ["Religion"],
         "inventor": ["Crafting"],
-        "alchemist": ["Crafting"],
+        "investigator": ["Society"],
+        "kineticist": ["Nature"],
+        "magus": ["Arcana"],
+        "oracle": ["Religion"],
+        "psychic": ["Occultism"],
+        "ranger": ["Nature", "Survival"],
+        "rogue": ["Stealth"],
+        "swashbuckler": ["Acrobatics"],
         "thaumaturge": ["Arcana", "Nature", "Occultism", "Religion"],
+        "witch": ["Occultism"],
+        "wizard": ["Arcana"],
     }
     class_req_skills = set(CLASS_MANDATORY_SKILLS.get(cls_name.lower(), []))
     arch_low = (planned_archetype or "").strip().lower()
@@ -255,40 +266,41 @@ def resolve_character_skills(
                 if s.lower() == bs.lower():
                     mandatory.add(s)
 
+        # Total standard (non-Lore) skills granted by each class at Level 1 BEFORE +1 background and +INT
         CLASS_BASE_SKILL_COUNTS = {
-            "rogue": 7,
-            "investigator": 4,
-            "bard": 4,
-            "ranger": 4,
-            "thaumaturge": 4,
-            "swashbuckler": 4,
+            "rogue": 9,
+            "thaumaturge": 7,
+            "bard": 6,
+            "investigator": 6,
+            "ranger": 6,
+            "swashbuckler": 6,
+            "oracle": 5,
+            "alchemist": 4,
+            "barbarian": 4,
+            "champion": 4,
+            "cleric": 4,
             "commander": 4,
+            "druid": 4,
+            "exemplar": 4,
+            "fighter": 4,
+            "guardian": 4,
+            "gunslinger": 4,
+            "inventor": 4,
+            "kineticist": 4,
             "monk": 4,
-            "barbarian": 3,
-            "fighter": 3,
-            "gunslinger": 3,
-            "kineticist": 3,
-            "oracle": 3,
+            "psychic": 4,
+            "runesmith": 4,
+            "sorcerer": 4,
+            "summoner": 4,
+            "witch": 4,
             "animist": 3,
-            "exemplar": 3,
-            "guardian": 3,
-            "runesmith": 3,
-            "alchemist": 3,
-            "inventor": 3,
-            "witch": 3,
-            "druid": 2,
-            "cleric": 2,
-            "wizard": 2,
-            "sorcerer": 2,
-            "psychic": 2,
-            "magus": 2,
-            "summoner": 2,
-            "champion": 2,
-            "necromancer": 2,
+            "magus": 3,
+            "necromancer": 3,
+            "wizard": 3,
         }
-        base_count = (bg.get("class_skill_count") if isinstance(bg, dict) else None) or CLASS_BASE_SKILL_COUNTS.get(cls_name.lower(), 3)
+        base_count = (bg.get("class_skill_count") if isinstance(bg, dict) else None) or CLASS_BASE_SKILL_COUNTS.get(cls_name.lower(), 4)
         mandatory = mandatory.union(class_req_skills)
-        total_picks = max(2, base_count + int_mod)
+        total_picks = max(len(mandatory), base_count + 1 + int_mod)
         available_pool = [s for s in ALL_PF2E_SKILLS if s not in mandatory]
         random.shuffle(available_pool)
         needed = max(0, total_picks - len(mandatory))

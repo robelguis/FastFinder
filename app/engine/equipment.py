@@ -747,14 +747,30 @@ def resolve_equipment(
 
     # Enforce Level 1-2 weapon wealth budget unless explicit weapons were requested
     if lvl <= 2 and not requested_weapons:
-        max_gp = float(wealth_cfg.get("lump_gp", 15 if lvl == 1 else 30))
+        if lvl == 1:
+            normalized_weps = []
+            for w in raw_weps:
+                w_low = str(w.get("name", "")).strip().lower()
+                if w_low == "composite longbow":
+                    normalized_weps.append({"name": "Longbow", "dice": "1d8", "type": "Piercing", "traits": ["Deadly d10", "Range 100 ft", "Volley 30 ft"]})
+                elif w_low == "composite shortbow":
+                    normalized_weps.append({"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]})
+                else:
+                    normalized_weps.append(w)
+            raw_weps = normalized_weps
+        max_gp = 5.5 if lvl == 1 else float(wealth_cfg.get("lump_gp", 30))
         spent_gp = 0.0
         affordable_weps = []
         for w in raw_weps:
             w_cost_gp = _estimate_weapon_gp(w)
-            if spent_gp + w_cost_gp <= max_gp or not affordable_weps:
+            if spent_gp + w_cost_gp <= max_gp:
                 affordable_weps.append(w)
                 spent_gp += w_cost_gp
+            elif lvl == 1 and "longbow" in str(w.get("name", "")).lower() and spent_gp + 3.0 <= max_gp:
+                affordable_weps.append({"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]})
+                spent_gp += 3.0
+        if not affordable_weps:
+            affordable_weps.append({"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]})
         if len(affordable_weps) > 2:
             affordable_weps = affordable_weps[:2]
         raw_weps = affordable_weps
@@ -864,7 +880,6 @@ def resolve_equipment(
         (("claw", "claws"), "Claw", "1d4", "Slashing", ["agile", "finesse", "unarmed"]),
         (("talon", "talons"), "Talons", "1d4", "Slashing", ["agile", "finesse", "unarmed"]),
         (("tail",), "Tail", "1d4", "Bludgeoning", ["agile", "finesse", "unarmed"]),
-        (("venom", "poison"), "Venomous Strike", "1d4", "Poison", ["unarmed", "poison"]),
         (("spine", "spines", "quill", "quills"), "Spines", "1d4", "Piercing", ["unarmed"]),
         (("thorn", "thorns"), "Thorn", "1d6", "Piercing", ["finesse", "unarmed"]),
         (("iron fists",), "Fist", "1d4", "Bludgeoning", ["agile", "finesse", "shove", "unarmed"]),
@@ -1135,7 +1150,8 @@ def resolve_equipment(
             ))
 
     if lvl == 1:
-        consumables.append(ConsumableItem(name="Minor Healing Potion", quantity=2, bulk="L", description="Restores 1d8 HP (1 Action)."))
+        # RAW Level 1 starting wealth is 15 gp total; avoid injecting 8 gp of free potions
+        pass
     elif lvl in (2, 3):
         consumables.append(ConsumableItem(name="Lesser Healing Potion", quantity=2, bulk="L", description="Restores 2d8+5 HP (1 Action)."))
         consumables.append(ConsumableItem(name="Silversheen", quantity=1, bulk="L", description="Grants weapon silver property for 1 hour."))

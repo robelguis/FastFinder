@@ -83,11 +83,15 @@ ANCESTRY_HERITAGES: Dict[str, List[Dict[str, str]]] = {
         {"name": "Coral Athamaru", "description": "Coral covers patches of your body, which provides a natural layer of defense. Coral athamarus often choose Coral Symbiotes and related ancestry features."}
     ],
     "azarketi": [
-        {"name": "Muckdweller Azarketi", "description": "Adapted to murky inland waters, granting darkvision and concealment bonuses in murky or muddy water."},
-        {"name": "Mistbreath Azarketi", "description": "Adapted to coastal fogs and damp air, allowing you to hold your breath much longer."},
-        {"name": "Seasage Azarketi", "description": "Descended from ancient Azlanti priest-casters, granting innate primal or occult mysticism."},
-        {"name": "Spindrift Azarketi", "description": "Born in turbulent surface surf, granting bonus speed or resistance to water turbulence."},
-        {"name": "Deepwater Azarketi", "description": "Emitting bioluminescence or pressure-adapted traits for the crushing ocean depths."}
+        {"name": "Ancient Scale Azarketi", "description": "Your lineage descends from deep-sea azarketis; you gain darkvision and resistance to cold."},
+        {"name": "Benthic Azarketi", "description": "Adapted to crushing ocean depths, you gain resistance to cold and are unaffected by severe cold."},
+        {"name": "Inured Azarketi", "description": "You are acclimated to polluted or toxic waters, gaining resistance to poison and a bonus against diseases."},
+        {"name": "Mistbreath Azarketi", "description": "Adapted to land and coastal mists, you can breathe air and water normally and don't suffer from hydration."},
+        {"name": "Murkeyed Azarketi", "description": "Your eyes are adapted to murky waters, allowing you to reduce flat checks against concealed creatures."},
+        {"name": "River Azarketi", "description": "Raised in swift inland rivers, you gain a bonus to Athletics checks to Swim and ignore difficult terrain in water."},
+        {"name": "Spined Azarketi", "description": "Your fins conceal venomous spines you can fire as a ranged unarmed attack (10 ft, 1d4 poison)."},
+        {"name": "Tactile Azarketi", "description": "Your skin senses vibrations in water, granting imprecise wavesense 30 feet while submerged."},
+        {"name": "Thalassic Azarketi", "description": "Born to the open sea, you gain a 30-foot swim speed and excel at deep-water navigation."}
     ],
     "anadi": [
         {"name": "Spell-Reft Anadi", "description": "You can seamlessly transition between human and spider forms with innate magic."},

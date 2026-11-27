@@ -3280,6 +3280,22 @@ class PF2eGenerator:
                     if f1:
                         _record_feat(f1, "Class (Level 1)")
 
+        # Level 1: Exemplar mandatory Shield Block class feature (War of Immortals)
+        if cls_name_lower == "exemplar" and "shield block" not in added_feat_names:
+            sb_feat = next((f for f in self.feats if f.get("name", "").lower() == "shield block"), None)
+            if sb_feat:
+                _record_feat(sb_feat, "Class Feature (Level 1)")
+            else:
+                chosen_feats.append(FeatSummary(
+                    id="feat-shield-block",
+                    name="Shield Block",
+                    category="Class Feature (Level 1)",
+                    action_cost=0,
+                    traits=["general"],
+                    description="Trigger: While you have your shield raised, you would take physical damage from an attack. You snap your shield in place to ward off a blow, reducing the damage by the shield's Hardness.",
+                ))
+                added_feat_names.add("shield block")
+
         # Level 1: Bard Muse Feat (RAW Player Core)
         if cls_name_lower == "bard" and sub_n_val:
             muse_feat_map = {
