@@ -2765,6 +2765,46 @@ class PF2eGenerator:
                     if clean_n and clean_n.lower() not in seen_w:
                         seen_w.add(clean_n.lower())
                         synced_weapons.append(EqItem(name=clean_n))
+                if level == 1 and equipment_loadout.strikes:
+                    def _gen_is_rng(st_obj) -> bool:
+                        sn = str(getattr(st_obj, "name", "") or "").lower()
+                        st_r = " ".join(str(t).lower() for t in (getattr(st_obj, "traits", None) or []))
+                        return "range " in st_r or any(k in sn for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle", "blunderbuss", "blowgun", "dart"))
+
+                    nn = [st_i for st_i in equipment_loadout.strikes if not getattr(st_i, "is_unarmed", False)]
+                    if nn and not _gen_is_rng(nn[0]) and not any(_gen_is_rng(x) for x in nn[1:]):
+                        n0_name = str(getattr(nn[0], "name", "") or "").lower()
+                        n0_dmg = str(getattr(nn[0], "damage_dice", "") or "")
+                        heavy_first = any(k in n0_name for k in ("bastard sword", "greatsword", "greataxe", "maul", "halberd", "glaive", "guisarme")) or "1d10" in n0_dmg or "1d12" in n0_dmg
+                        r_spec = (
+                            {"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]}
+                            if heavy_first
+                            else {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
+                        )
+                        r_strike = compute_strike(
+                            name=r_spec["name"],
+                            base_dice=r_spec["dice"],
+                            damage_type=r_spec["type"],
+                            traits=r_spec["traits"],
+                            level=level,
+                            class_name=cls["name"],
+                            attrs=mods,
+                            is_unarmed=False,
+                            weapon_entry=r_spec,
+                        )
+                        if len(nn) >= 2:
+                            equipment_loadout.strikes[equipment_loadout.strikes.index(nn[1])] = r_strike
+                        else:
+                            equipment_loadout.strikes.append(r_strike)
+                        synced_weapons = []
+                        seen_w2 = set()
+                        for s2 in equipment_loadout.strikes:
+                            if _is_natural_strike(s2) or any(b in (s2.name or "").lower() for b in ("alchemist's fire", "bottled lightning", "acid flask", "frost vial")):
+                                continue
+                            cn2 = _RE_RUNE_PREFIX.sub("", (s2.name or "").strip()).strip()
+                            if cn2 and cn2.lower() not in seen_w2:
+                                seen_w2.add(cn2.lower())
+                                synced_weapons.append(EqItem(name=cn2))
                 equipment_loadout.weapons = synced_weapons
 
         if companion_species and collected_partners:

@@ -825,10 +825,15 @@ def resolve_equipment(
             return "range " in tr or any(k in nm for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle", "blunderbuss", "blowgun", "dart"))
 
         if not _has_range_prop(raw_weps[0]) and not any(_has_range_prop(w) for w in raw_weps[1:]):
-            if has_martial_prof:
-                rng_wep = {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
+            first_gp = _estimate_weapon_gp(raw_weps[0])
+            if first_gp + 3.0 <= 5.0:
+                rng_wep = (
+                    {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
+                    if has_martial_prof
+                    else {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]}
+                )
             else:
-                rng_wep = {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]}
+                rng_wep = {"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]}
             if len(raw_weps) >= 2:
                 raw_weps[1] = rng_wep
             else:
@@ -1278,6 +1283,37 @@ def resolve_equipment(
     cp = random.randint(1, 9)
     formatted_wealth = f"{remaining_gp} GP, {sp} SP, {cp} CP"
     wealth = Wealth(pp=0, gp=remaining_gp, sp=sp, cp=cp, formatted=formatted_wealth)
+
+    if lvl == 1 and not requested_weapons and strikes:
+        def _is_rng_strike(st) -> bool:
+            nm = str(getattr(st, "name", "") or "").lower()
+            tr = " ".join(str(t).lower() for t in (getattr(st, "traits", None) or []))
+            return "range " in tr or any(k in nm for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle", "blunderbuss", "blowgun", "dart"))
+
+        non_nat = [s for s in strikes if not getattr(s, "is_unarmed", False)]
+        if non_nat and not _is_rng_strike(non_nat[0]) and not any(_is_rng_strike(s) for s in non_nat[1:]):
+            rng_spec = (
+                {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
+                if has_martial_prof
+                else {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]}
+            )
+            rng_st = compute_strike(
+                name=rng_spec["name"],
+                base_dice=rng_spec["dice"],
+                damage_type=rng_spec["type"],
+                traits=rng_spec["traits"],
+                level=lvl,
+                class_name=class_name,
+                attrs=attrs_map,
+                is_unarmed=False,
+                weapon_entry=rng_spec,
+            )
+            if len(non_nat) >= 2:
+                idx2 = strikes.index(non_nat[1])
+                strikes[idx2] = rng_st
+            else:
+                strikes.append(rng_st)
+            weapons = [Item(name=format_runed_weapon_name(s.name, lvl), bulk="1", cost_sp=10) for s in [non_nat[0], rng_st]]
 
     loadout = EquipmentLoadout(
         weapons=weapons,
