@@ -3447,6 +3447,44 @@ class PF2eGenerator:
                     if f1:
                         _record_feat(f1, "Class (Level 1)")
 
+        # Core Ranger features: Hunt Prey (1 action) & Hunter's Edge (Flurry / Precision / Outwit)
+        if cls_name_lower == "ranger":
+            _sub_low = (sub_n_val or "").strip().lower()
+            if "hunt prey" not in added_feat_names:
+                chosen_feats.append(FeatSummary(
+                    id="feat-ranger-hunt-prey",
+                    name="Hunt Prey",
+                    category="Class Feature (Ranger)",
+                    action_cost=1,
+                    traits=["concentrate", "ranger"],
+                    description="You designate a creature as your prey. You gain a +2 circumstance bonus to Perception checks to Seek or Sense Motive against it and a +2 circumstance bonus to Survival checks to Track it. You also ignore the second range increment penalty on ranged attacks against your prey.",
+                ))
+                added_feat_names.add("hunt prey")
+
+            if "flurry" in _sub_low:
+                _edge_name = "Hunter's Edge: Flurry"
+                _edge_desc = "Your multiple attack penalty on subsequent attacks against your hunted prey is -4 (-8 on your third and subsequent attacks), or -3 (-6) if the weapon is agile."
+            elif "precision" in _sub_low:
+                _edge_name = "Hunter's Edge: Precision"
+                _edge_desc = "The first time you hit your hunted prey in a round, you deal an additional 1d8 precision damage."
+            elif "outwit" in _sub_low:
+                _edge_name = "Hunter's Edge: Outwit"
+                _edge_desc = "You gain a +2 circumstance bonus to Deception checks, Intimidation checks, and Stealth checks against your prey, and a +2 circumstance bonus to AC against its attacks."
+            else:
+                _edge_name = "Hunter's Edge"
+                _edge_desc = "You gain your chosen Hunter's Edge benefit against your hunted prey."
+
+            if _edge_name.lower() not in added_feat_names:
+                chosen_feats.append(FeatSummary(
+                    id="feat-ranger-hunters-edge",
+                    name=_edge_name,
+                    category="Class Feature (Ranger)",
+                    action_cost=0,
+                    traits=["ranger"],
+                    description=_edge_desc,
+                ))
+                added_feat_names.add(_edge_name.lower())
+
         # Level 1: Exemplar mandatory Shield Block class feature (War of Immortals)
         if cls_name_lower == "exemplar" and "shield block" not in added_feat_names:
             sb_feat = next((f for f in self.feats if f.get("name", "").lower() == "shield block"), None)
