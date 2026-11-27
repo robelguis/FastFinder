@@ -3320,17 +3320,33 @@ class PF2eGenerator:
                 ))
                 added_feat_names.add("shield block")
 
-        # Level 1: Exemplar Divine Spark & Shift Immanence (War of Immortals)
-        if cls_name_lower == "exemplar" and "shift immanence" not in added_feat_names:
-            chosen_feats.append(FeatSummary(
-                id="feat-shift-immanence",
-                name="Divine Spark & Shift Immanence",
-                category="Class Feature (Level 1)",
-                action_cost=1,
-                traits=["concentrate", "divine", "exemplar"],
-                description="Your divine spark empowers one of your three ikons at a time, granting its passive immanence effect. Use Shift Immanence (1 Action) to move your spark to another ikon, or use an ikon's Transcendence action to unleash its peak power and shift the spark.",
-            ))
-            added_feat_names.add("shift immanence")
+        # Level 1: Exemplar Divine Spark, Shift Immanence & 3 Specific Ikons (War of Immortals)
+        if cls_name_lower == "exemplar":
+            if "shift immanence" not in added_feat_names:
+                chosen_feats.append(FeatSummary(
+                    id="feat-shift-immanence",
+                    name="Divine Spark & Shift Immanence",
+                    category="Class Feature (Level 1)",
+                    action_cost=1,
+                    traits=["concentrate", "divine", "exemplar"],
+                    description="Your divine spark empowers one of your three ikons at a time, granting its passive immanence effect. Use Shift Immanence (1 Action) to move your spark to another ikon, or use an ikon's Transcendence action to unleash its peak power and shift the spark.",
+                ))
+                added_feat_names.add("shift immanence")
+            for ik_id, ik_name, ik_cat, ik_desc in [
+                ("ikon-lvl1-weapon", "Gleaming Blade (Weapon Ikon)", "Ikon (Weapon)", "Bound to your primary weapon: deals 2 spirit damage per weapon damage die while holding your divine spark; Transcendence (1 Action) lets you Strike an adjacent foe."),
+                ("ikon-lvl1-body", "Scar of the Survivor (Body Ikon)", "Ikon (Body)", "Bound to your body: grants fast healing equal to half your level (minimum 1) when your spark leaves it; Transcendence (1 Action) grants temporary HP."),
+                ("ikon-lvl1-worn", "Mirrored Aegis (Worn Ikon)", "Ikon (Worn)", "Bound to your worn gear/shield: reflects a ward of divine light; Transcendence (1 Action) deflects incoming harm or wards an ally."),
+            ]:
+                if ik_name.lower() not in added_feat_names:
+                    chosen_feats.append(FeatSummary(
+                        id=ik_id,
+                        name=ik_name,
+                        category=ik_cat,
+                        action_cost=0,
+                        traits=["divine", "exemplar", "ikon"],
+                        description=ik_desc,
+                    ))
+                    added_feat_names.add(ik_name.lower())
 
         # Level 1: Azarketi Hydration ancestry trait (unless Mistbreath Azarketi)
         if anc["name"].lower() == "azarketi" and "mistbreath" not in (heritage_name or "").lower() and "hydration" not in added_feat_names:

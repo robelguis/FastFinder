@@ -1264,7 +1264,7 @@ function updateHeritageDropdown() {
       const acBase = data.defenses?.ac ?? 10;
       document.getElementById('vitalAc').textContent = shieldBonus > 0 ? `${acBase} (+${shieldBonus} Shield)` : acBase;
       const isAzarketi = String(data.ancestry || '').toLowerCase().includes('azarketi');
-      document.getElementById('vitalSpeed').textContent = isAzarketi ? `${data.speed ?? 20} ft, Swim 30 ft` : `${data.speed ?? 25} ft`;
+      document.getElementById('vitalSpeed').innerHTML = isAzarketi ? `${data.speed ?? 20} ft<br><span style="font-size:0.76em;font-weight:700;line-height:1.15;display:inline-block;">Swim 30 ft</span>` : `${data.speed ?? 25} ft`;
       document.getElementById('vitalPerception').textContent = formatMod(data.perception?.modifier);
 
       const sensesList = [];
