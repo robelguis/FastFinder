@@ -745,6 +745,29 @@ def resolve_equipment(
             feats=feats,
         )
 
+    # Directive: if the first weapon is not ranged, the second weapon must be a ranged weapon
+    if raw_weps and not requested_weapons:
+        def _is_ranged_wep(w: Dict[str, Any]) -> bool:
+            w_nm = str(w.get("name", "")).lower()
+            w_tr = " ".join(str(t).lower() for t in (w.get("traits") or []))
+            return (
+                "range " in w_tr
+                or any(k in w_nm for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle", "blunderbuss", "blowgun", "dart"))
+            )
+
+        if not _is_ranged_wep(raw_weps[0]):
+            ranged_choice = (
+                {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
+                if has_martial_prof
+                else {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]}
+            )
+            existing_ranged = next((w for w in raw_weps[1:] if _is_ranged_wep(w)), None)
+            chosen_ranged = existing_ranged or ranged_choice
+            if len(raw_weps) >= 2:
+                raw_weps[1] = chosen_ranged
+            else:
+                raw_weps.append(chosen_ranged)
+
     # Enforce Level 1-2 weapon wealth budget unless explicit weapons were requested
     if lvl <= 2 and not requested_weapons:
         if lvl == 1:
@@ -769,13 +792,12 @@ def resolve_equipment(
             elif lvl == 1 and "longbow" in str(w.get("name", "")).lower() and spent_gp + 3.0 <= max_gp:
                 affordable_weps.append({"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]})
                 spent_gp += 3.0
-        if lvl == 1 and str_mod >= 2 and len(affordable_weps) >= 2:
-            has_ranged_or_thrown = any(
-                any("range" in str(t).lower() or "thrown" in str(t).lower() for t in (w.get("traits") or []))
-                for w in affordable_weps
-            )
-            if not has_ranged_or_thrown:
-                affordable_weps[1] = {"name": "Javelin", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 30 ft"]}
+        if lvl == 1 and affordable_weps:
+            first_tr = " ".join(str(t).lower() for t in (affordable_weps[0].get("traits") or []))
+            first_nm = str(affordable_weps[0].get("name", "")).lower()
+            first_is_ranged = "range " in first_tr or any(k in first_nm for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle"))
+            if not first_is_ranged and len(affordable_weps) < 2:
+                affordable_weps.append({"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]})
         if not affordable_weps:
             affordable_weps.append({"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]})
         if len(affordable_weps) > 2:
