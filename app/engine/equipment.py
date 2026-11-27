@@ -1224,6 +1224,17 @@ def resolve_equipment(
                 description=b_desc,
             ))
 
+    all_wep_names = " ".join(
+        [str(w.get("name", "") if isinstance(w, dict) else getattr(w, "name", "")).lower() for w in weapons]
+        + [str(getattr(s, "name", "")).lower() for s in strikes]
+    )
+    if any(k in all_wep_names for k in ("longbow", "shortbow", "bow")) and not any("arrow" in c.name.lower() for c in consumables):
+        consumables.append(ConsumableItem(name="Arrows", quantity=10, bulk="L", description="Standard ammunition for bows (1 sp per 10 arrows)."))
+    if "crossbow" in all_wep_names and not any("bolt" in c.name.lower() for c in consumables):
+        consumables.append(ConsumableItem(name="Bolts", quantity=10, bulk="L", description="Standard ammunition for crossbows (1 sp per 10 bolts)."))
+    if "sling" in all_wep_names and not any("sling bullet" in c.name.lower() for c in consumables):
+        consumables.append(ConsumableItem(name="Sling Bullets", quantity=10, bulk="L", description="Ammunition for slings (1 cp per 10 bullets)."))
+
     if lvl == 1:
         # RAW Level 1 starting wealth is 15 gp total; avoid injecting 8 gp of free potions
         pass

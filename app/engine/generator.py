@@ -1702,6 +1702,8 @@ def _resolve_character_senses(
     anc_name = str((ancestry_data or {}).get("name") or "").lower()
     anc_desc = str((ancestry_data or {}).get("description") or "").lower()
     her_low = str(heritage_name or "").lower()
+    if "azarketi" in anc_name and "tactile" in her_low:
+        _add("Imprecise Wavesense (30 ft) in Water")
 
     low_light_ancestries = (
         "minotaur", "elf", "gnome", "goblin", "leshy", "catfolk", "kitsune",
@@ -2555,6 +2557,15 @@ class PF2eGenerator:
             if "wildsong" not in assigned_lower:
                 assigned_langs.append("Wildsong")
                 assigned_lower.add("wildsong")
+
+        if any("multilingual" in f.name.lower() for f in chosen_feats):
+            for _ in range(2):
+                ml_pool = [l for l in COMMON_LANG_POOL if l.lower() not in assigned_lower]
+                if not ml_pool:
+                    break
+                picked_lang = random.choice(ml_pool)
+                assigned_langs.append(picked_lang)
+                assigned_lower.add(picked_lang.lower())
 
         if (
             "ostilli host" in arch_str
