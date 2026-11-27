@@ -182,7 +182,7 @@ def _get_property_runes_and_crit_spec(weapon_name: str, traits: list, level: int
 
     cls_low = (class_name or "").lower()
     has_crit_spec = (
-        (cls_low == "exemplar" and level >= 1)
+        (cls_low == "exemplar" and level >= 5)
         or (cls_low == "fighter" and level >= 5)
         or (cls_low in ("barbarian", "champion", "monk", "ranger", "rogue", "swashbuckler", "gunslinger", "magus", "inventor", "thaumaturge", "commander", "guardian") and level >= 5)
         or (pot >= 2)
@@ -866,6 +866,38 @@ def resolve_equipment(
                 base_dice=st_dice,
                 damage_type=st_type,
                 traits=st_traits,
+                level=lvl,
+                class_name=class_name,
+                attrs=attrs_map,
+                is_unarmed=True,
+            ))
+
+    # Exemplar Level 1 Humble Strikes: increase simple weapon damage die by one step
+    if (class_name or "").lower() == "exemplar":
+        _simple_weapons = {
+            "spear", "dagger", "club", "staff", "sling", "mace", "morningstar",
+            "longspear", "sickle", "hatchet", "crossbow", "heavy crossbow",
+            "dart", "javelin", "light mace", "gauntlet", "spiked gauntlet",
+        }
+        _die_step = {"d4": "d6", "d6": "d8", "d8": "d10", "d10": "d12"}
+        for _st in strikes:
+            _st_low = (_st.name or "").lower()
+            if any(re.search(r"\b" + re.escape(sw) + r"\b", _st_low) for sw in _simple_weapons):
+                _st.damage = re.sub(
+                    r"(\d+)(d4|d6|d8|d10)\b",
+                    lambda m: f"{m.group(1)}{_die_step[m.group(2)]}",
+                    _st.damage,
+                    count=1,
+                )
+
+    # Spined Azarketi heritage: ranged unarmed spine attack (10 ft, 1d4 poison)
+    if "spined" in ancestry_search_blob and "azarketi" in ancestry_search_blob:
+        if not any("spine" in s.name.lower() for s in (strikes + ancestry_strikes_to_add)):
+            ancestry_strikes_to_add.append(compute_strike(
+                name="Spines",
+                base_dice="1d4",
+                damage_type="Poison",
+                traits=["Range 10 ft", "Unarmed"],
                 level=lvl,
                 class_name=class_name,
                 attrs=attrs_map,
