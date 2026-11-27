@@ -1286,7 +1286,16 @@ function updateHeritageDropdown() {
       const acBase = data.defenses?.ac ?? 10;
       document.getElementById('vitalAc').textContent = shieldBonus > 0 ? `${acBase} (+${shieldBonus} Shield)` : acBase;
       const isAzarketi = String(data.ancestry || '').toLowerCase().includes('azarketi');
-      document.getElementById('vitalSpeed').innerHTML = isAzarketi ? `${data.speed ?? 20} ft<br><span style="font-size:0.76em;font-weight:700;line-height:1.15;display:inline-block;">Swim 30 ft</span>` : `${data.speed ?? 25} ft`;
+      const rawSpdNum = parseInt(String(data.speed ?? 25), 10);
+      const isRangerNoPenalty = String(data.character_class || data.class_name || "").toLowerCase() === "ranger" && (!Number.isFinite(rawSpdNum) || rawSpdNum < 25);
+      const landSpd = isRangerNoPenalty ? 25 : (Number.isFinite(rawSpdNum) ? rawSpdNum : 25);
+      const herBlob = `${data.heritage || ""} ${data.ancestry || ""}`.toLowerCase();
+      const isSwimmingAnimal = herBlob.includes("swimming animal");
+      document.getElementById('vitalSpeed').innerHTML = isAzarketi
+        ? `${landSpd} ft<br><span style="font-size:0.76em;font-weight:700;line-height:1.15;display:inline-block;">Swim 30 ft</span>`
+        : (isSwimmingAnimal
+          ? `${landSpd} ft<br><span style="font-size:0.76em;font-weight:700;line-height:1.15;display:inline-block;">Swim ${Math.max(15, landSpd)} ft</span>`
+          : `${landSpd} ft`);
       document.getElementById('vitalPerception').textContent = formatMod(data.perception?.modifier);
 
       const sensesList = [];

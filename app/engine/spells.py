@@ -604,6 +604,20 @@ def resolve_spellcasting(
     feats: Optional[List[Any]] = None,
     concept_text: Optional[str] = None,
 ) -> Optional[SpellcastingData]:
+    if (class_name or "").strip().lower() == "ranger":
+        f_names_chk = [
+            (f.name if hasattr(f, "name") else (f.get("name", "") if isinstance(f, dict) else "")).lower()
+            for f in (feats or [])
+        ]
+        has_caster_feat = any(
+            ("dedication" in fn and any(k in fn for k in ("wizard", "druid", "cleric", "bard", "witch", "sorcerer", "oracle", "animist", "psychic", "magus")))
+            or "basic spellcasting" in fn
+            or "warden spells" in fn
+            for fn in f_names_chk
+        )
+        if not has_caster_feat:
+            return None
+
     sc = _resolve_base_spellcasting(class_name, attribute_mods, level, subclass_name, concept_text=concept_text, feats=feats)
     sc = _apply_dedication_cantrips(sc, feats, attribute_mods, level)
     feat_names = [
