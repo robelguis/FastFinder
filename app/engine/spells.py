@@ -613,6 +613,7 @@ def resolve_spellcasting(
             ("dedication" in fn and any(k in fn for k in ("wizard", "druid", "cleric", "bard", "witch", "sorcerer", "oracle", "animist", "psychic", "magus")))
             or "basic spellcasting" in fn
             or "warden spells" in fn
+            or "initiate warden" in fn
             for fn in f_names_chk
         )
         if not has_caster_feat:
