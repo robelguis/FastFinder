@@ -849,13 +849,13 @@ def apply_feat_granted_lores(all_skills: list, chosen_feats: list, level: int, i
                     }
                     all_skills.append(new_sk)
                     existing_by_low[l_low] = new_sk
-                elif sample is not None:
+                else:
                     try:
-                        new_sk = type(sample)(
+                        new_sk = SkillEntry(
                             name=lore_name,
                             attribute="INT",
-                            rank_letter="T",
                             rank=2,
+                            rank_letter="T",
                             modifier=t_bonus,
                         )
                         all_skills.append(new_sk)
@@ -1567,8 +1567,12 @@ def enforce_weapon_loadout(
     existing_strikes = list(equipment_loadout.strikes or [])
     strike_cls = type(existing_strikes[0]) if existing_strikes else Strike
 
-    natural_strikes = [s for s in existing_strikes if _is_natural_strike(s)]
-    non_natural_strikes = [s for s in existing_strikes if not _is_natural_strike(s)]
+    def _is_bespoke_strike(st: Any) -> bool:
+        return bool(st.get("bespoke") if isinstance(st, dict) else getattr(st, "bespoke", False))
+
+    bespoke_strikes = [s for s in existing_strikes if _is_bespoke_strike(s)]
+    natural_strikes = [s for s in existing_strikes if not _is_bespoke_strike(s) and _is_natural_strike(s)]
+    non_natural_strikes = [s for s in existing_strikes if not _is_bespoke_strike(s) and not _is_natural_strike(s)]
 
     if not strict_only_weapon:
         favored_name = (getattr(deity_summary, "favored_weapon", None) or "").strip()
@@ -1621,9 +1625,9 @@ def enforce_weapon_loadout(
                 continue
             non_natural_strikes.append(_build_weapon_strike_entry(cand, level, mods, cls_name, strike_cls))
 
-    # Cap non-natural weapons at 2 while keeping all natural attacks
+    # Cap non-natural weapons at 2 while keeping all bespoke and natural attacks
     capped_non_natural = non_natural_strikes[:2]
-    equipment_loadout.strikes = _dedupe_strikes(capped_non_natural + natural_strikes)
+    equipment_loadout.strikes = _dedupe_strikes(bespoke_strikes + capped_non_natural + natural_strikes)
 
     # Sync equipment_loadout.weapons list cleanly with the non-natural weapons
     if hasattr(equipment_loadout, "weapons") and isinstance(equipment_loadout.weapons, list):
@@ -2676,27 +2680,48 @@ class PF2eGenerator:
 
         if equipment_loadout is not None and hasattr(equipment_loadout, "strikes"):
             if any("haft striker stance" in f.name.lower() for f in chosen_feats):
+                _HAFT_WEAPONS = ("glaive", "halberd", "guisarme", "lance", "longspear", "ranseur", "fauchard", "bardiche", "bec de corbin", "maul", "greatclub", "bo staff", "staff")
                 filtered_strikes = []
                 replaced_sickle = False
                 for st in (equipment_loadout.strikes or []):
                     st_name = (getattr(st, "name", None) if not isinstance(st, dict) else st.get("name", "")) or ""
                     if "sickle" in st_name.lower():
                         if not replaced_sickle:
-                            haft_s = compute_strike(
-                                name="Glaive / Haft Strike",
+                            primary_s = compute_strike(
+                                name="Glaive",
                                 base_dice="1d8",
                                 damage_type="Slashing",
-                                traits=["Deadly d8", "Reach", "Two-Hand d10", "Agile", "Finesse"],
+                                traits=["Deadly d8", "Forceful", "Reach"],
                                 level=level,
                                 class_name=cls["name"],
                                 attrs=mods,
                                 is_unarmed=False,
                             )
-                            filtered_strikes.append(haft_s.model_dump() if isinstance(st, dict) else haft_s)
+                            filtered_strikes.append(primary_s.model_dump() if isinstance(st, dict) else primary_s)
                             replaced_sickle = True
                     else:
                         filtered_strikes.append(st)
-                equipment_loadout.strikes = filtered_strikes
+                existing_names_low = {((getattr(s, "name", None) if not isinstance(s, dict) else s.get("name", "")) or "").lower() for s in filtered_strikes}
+                haft_additions = []
+                for st in filtered_strikes:
+                    st_name = (getattr(st, "name", None) if not isinstance(st, dict) else st.get("name", "")) or ""
+                    clean_base = _RE_RUNE_PREFIX.sub("", st_name).strip()
+                    if "(haft strike)" not in clean_base.lower() and any(hw in clean_base.lower() for hw in _HAFT_WEAPONS):
+                        haft_label = f"{clean_base} (Haft Strike)"
+                        if not any(haft_label.lower() in en for en in existing_names_low):
+                            haft_s = compute_strike(
+                                name=haft_label,
+                                base_dice="1d4",
+                                damage_type="Bludgeoning",
+                                traits=["Agile", "Finesse"],
+                                level=level,
+                                class_name=cls["name"],
+                                attrs=mods,
+                                is_unarmed=False,
+                            )
+                            haft_additions.append(haft_s.model_dump() if isinstance(st, dict) else haft_s)
+                            existing_names_low.add(haft_label.lower())
+                equipment_loadout.strikes = filtered_strikes + haft_additions
             equipment_loadout.strikes = dedupe_and_recompute_strikes(
                 equipment_loadout.strikes,
                 level=level,
@@ -2727,6 +2752,9 @@ class PF2eGenerator:
 
         primary_companion = collected_partners[0] if collected_partners else None
         extra_partners = collected_partners[1:] if len(collected_partners) > 1 else []
+        # Unified core pass before CharacterSheet assembly: Lores & stance/weapon strike consistency
+        apply_feat_granted_lores(all_skills, chosen_feats, level, int(mods.get("int", 0)))
+
         raw_sheet = CharacterSheet(
             name=name,
             level=level,
@@ -3847,17 +3875,21 @@ class PF2eGenerator:
             )
             prefix = f"+{potency} {striking_label}" if potency > 0 else striking_label
 
+            _w_lookup_lu = _get_equipment_weapon_lookup()
             custom_preserved = []
             for ps in saved_strikes:
                 ps_dict = ps if isinstance(ps, dict) else ps.model_dump()
                 raw_name = (ps_dict.get("name") or "").strip()
-                base_name = _RE_RUNE_PREFIX.sub("", raw_name)
+                base_name = _RE_RUNE_PREFIX.sub("", raw_name).strip()
                 if (
                     not base_name
                     or base_name.lower().startswith("elemental blast")
                     or "(rage strike)" in base_name.lower()
-                    or base_name.lower() in existing_base_names
                 ):
+                    continue
+                is_known_weapon = base_name.lower() in _w_lookup_lu
+                is_bespoke = bool(ps_dict.get("bespoke")) or (not is_known_weapon)
+                if not is_bespoke and base_name.lower() in existing_base_names:
                     continue
                 traits = list(ps_dict.get("traits") or [])
                 traits_low = [t.lower() for t in traits]
@@ -3882,6 +3914,7 @@ class PF2eGenerator:
                     "damage_dice": dmg_str,
                     "damage_type": ps_dict.get("damage_type") or "Slashing",
                     "traits": traits,
+                    "bespoke": is_bespoke,
                 }
                 custom_preserved.append(strike_cls.model_validate(new_st) if hasattr(strike_cls, "model_validate") else new_st)
 

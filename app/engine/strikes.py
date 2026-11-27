@@ -411,7 +411,8 @@ def dedupe_and_recompute_strikes(
             base_dice = f"1{m_d.group(2)}" if has_striking_prefix else f"{m_d.group(1)}{m_d.group(2)}"
         else:
             base_dice = "1d6"
-        w_entry = w_lookup.get(base_key)
+        is_bespoke = bool(st_dict.get("bespoke"))
+        w_entry = None if is_bespoke else w_lookup.get(base_key)
         if w_entry and isinstance(w_entry.get("damage"), dict):
             d_obj = w_entry["damage"]
             d_num = d_obj.get("dice") or 1
@@ -437,6 +438,7 @@ def dedupe_and_recompute_strikes(
             sneak_attack_dice=sneak_attack_dice,
             rage_bonus=rage_bonus,
         )
+        computed.bespoke = is_bespoke
 
         if canonical_key not in seen_keys:
             seen_keys[canonical_key] = len(deduped)

@@ -42,6 +42,7 @@ class Strike(BaseModel):
     traits: Optional[List[str]] = []
     map_second: Union[str, int] = ""
     map_third: Union[str, int] = ""
+    bespoke: bool = False
 
     @field_validator('attack_bonus', 'map_second', 'map_third', mode='before')
     @classmethod

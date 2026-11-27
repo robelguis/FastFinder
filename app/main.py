@@ -79,13 +79,16 @@ def generate_character(
     deity: Optional[str] = None,
     domain: Optional[str] = None,
     archetype: Optional[str] = None,
+    requested_feats: Optional[str] = Query(default=None),
     level: int = Query(1, ge=1, le=20),
     dedication: bool = Query(False),
 ):
     try:
         clean_arch = _normalize_archetype(archetype)
         clean_heritage = heritage.strip() if heritage and heritage.strip() and heritage.strip().lower() not in ("any", "any heritage", "none") else None
+        parsed_feats = [f.strip() for f in (requested_feats or "").split(",") if f.strip()] or None
         return generator.generate(
+            requested_feats=parsed_feats,
             ancestry_name=ancestry,
             heritage_name=clean_heritage,
             class_name=class_name,

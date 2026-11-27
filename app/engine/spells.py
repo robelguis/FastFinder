@@ -249,7 +249,8 @@ CLASS_TRADITION_MAP = {
     "oracle": {"tradition": "Divine", "attr": "cha", "catalog": "divine"},
     "animist": {"tradition": "Divine", "attr": "wis", "catalog": "divine"},
     "psychic": {"tradition": "Occult", "attr": "int", "catalog": "occult"},
-    "magus": {"tradition": "Arcane", "attr": "int", "catalog": "arcane"}
+    "magus": {"tradition": "Arcane", "attr": "int", "catalog": "arcane"},
+    "necromancer": {"tradition": "Occult", "attr": "int", "catalog": "occult"}
 }
 
 def _apply_dedication_cantrips(
@@ -756,6 +757,24 @@ def resolve_spellcasting(
             defense="AC",
             description="Granted by Awakened Jewel: Hurls a loose object at will as an innate occult cantrip dealing 2d6 bludgeoning, piercing, or slashing damage."
         ))
+    for f in (feats or []):
+        f_name = (getattr(f, "name", None) if not isinstance(f, dict) else f.get("name", "")) or ""
+        f_desc = (getattr(f, "description", None) if not isinstance(f, dict) else f.get("description", "")) or ""
+        low_desc = f_desc.lower()
+        low_name = f_name.lower()
+        if "awakened jewel" in low_name or ("gain one cantrip" in low_desc and "innate" in low_desc):
+            trad_title = "Occult" if "occult" in low_desc else ("Primal" if "primal" in low_desc else ("Divine" if "divine" in low_desc else "Arcane"))
+            cap_name = f"{f_name.strip()} ({trad_title} Cantrip)" if f_name.strip() else f"Innate {trad_title} Cantrip"
+            if not any(c.name.lower() == cap_name.lower() for c in anc_innate_cantrips):
+                anc_innate_cantrips.append(SpellSummary(
+                    rank=0,
+                    name=cap_name,
+                    actions="2 actions",
+                    traits=["Cantrip", "Concentrate", "Manipulate", trad_title],
+                    range="30 feet",
+                    defense="None",
+                    description=f"Granted by {f_name.strip()}: Innate {trad_title.lower()} cantrip usable at will."
+                ))
 
     if anc_innate_cantrips:
         if sc is None:
