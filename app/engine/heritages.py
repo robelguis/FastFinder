@@ -270,7 +270,16 @@ def resolve_heritage(ancestry_name: str, requested_heritage: Optional[str] = Non
     anc_key = ancestry_name.lower().replace("sukri", "surki").strip()
     
     if "awakened animal" in anc_key:
-        spec = random.choice(AWAKENED_ANIMAL_SPECIES)
+        candidates = list(AWAKENED_ANIMAL_SPECIES)
+        if requested_heritage:
+            req_low = requested_heritage.lower().strip()
+            matched = [
+                s for s in candidates
+                if req_low in s["heritage"].lower() or req_low in s["species"].lower()
+            ]
+            if matched:
+                candidates = matched
+        spec = random.choice(candidates)
         return {
             "name": f"{spec['species']} ({spec['heritage']})",
             "description": f"Awakened {spec['species']} ({spec['size']}). Natural Attack: {spec['unarmed']}."
