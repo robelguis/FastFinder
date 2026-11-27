@@ -24,7 +24,7 @@ COMPANION_SPECIES: Dict[str, Dict[str, Any]] = {
         "strikes": [
             {"name": "Jaws", "dice": "1d4", "type": "Piercing", "traits": ["Finesse", "Agile", "Unarmed"], "finesse": True}
         ],
-        "support_benefit": "Your mouse scurries through distractions. Enemies adjacent to your mouse are flat-footed against your attacks.",
+        "support_benefit": "Your mouse scurries through distractions. Enemies adjacent to your mouse are off-guard against your attacks.",
         "advanced_maneuver": "Squeeze By: The mouse can move through enemy spaces effortlessly."
     },
     "bat": {
@@ -106,7 +106,7 @@ COMPANION_SPECIES: Dict[str, Dict[str, Any]] = {
         "strikes": [
             {"name": "Jaws", "dice": "1d8", "type": "Piercing", "traits": ["Trip", "Unarmed"], "finesse": False}
         ],
-        "support_benefit": "Your wolf tears at your foe's tendons. If you hit a creature in the wolf's reach, that creature is flat-footed against your attacks until the start of your next turn.",
+        "support_benefit": "Your wolf tears at your foe's tendons. If you hit a creature in the wolf's reach, that creature is off-guard against your attacks until the start of your next turn.",
         "advanced_maneuver": "Knockdown: When the wolf hits with a Jaws strike, it attempts an Athletics check to Trip the target without triggering reactions."
     },
     "bear": {
@@ -140,7 +140,7 @@ COMPANION_SPECIES: Dict[str, Dict[str, Any]] = {
             {"name": "Jaws", "dice": "1d6", "type": "Piercing", "traits": ["Finesse", "Unarmed"], "finesse": True},
             {"name": "Claw", "dice": "1d4", "type": "Slashing", "traits": ["Agile", "Finesse", "Unarmed"], "finesse": True}
         ],
-        "support_benefit": "Your cat stalks with lethal focus. If you hit a creature within the cat's reach, that target is flat-footed against your companion's attacks.",
+        "support_benefit": "Your cat stalks with lethal focus. If you hit a creature within the cat's reach, that target is off-guard against your companion's attacks.",
         "advanced_maneuver": "Pounce: The cat Strides and then makes a Strike; if it was hidden, it deals an extra 1d6 precision damage."
     },
     "badger": {
@@ -261,7 +261,7 @@ COMPANION_SPECIES: Dict[str, Dict[str, Any]] = {
         "strikes": [
             {"name": "Jaws", "dice": "1d10", "type": "Piercing", "traits": ["Unarmed"], "finesse": False}
         ],
-        "support_benefit": "Your shark senses blood in the water. Your attacks against bleeding or flat-footed targets in water deal 2 additional damage.",
+        "support_benefit": "Your shark senses blood in the water. Your attacks against bleeding or off-guard targets in water deal 2 additional damage.",
         "advanced_maneuver": "Feeding Frenzy: The shark makes consecutive attacks against targets in water with reduced multiple attack penalties."
     },
     "octopus": {

@@ -1498,7 +1498,15 @@ function updateHeritageDropdown() {
           const stageText = comp.stage || "";
           const badgeText = typeDetail ? `${stageText} (${typeDetail})`.trim() : stageText;
 
-          const strikesHtml = (comp.strikes || []).map(st => `
+          const uniqueCompStrikes = [];
+          const seenCompStrikeNames = new Set();
+          (comp.strikes || []).forEach(st => {
+            const k = String(st.name || '').trim().toLowerCase();
+            if (!k || seenCompStrikeNames.has(k)) return;
+            seenCompStrikeNames.add(k);
+            uniqueCompStrikes.push(st);
+          });
+          const strikesHtml = uniqueCompStrikes.map(st => `
             <tr>
               <td style="padding: 0.25rem 0.45rem; vertical-align: top;"><span class="w-name">${st.name}</span></td>
               <td class="w-map" style="padding: 0.25rem 0.45rem; white-space: nowrap; vertical-align: top;">${formatMod(st.attack_bonus)} / ${formatMod(st.map_second)} / ${formatMod(st.map_third)}</td>
