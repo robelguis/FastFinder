@@ -2755,25 +2755,6 @@ class PF2eGenerator:
                 weapon_lookup=_get_equipment_weapon_lookup(),
                 sneak_attack_dice=sneak_dice_val,
             )
-            # Ensure at most one ranged weapon unless multiple were explicitly requested in build_spec
-            _bs_local = locals().get("build_spec")
-            _req_w_list = getattr(_bs_local, "requested_weapons", None) or []
-            _req_w_low = " ".join(str(x).lower() for x in _req_w_list)
-            _multi_rng_ok = sum(1 for kw in ("bow", "crossbow", "sling", "pistol", "musket", "rifle") if kw in _req_w_low) >= 2
-            if not _multi_rng_ok:
-                def _is_rng_strike_item(st_item) -> bool:
-                    sn = str(getattr(st_item, "name", None) or (st_item.get("name") if isinstance(st_item, dict) else "") or "").lower()
-                    st_tr = " ".join(str(t).lower() for t in (getattr(st_item, "traits", None) or (st_item.get("traits") if isinstance(st_item, dict) else []) or []))
-                    return "range " in st_tr or any(k in sn for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle", "blunderbuss", "blowgun", "dart"))
-                _kept_strikes = []
-                _seen_one_ranged = False
-                for _st_i in (equipment_loadout.strikes or []):
-                    if _is_rng_strike_item(_st_i):
-                        if _seen_one_ranged:
-                            continue
-                        _seen_one_ranged = True
-                    _kept_strikes.append(_st_i)
-                equipment_loadout.strikes = _kept_strikes
             # Surface Awakened Animal natural attack from heritage description / AWAKENED_ANIMAL_SPECIES
             if "awakened animal" in (anc.get("name") or "").lower():
                 from app.engine.heritages import AWAKENED_ANIMAL_SPECIES
@@ -3452,7 +3433,7 @@ class PF2eGenerator:
                         return False
                     if ("bow" in fn_low or "shortbow" in fn_low or "longbow" in fn_low) and not any(b in _wep_blob for b in ("bow", "shortbow", "longbow")):
                         return False
-                    if "crossbow" in fd_low and "requires you are wielding a crossbow" in fd_low and "crossbow" not in _wep_blob:
+                    if "crossbow" in fd_low and ("wielding a crossbow" in fd_low or "with a crossbow" in fd_low) and "crossbow" not in _wep_blob:
                         return False
                     return True
 
