@@ -273,9 +273,15 @@ def resolve_heritage(ancestry_name: str, requested_heritage: Optional[str] = Non
         candidates = list(AWAKENED_ANIMAL_SPECIES)
         if requested_heritage:
             req_low = requested_heritage.lower().strip()
-            matched = [
+            exact = [
                 s for s in candidates
-                if req_low in s["heritage"].lower() or req_low in s["species"].lower()
+                if f"{s['species']} ({s['heritage']})".lower() == req_low
+            ]
+            matched = exact or [
+                s for s in candidates
+                if req_low in f"{s['species']} ({s['heritage']})".lower()
+                or req_low in s["heritage"].lower()
+                or req_low in s["species"].lower()
             ]
             if matched:
                 candidates = matched
