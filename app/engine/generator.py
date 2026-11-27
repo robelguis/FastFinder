@@ -2777,8 +2777,26 @@ class PF2eGenerator:
             # Surface Awakened Animal natural attack from heritage description / AWAKENED_ANIMAL_SPECIES
             if "awakened animal" in (anc.get("name") or "").lower():
                 from app.engine.heritages import AWAKENED_ANIMAL_SPECIES
-                _her_full = str(heritage_data.get("name") or "")
-                _her_desc = str(heritage_data.get("description") or "")
+                _hd = locals().get("heritage_data")
+                if isinstance(_hd, dict):
+                    _her_full = str(_hd.get("name") or "")
+                    _her_desc = str(_hd.get("description") or "")
+                else:
+                    _her_cand = (
+                        locals().get("heritage_name")
+                        or locals().get("requested_heritage")
+                        or locals().get("heritage")
+                        or ""
+                    )
+                    if not _her_cand:
+                        for _cf in (locals().get("chosen_feats") or []):
+                            _cfn = str(getattr(_cf, "name", "") or "")
+                            if _cfn.lower().startswith("awakened "):
+                                _her_cand = _cfn[9:].strip()
+                                break
+                    _res_h = resolve_heritage(anc.get("name") or "Awakened Animal", _her_cand or None) if _her_cand else {}
+                    _her_full = str(_res_h.get("name") or _her_cand or "")
+                    _her_desc = str(_res_h.get("description") or "")
                 _unarmed_spec = ""
                 for _sp in AWAKENED_ANIMAL_SPECIES:
                     _lbl = f"{_sp['species']} ({_sp['heritage']})".lower()
