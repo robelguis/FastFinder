@@ -2755,6 +2755,75 @@ class PF2eGenerator:
                 weapon_lookup=_get_equipment_weapon_lookup(),
                 sneak_attack_dice=sneak_dice_val,
             )
+            # Ensure at most one ranged weapon unless multiple were explicitly requested in build_spec
+            _bs_local = locals().get("build_spec")
+            _req_w_list = getattr(_bs_local, "requested_weapons", None) or []
+            _req_w_low = " ".join(str(x).lower() for x in _req_w_list)
+            _multi_rng_ok = sum(1 for kw in ("bow", "crossbow", "sling", "pistol", "musket", "rifle") if kw in _req_w_low) >= 2
+            if not _multi_rng_ok:
+                def _is_rng_strike_item(st_item) -> bool:
+                    sn = str(getattr(st_item, "name", None) or (st_item.get("name") if isinstance(st_item, dict) else "") or "").lower()
+                    st_tr = " ".join(str(t).lower() for t in (getattr(st_item, "traits", None) or (st_item.get("traits") if isinstance(st_item, dict) else []) or []))
+                    return "range " in st_tr or any(k in sn for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle", "blunderbuss", "blowgun", "dart"))
+                _kept_strikes = []
+                _seen_one_ranged = False
+                for _st_i in (equipment_loadout.strikes or []):
+                    if _is_rng_strike_item(_st_i):
+                        if _seen_one_ranged:
+                            continue
+                        _seen_one_ranged = True
+                    _kept_strikes.append(_st_i)
+                equipment_loadout.strikes = _kept_strikes
+            # Surface Awakened Animal natural attack from heritage description / AWAKENED_ANIMAL_SPECIES
+            if "awakened animal" in (anc.get("name") or "").lower():
+                from app.engine.heritages import AWAKENED_ANIMAL_SPECIES
+                _her_full = str(heritage_data.get("name") or "")
+                _her_desc = str(heritage_data.get("description") or "")
+                _unarmed_spec = ""
+                for _sp in AWAKENED_ANIMAL_SPECIES:
+                    _lbl = f"{_sp['species']} ({_sp['heritage']})".lower()
+                    if _lbl in _her_full.lower() or _sp["species"].lower() in _her_full.lower():
+                        _unarmed_spec = _sp.get("unarmed", "")
+                        break
+                if not _unarmed_spec:
+                    _m_nat = re.search(r"Natural Attack:\s*([^\n.]+)", _her_desc, re.IGNORECASE)
+                    if _m_nat:
+                        _unarmed_spec = _m_nat.group(1).strip()
+                if _unarmed_spec:
+                    for _alt in _unarmed_spec.split(" or "):
+                        _alt_clean = _alt.strip()
+                        _m_atk = re.match(r"^([A-Za-z ]+?)\s*\(([^)]+)\)$", _alt_clean)
+                        _atk_name = _m_atk.group(1).strip() if _m_atk else _alt_clean
+                        _inside = _m_atk.group(2) if _m_atk else ""
+                        _m_dice = re.search(r"(\d+d\d+)", _inside)
+                        _base_dice = _m_dice.group(1) if _m_dice else "1d6"
+                        _dmg_type = "Piercing"
+                        if re.search(r"\bS\b|slashing", _inside, re.IGNORECASE):
+                            _dmg_type = "Slashing"
+                        elif re.search(r"\bB\b|bludgeoning", _inside, re.IGNORECASE):
+                            _dmg_type = "Bludgeoning"
+                        _traits = []
+                        if "finesse" in _inside.lower():
+                            _traits.append("Finesse")
+                        if "agile" in _inside.lower():
+                            _traits.append("Agile")
+                        _traits.append("Unarmed")
+                        _existing_names = {
+                            str(getattr(_s, "name", None) or (_s.get("name") if isinstance(_s, dict) else "") or "").strip().lower()
+                            for _s in (equipment_loadout.strikes or [])
+                        }
+                        if _atk_name.lower() not in _existing_names:
+                            _nat_strike = compute_strike(
+                                name=_atk_name,
+                                base_dice=_base_dice,
+                                damage_type=_dmg_type,
+                                traits=_traits,
+                                level=level,
+                                class_name=cls["name"],
+                                attrs=mods,
+                                is_unarmed=True,
+                            )
+                            equipment_loadout.strikes.append(_nat_strike)
             if hasattr(equipment_loadout, "weapons") and isinstance(equipment_loadout.weapons, list):
                 from app.engine.models import Item as EqItem
                 synced_weapons = []
