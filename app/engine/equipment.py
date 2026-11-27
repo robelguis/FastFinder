@@ -793,11 +793,25 @@ def resolve_equipment(
                 affordable_weps.append({"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]})
                 spent_gp += 3.0
         if lvl == 1 and affordable_weps:
-            first_tr = " ".join(str(t).lower() for t in (affordable_weps[0].get("traits") or []))
-            first_nm = str(affordable_weps[0].get("name", "")).lower()
-            first_is_ranged = "range " in first_tr or any(k in first_nm for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle"))
-            if not first_is_ranged and len(affordable_weps) < 2:
-                affordable_weps.append({"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]})
+            def _is_rng(w: Dict[str, Any]) -> bool:
+                tr = " ".join(str(t).lower() for t in (w.get("traits") or []))
+                nm = str(w.get("name", "")).lower()
+                return "range " in tr or any(k in nm for k in ("bow", "crossbow", "sling", "pistol", "musket", "rifle", "blowgun", "dart"))
+
+            if not _is_rng(affordable_weps[0]):
+                has_rng = any(_is_rng(w) for w in affordable_weps[1:])
+                if not has_rng:
+                    first_cost = _estimate_weapon_gp(affordable_weps[0])
+                    if has_martial_prof and first_cost + 3.0 <= max_gp:
+                        ranged_w = {"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]}
+                    elif (not has_martial_prof) and first_cost + 3.0 <= max_gp:
+                        ranged_w = {"name": "Crossbow", "dice": "1d8", "type": "Piercing", "traits": ["Range 120 ft", "Reload 1"]}
+                    else:
+                        ranged_w = {"name": "Sling", "dice": "1d6", "type": "Bludgeoning", "traits": ["Propulsive", "Range 50 ft", "Reload 1"]}
+                    if len(affordable_weps) >= 2:
+                        affordable_weps[1] = ranged_w
+                    else:
+                        affordable_weps.append(ranged_w)
         if not affordable_weps:
             affordable_weps.append({"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]})
         if len(affordable_weps) > 2:
