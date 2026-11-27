@@ -769,6 +769,13 @@ def resolve_equipment(
             elif lvl == 1 and "longbow" in str(w.get("name", "")).lower() and spent_gp + 3.0 <= max_gp:
                 affordable_weps.append({"name": "Shortbow", "dice": "1d6", "type": "Piercing", "traits": ["Deadly d10", "Range 60 ft"]})
                 spent_gp += 3.0
+        if lvl == 1 and str_mod >= 2 and len(affordable_weps) >= 2:
+            has_ranged_or_thrown = any(
+                any("range" in str(t).lower() or "thrown" in str(t).lower() for t in (w.get("traits") or []))
+                for w in affordable_weps
+            )
+            if not has_ranged_or_thrown:
+                affordable_weps[1] = {"name": "Javelin", "dice": "1d6", "type": "Piercing", "traits": ["Thrown 30 ft"]}
         if not affordable_weps:
             affordable_weps.append({"name": "Dagger", "dice": "1d4", "type": "Piercing", "traits": ["Agile", "Finesse", "Thrown 10 ft", "Versatile S"]})
         if len(affordable_weps) > 2:

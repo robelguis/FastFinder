@@ -1263,7 +1263,8 @@ function updateHeritageDropdown() {
       const shieldBonus = data.defenses?.shield_bonus ?? 0;
       const acBase = data.defenses?.ac ?? 10;
       document.getElementById('vitalAc').textContent = shieldBonus > 0 ? `${acBase} (+${shieldBonus} Shield)` : acBase;
-      document.getElementById('vitalSpeed').textContent = `${data.speed ?? 25} ft`;
+      const isAzarketi = String(data.ancestry || '').toLowerCase().includes('azarketi');
+      document.getElementById('vitalSpeed').textContent = isAzarketi ? `${data.speed ?? 20} ft, Swim 30 ft` : `${data.speed ?? 25} ft`;
       document.getElementById('vitalPerception').textContent = formatMod(data.perception?.modifier);
 
       const sensesList = [];

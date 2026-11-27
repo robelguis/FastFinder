@@ -869,6 +869,19 @@ def resolve_feat_subchoices(feat_name: str, existing_feat_names: set, active_dei
     if "(" in feat_name:
         return feat_name
 
+    if "energized spark" in fn_lower:
+        spark_types = ["Air (Slashing)", "Cold", "Earth (Bludgeoning)", "Electricity", "Fire", "Metal (Slashing)", "Sonic", "Vitality", "Void", "Water (Bludgeoning)", "Wood (Piercing)"]
+        taken_sparks = {
+            fn.split("(", 1)[1].rstrip(")").strip().lower()
+            for fn in existing_feat_names
+            if "energized spark" in fn.lower() and "(" in fn and ")" in fn
+        }
+        avail_sparks = [t for t in spark_types if t.lower() not in taken_sparks]
+        return f"{feat_name} ({random.choice(avail_sparks or spark_types)})"
+
+    if "sanctified soul" in fn_lower:
+        return f"{feat_name} (Holy)"
+
     if "wilderness spotter" in fn_lower:
         taken = {
             fn.split("(")[-1].replace(")", "").strip().title()
@@ -3295,6 +3308,30 @@ class PF2eGenerator:
                     description="Trigger: While you have your shield raised, you would take physical damage from an attack. You snap your shield in place to ward off a blow, reducing the damage by the shield's Hardness.",
                 ))
                 added_feat_names.add("shield block")
+
+        # Level 1: Exemplar Divine Spark & Shift Immanence (War of Immortals)
+        if cls_name_lower == "exemplar" and "shift immanence" not in added_feat_names:
+            chosen_feats.append(FeatSummary(
+                id="feat-shift-immanence",
+                name="Divine Spark & Shift Immanence",
+                category="Class Feature (Level 1)",
+                action_cost=1,
+                traits=["concentrate", "divine", "exemplar"],
+                description="Your divine spark empowers one of your three ikons at a time, granting its passive immanence effect. Use Shift Immanence (1 Action) to move your spark to another ikon, or use an ikon's Transcendence action to unleash its peak power and shift the spark.",
+            ))
+            added_feat_names.add("shift immanence")
+
+        # Level 1: Azarketi Hydration ancestry trait (unless Mistbreath Azarketi)
+        if anc["name"].lower() == "azarketi" and "mistbreath" not in (heritage_name or "").lower() and "hydration" not in added_feat_names:
+            chosen_feats.append(FeatSummary(
+                id="feat-azarketi-hydration",
+                name="Hydration",
+                category="Ancestry Trait",
+                action_cost=0,
+                traits=["azarketi"],
+                description="While you are an amphibious being equally as capable on land as in the water, your body requires you to return to aquatic environments at least once in a 24-hour period. You must submerge in water in order to rehydrate your water-acclimated skin.",
+            ))
+            added_feat_names.add("hydration")
 
         # Level 1: Bard Muse Feat (RAW Player Core)
         if cls_name_lower == "bard" and sub_n_val:

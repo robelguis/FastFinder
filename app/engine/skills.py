@@ -303,6 +303,9 @@ def resolve_character_skills(
         total_picks = max(len(mandatory), base_count + 1 + int_mod)
         available_pool = [s for s in ALL_PF2E_SKILLS if s not in mandatory]
         random.shuffle(available_pool)
+        if norm_mods.get("str", 0) >= 3 and "Athletics" in available_pool:
+            available_pool.remove("Athletics")
+            available_pool.insert(0, "Athletics")
         needed = max(0, total_picks - len(mandatory))
         trained_skills = mandatory.union(set(available_pool[:needed]))
 
