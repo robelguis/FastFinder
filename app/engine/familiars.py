@@ -136,6 +136,7 @@ def resolve_familiar(
     forced_species: Optional[str] = None,
     description_text: Optional[str] = None,
     archetype_name: Optional[str] = None,
+    is_undead_familiar: bool = False,
 ) -> PartnerCreatureData:
     if forced_species == "elemental":
         pool = [k for k, v in FAMILIAR_SPECIES.items() if v.get("elemental")]
@@ -184,13 +185,28 @@ def resolve_familiar(
         stage_label = "Bonded Pet"
         sub_label = f"{species_label} Pet"
     else:
-        chosen_pool_abilities = random.sample(FAMILIAR_ABILITIES_POOL, 2)
-        ability_tags = list(cfg["innate_abilities"]) + [a["name"] for a in chosen_pool_abilities]
+        is_undead_mode = bool(is_undead_familiar or (description_text and "undead familiar" in description_text.lower()))
+        filtered_pool = [
+            a for a in FAMILIAR_ABILITIES_POOL
+            if not (
+                is_undead_mode
+                and (class_name.lower() != "alchemist" and "lab assistant" in str(a.get("name", "")).lower())
+            )
+        ] or list(FAMILIAR_ABILITIES_POOL)
+        ability_count = 1 if is_undead_mode else min(2, len(filtered_pool))
+        chosen_pool_abilities = random.sample(filtered_pool, ability_count)
+        base_innate = list(cfg["innate_abilities"])[:1] if is_undead_mode else list(cfg["innate_abilities"])
+        ability_tags = base_innate + [a["name"] for a in chosen_pool_abilities]
         ability_summary = ", ".join(ability_tags)
-        primary_text = f"Familiar Abilities: {ability_summary}. {chosen_pool_abilities[0]['name']}: {chosen_pool_abilities[0]['desc']}"
-        secondary_text = f"{chosen_pool_abilities[1]['name']}: {chosen_pool_abilities[1]['desc']}"
-        is_witch_partner = class_name.lower() == "witch" or "witch" in str(archetype_name or "").lower()
-        stage_label = "Patron Conduit" if is_witch_partner else ("Marine Bond" if aquatic_only else "Mystical Bond")
+        if is_undead_mode:
+            primary_text = f"Undead Familiar Ability (1/day): {ability_summary}. {chosen_pool_abilities[0]['name']}: {chosen_pool_abilities[0]['desc']}"
+            secondary_text = "Undead trait instead of Animal; immune to bleed, death effects, disease, mental, and poison. Cannot take trait-changing abilities."
+            stage_label = "Undead Familiar"
+        else:
+            primary_text = f"Familiar Abilities: {ability_summary}. {chosen_pool_abilities[0]['name']}: {chosen_pool_abilities[0]['desc']}"
+            secondary_text = f"{chosen_pool_abilities[1]['name']}: {chosen_pool_abilities[1]['desc']}" if len(chosen_pool_abilities) > 1 else ""
+            is_witch_partner = class_name.lower() == "witch" or "witch" in str(archetype_name or "").lower()
+            stage_label = "Patron Conduit" if is_witch_partner else ("Marine Bond" if aquatic_only else "Mystical Bond")
         sub_label = f"{species_label} Familiar"
 
     eff_perception = (3 + level) if is_pet else master_perception
@@ -210,5 +226,5 @@ def resolve_familiar(
         strikes=[],
         primary_ability=primary_text,
         secondary_ability=secondary_text,
-        traits=["Familiar", "Magical", "Minion"] if not is_pet else ["Pet", "Animal", "Minion"]
+        traits=(["Undead", "Familiar", "Magical", "Minion"] if (not is_pet and (is_undead_familiar or (description_text and "undead familiar" in description_text.lower()))) else (["Familiar", "Magical", "Minion"] if not is_pet else ["Pet", "Animal", "Minion"])),
     )

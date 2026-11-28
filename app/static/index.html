@@ -148,9 +148,10 @@
       border-radius: 3px;
       padding: 0.25rem 0.1rem;
       background: #f8fafc;
+      min-width: 0;
     }
-    .attr-lbl { font-size: 0.65rem; font-weight: 800; color: #475569; }
-    .attr-mod { font-size: 1.25rem; font-weight: 900; color: #000000; }
+    .attr-lbl { font-size: 0.65rem; font-weight: 800; color: #475569; white-space: nowrap; }
+    .attr-mod { font-size: 1.15rem; font-weight: 900; color: #000000; white-space: nowrap; }
 
     .defense-row {
       display: grid;
@@ -225,8 +226,9 @@
       font-weight: 800;
       color: #475569;
     }
+    .strikes-table { table-layout: fixed; }
     .strikes-table td { padding: 0.4rem 0.4rem; border: 1px solid #cbd5e1; }
-    .w-name { font-weight: 800; color: #000000; font-size: 0.85rem; }
+    .w-name { font-weight: 800; color: #000000; font-size: 0.82rem; word-break: normal; overflow-wrap: normal; }
     .w-map { font-family: monospace; font-size: 0.95rem; font-weight: 900; color: #0369a1; }
     .w-dmg { font-weight: 800; color: #991b1b; }
     .w-traits { font-size: 0.7rem; color: #475569; }

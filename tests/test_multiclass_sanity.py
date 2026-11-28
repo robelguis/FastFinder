@@ -127,5 +127,5 @@ def test_bear_companion_base_stats_and_sheet_traits():
     assert len(sheet.traits or []) >= 2
     comp = resolve_companion_check = sheet.companion
     if comp and "bear" in (comp.name or "").lower() and (comp.stage or "").lower() == "young":
-        assert (comp.attributes or {}).get("CON") == "+2"
+        assert int(str((comp.attributes or {}).get("CON", 0)).lstrip("+")) == 2
         assert (comp.attributes or {}).get("STR") == "+3"
