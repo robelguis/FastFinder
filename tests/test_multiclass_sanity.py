@@ -66,3 +66,52 @@ def test_multiclass_sheet_invariants(kwargs):
     for p in partners:
         assert p.name
         assert p.ac >= 10
+FAMILIAR_SOURCE_EXACT = {
+    "familiar",
+    "marine ally",
+    "leshy familiar",
+    "elemental familiar",
+    "shadow familiar",
+    "spirit guide",
+    "glyph familiar",
+    "call wizardly tools",
+    "witch dedication",
+    "familiar master dedication",
+    "leaf order",
+}
+
+
+def _has_familiar_granting_source(sheet) -> bool:
+    cls_low = (getattr(sheet, "character_class", None) or "").strip().lower()
+    sub_low = ((getattr(sheet, "subclass", None).name if getattr(sheet, "subclass", None) else "") or "").strip().lower()
+    arch_low = (getattr(sheet, "archetype", None) or "").strip().lower()
+
+    if cls_low == "witch" or "leaf order" in sub_low:
+        return True
+    if any(k in arch_low for k in ("witch", "familiar master")):
+        return True
+
+    for f in (getattr(sheet, "feats", None) or []):
+        fn = (getattr(f, "name", None) or "").strip().lower()
+        if not fn or "spell familiarity" in fn or "weapon familiarity" in fn:
+            continue
+        if fn in FAMILIAR_SOURCE_EXACT or fn.endswith(" familiar") or " familiar (" in fn:
+            return True
+    return False
+
+
+def test_familiar_requires_valid_source_and_no_strikes():
+    gen = PF2eGenerator()
+    for _ in range(30):
+        sheet = gen.generate(level=1)
+        partners = ([sheet.companion] if getattr(sheet, "companion", None) else []) + list(getattr(sheet, "additional_partners", None) or [])
+        for partner in partners:
+            ctype = (getattr(partner, "creature_type", None) or "").strip().lower()
+            if "familiar" in ctype and "companion" not in ctype:
+                assert _has_familiar_granting_source(sheet), (
+                    f"Familiar {partner.name!r} appeared on {sheet.name!r} ({sheet.character_class}) "
+                    f"with feats {[f.name for f in (sheet.feats or [])]}"
+                )
+                assert len(getattr(partner, "strikes", None) or []) == 0, (
+                    f"Familiar {partner.name!r} should not carry strike rows"
+                )

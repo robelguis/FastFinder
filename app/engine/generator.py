@@ -618,11 +618,19 @@ def sync_feat_partners(
     is_leaf_leshy = ("leshy familiar" in all_feat_str) or is_druid_leaf
     has_witch_dedication = level >= 2 and "witch" in arch_str
     has_familiar_arch = (level >= 2 and any(k in arch_str for k in ("familiar master", "witch"))) or is_druid_leaf
-    has_elemental_familiar = "elemental familiar" in all_feat_str
-    familiar_triggers = (
-        "familiar", "marine ally", "leshy familiar", "elemental familiar",
-        "shadow familiar", "spirit guide", "glyph familiar", "call wizardly tools",
-    )
+    def _has_real_familiar_feat(fname: str) -> bool:
+        fl = (fname or "").strip().lower()
+        if not fl or "spell familiarity" in fl or "weapon familiarity" in fl:
+            return False
+        if fl == "familiar" or fl.endswith(" familiar") or " familiar (" in fl:
+            return True
+        return fl in {
+            "marine ally", "leshy familiar", "elemental familiar",
+            "shadow familiar", "spirit guide", "glyph familiar", "call wizardly tools",
+        }
+
+    has_elemental_familiar = any("elemental familiar" in fn for fn in feat_names)
+    has_familiar_feat = any(_has_real_familiar_feat(fn) for fn in feat_names)
     has_friend_of_the_sea = "friend of the sea" in feat_names or "friend of the sea" in all_feat_str
     has_pet_feat = ("pet" in feat_names) or has_friend_of_the_sea
     is_animal_partner_class = cls_lower == "ranger" or (cls_lower == "druid" and any("animal" in f for f in feat_names))
@@ -645,7 +653,7 @@ def sync_feat_partners(
                 ))
         elif (
             has_marine_ally or is_leaf_leshy or has_witch_dedication
-            or any(tr in all_feat_str for tr in familiar_triggers) or has_familiar_arch
+            or has_familiar_feat or has_familiar_arch
         ):
             forced_sp = "leshy" if is_leaf_leshy else ("elemental" if has_elemental_familiar else None)
             _append_unique(resolve_familiar(
@@ -3871,6 +3879,12 @@ class PF2eGenerator:
         )
 
         # 3b. Equipment, Armor, Shield & Strikes (derived once from final attributes + all final feats)
+        # Cohesive rule: sync weapon-gated feats (e.g., Crossbow Ace) with requested_weapons unless strict_only_weapon is set
+        if not strict_only_weapon:
+            _feat_blob = " ".join((f.name or "").lower() for f in (chosen_feats or []))
+            if "crossbow" in _feat_blob and not any("crossbow" in w.lower() for w in req_weapons):
+                req_weapons.append("Crossbow")
+
         equipment_loadout, calculated_ac, shield_bonus = resolve_equipment(
             cls["name"],
             str_mod=mods["str"],
