@@ -969,6 +969,7 @@ def resolve_equipment(
             ))
 
     natural_attack_specs = [
+        (("tusk", "tusks"), "Tusks", "1d6", "Piercing", ["finesse", "unarmed", "brawling"]),
         (("horn", "horns", "gore"), "Horn", "1d6", "Piercing", ["unarmed"]),
         (("hoof", "hooves"), "Hoof", "1d6", "Bludgeoning", ["unarmed"]),
         (("fang", "fangs", "bite"), "Fangs", "1d6", "Piercing", ["finesse", "unarmed"]),

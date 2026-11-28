@@ -67,7 +67,7 @@ from app.engine.validator import recompute_proficiency_bonus, sanitize_and_valid
 LVL1_CLASS_FEAT_CLASSES = {
     "alchemist", "barbarian", "champion", "commander", "exemplar", "fighter",
     "guardian", "gunslinger", "inventor", "investigator", "kineticist",
-    "magus", "monk", "ranger", "rogue", "runesmith", "swashbuckler", "thaumaturge",
+    "magus", "monk", "necromancer", "ranger", "rogue", "runesmith", "swashbuckler", "thaumaturge",
 }
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"

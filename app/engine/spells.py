@@ -1072,7 +1072,7 @@ def _resolve_base_spellcasting(
         rank_9 = [SpellSummary(rank=9, **s) for s in cat_data.get("rank_9", [])] if level >= 17 else []
         rank_10 = [SpellSummary(rank=10, **s) for s in cat_data.get("rank_10", [])] if level >= 19 else []
 
-    slots = [SpellSlotTracker(rank=1, max_slots=3)]
+    slots = [SpellSlotTracker(rank=1, max_slots=2 if level == 1 else 3)]
     if level >= 3:
         slots.append(SpellSlotTracker(rank=2, max_slots=3 if level >= 5 else 2))
     if level >= 5:

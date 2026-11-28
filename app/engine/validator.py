@@ -279,7 +279,7 @@ _RANK_BONUS_TO_LETTER = {0: "U", 2: "T", 4: "E", 6: "M", 8: "L"}
 _LVL1_CLASS_FEAT_CLASSES = {
     "alchemist", "barbarian", "champion", "commander", "exemplar", "fighter",
     "guardian", "gunslinger", "inventor", "investigator", "kineticist",
-    "magus", "monk", "ranger", "rogue", "runesmith", "swashbuckler", "thaumaturge",
+    "magus", "monk", "necromancer", "ranger", "rogue", "runesmith", "swashbuckler", "thaumaturge",
 }
 
 _STANDARD_SKILLS = {
