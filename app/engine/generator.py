@@ -1951,7 +1951,8 @@ class PF2eGenerator:
             }
 
     def _calc_prof(self, rank_val: int, level: int, attr_mod: int) -> Proficiency:
-        prof_bonus, letter = RANK_MAP.get(rank_val, (2, "T"))
+        eff_rank = 2 if (level <= 1 and rank_val >= 4) else rank_val
+        prof_bonus, letter = RANK_MAP.get(eff_rank, (2, "T"))
         return Proficiency(rank=prof_bonus, rank_letter=letter, modifier=prof_bonus + level + attr_mod)
 
     def _enforce_granted_feat_skill_prereqs(

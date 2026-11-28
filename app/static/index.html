@@ -1608,7 +1608,12 @@ function updateHeritageDropdown() {
           card.className = "sheet-box";
           card.style.cssText = "margin-bottom: 0.8rem; border-left: 3.5px solid #16a34a;";
 
-          const traitBadges = (comp.traits || ["Animal", "Minion"]).map(t =>
+          const rawTraits = comp.traits || ["Animal", "Minion"];
+          const lowerTraits = rawTraits.map(x => String(x).toLowerCase());
+          const cleanTraits = (lowerTraits.includes("undead") || lowerTraits.includes("familiar"))
+            ? rawTraits.filter(x => String(x).toLowerCase() !== "animal")
+            : rawTraits;
+          const traitBadges = cleanTraits.map(t =>
             `<span style="background: #e2e8f0; color: #334155; font-size: 0.62rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; text-transform: uppercase;">${t}</span>`
           ).join(" ");
 
