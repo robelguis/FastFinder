@@ -787,4 +787,76 @@ def resolve_character_skills(
                             attribute="INT"
                         )
                     )
+    HOLD_MARK_SKILLS = {
+        "burning sun": "Diplomacy",
+        "death's head": "Survival",
+        "deaths head": "Survival",
+        "defiled corpse": "Religion",
+        "empty hand": "Intimidation",
+    }
+    if feats:
+        blob_parts = []
+        for f_obj in all_feats:
+            f_nm = f_obj.get("name", "") if isinstance(f_obj, dict) else getattr(f_obj, "name", "")
+            f_desc = f_obj.get("description", "") if isinstance(f_obj, dict) else getattr(f_obj, "description", "")
+            blob_parts.append(f"{f_nm} {f_desc}")
+        blob = " ".join(blob_parts).lower()
+        if "hold mark" in blob:
+            chosen_skill = None
+            for emblem, sk_name in HOLD_MARK_SKILLS.items():
+                if emblem in blob:
+                    chosen_skill = sk_name
+                    break
+            if not chosen_skill:
+                chosen_skill = "Religion" if "necromancer" in blob or "undead" in blob else "Diplomacy"
+            for idx, s_entry in enumerate(result_skills):
+                if s_entry.name.lower() == chosen_skill.lower():
+                    if s_entry.rank < 2:
+                        attr_key = (s_entry.attribute or "CHA").lower()
+                        mod_val = 2 + target_lvl + norm_mods.get(attr_key, 0)
+                        result_skills[idx] = SkillEntry(
+                            name=s_entry.name,
+                            rank=2,
+                            rank_letter="T",
+                            modifier=mod_val,
+                            attribute=s_entry.attribute or "CHA",
+                        )
+                    break
+
+    HOLD_MARK_EMBLEMS = {
+        "burning sun": ("Diplomacy", "Arcane"),
+        "death's head": ("Survival", "Primal"),
+        "deaths head": ("Survival", "Primal"),
+        "defiled corpse": ("Religion", "Divine"),
+        "empty hand": ("Intimidation", "Occult"),
+    }
+    if feats:
+        blob_parts = []
+        for f_obj in all_feats:
+            f_nm = f_obj.get("name", "") if isinstance(f_obj, dict) else getattr(f_obj, "name", "")
+            f_desc = f_obj.get("description", "") if isinstance(f_obj, dict) else getattr(f_obj, "description", "")
+            blob_parts.append(f"{f_nm} {f_desc}")
+        blob = " ".join(blob_parts).lower()
+        if "hold mark" in blob:
+            chosen_skill = None
+            for emblem, (sk_name, _trad) in HOLD_MARK_EMBLEMS.items():
+                if emblem in blob:
+                    chosen_skill = sk_name
+                    break
+            if not chosen_skill:
+                chosen_skill = "Religion" if "necromancer" in blob or "undead" in blob else "Diplomacy"
+            for idx, s_entry in enumerate(result_skills):
+                if s_entry.name.lower() == chosen_skill.lower():
+                    if s_entry.rank < 2:
+                        attr_key = (s_entry.attribute or "CHA").lower()
+                        mod_val = 2 + target_lvl + norm_mods.get(attr_key, 0)
+                        result_skills[idx] = SkillEntry(
+                            name=s_entry.name,
+                            rank=2,
+                            rank_letter="T",
+                            modifier=mod_val,
+                            attribute=s_entry.attribute or "CHA",
+                        )
+                    break
+
     return result_skills

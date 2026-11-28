@@ -2654,6 +2654,31 @@ class PF2eGenerator:
                     if hasattr(f_obj, "description"):
                         f_obj.description = enrich_feat_description(updated_n, getattr(f_obj, "description", "") or "")
 
+        hold_mark_map = {
+            "burning sun": ("Burning Sun", "Diplomacy", "Arcane"),
+            "death's head": ("Death's Head", "Survival", "Primal"),
+            "deaths head": ("Death's Head", "Survival", "Primal"),
+            "defiled corpse": ("Defiled Corpse", "Religion", "Divine"),
+            "empty hand": ("Empty Hand", "Intimidation", "Occult"),
+        }
+        concept_low = (concept_text or "").lower()
+        for f_item in (chosen_feats or []):
+            f_name_low = str(getattr(f_item, "name", "") or "").lower()
+            f_desc_cur = str(getattr(f_item, "description", "") or "")
+            if "hold mark" in f_name_low or "hold mark" in f_desc_cur.lower():
+                combined_low = f"{f_name_low} {f_desc_cur.lower()} {concept_low}"
+                matched = None
+                for key, val in hold_mark_map.items():
+                    if key in combined_low:
+                        matched = val
+                        break
+                if not matched:
+                    matched = ("Defiled Corpse", "Religion", "Divine") if (str(_fin_cls_name or cls.get("name", "")).lower() == "necromancer" or "undead" in combined_low) else ("Burning Sun", "Diplomacy", "Arcane")
+                emblem_label, sk_label, trad_label = matched
+                bonus_note = f"Hold Mark ({emblem_label}): Trained in {sk_label}; +1 status bonus to saving throws against {trad_label} spells."
+                if bonus_note not in f_desc_cur:
+                    f_item.description = f"{f_desc_cur} {bonus_note}".strip()
+
         _fin_cls_name = cls.get("name") if isinstance(cls, dict) else getattr(cls, "name", None)
         _fin_deity_raw = select_deity(
             deity_name=deity_name,
