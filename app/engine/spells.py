@@ -670,6 +670,32 @@ def resolve_spellcasting(
                 cantrips=[],
                 rank_1_spells=[domain_spell]
             )
+    if feats and any("initiate warden" in fn for fn in feat_names):
+        wis_mod = attribute_mods.get("wis", 1)
+        prof_bonus = 2 + level
+        warden_spell = SpellSummary(
+            rank=1,
+            name="Gravity Weapon (Warden Spell)",
+            actions="1 action",
+            traits=["Primal", "Focus", "Manipulate"],
+            range="Self",
+            defense="None",
+            description="Granted by Initiate Warden: Until the end of your turn, your strikes with a weapon or unarmed attack deal an additional 2 status damage (or 1 per weapon damage die on greater effects).",
+        )
+        if sc is None:
+            sc = SpellcastingData(
+                tradition="Primal (Warden)",
+                casting_attribute="WIS",
+                spell_dc=10 + prof_bonus + wis_mod,
+                spell_attack=prof_bonus + wis_mod,
+                cantrips=[],
+                rank_1_spells=[warden_spell],
+            )
+        else:
+            existing_names = {s.name.lower() for s in (sc.rank_1_spells or [])}
+            if warden_spell.name.lower() not in existing_names:
+                sc.rank_1_spells = list(sc.rank_1_spells or []) + [warden_spell]
+
     if feats and any("time mage dedication" in fn for fn in feat_names):
         attr_key = "int" if attribute_mods.get("int", 0) >= attribute_mods.get("cha", 0) else "cha"
         if attr_key not in attribute_mods:

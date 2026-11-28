@@ -1599,10 +1599,10 @@ function updateHeritageDropdown() {
             </tr>
           `).join("");
 
-          const primaryTitle = comp.primary_ability ? "Primary Ability" : (comp.support_benefit ? "Support Benefit" : "");
-          const primaryText = comp.primary_ability || comp.support_benefit || "";
-          const secondaryTitle = comp.secondary_ability ? "Unique Ability" : (comp.advanced_maneuver ? "Advanced Maneuver" : "");
-          const secondaryText = comp.secondary_ability || comp.advanced_maneuver || "";
+          const primaryTitle = comp.support_benefit ? "Support Benefit" : (comp.primary_ability ? "Primary Ability" : "");
+          const primaryText = comp.support_benefit || comp.primary_ability || "";
+          const secondaryTitle = comp.advanced_maneuver ? "Advanced Maneuver" : (comp.secondary_ability ? "Unique Ability" : "");
+          const secondaryText = comp.advanced_maneuver || comp.secondary_ability || "";
 
           const card = document.createElement("div");
           card.className = "sheet-box";

@@ -131,7 +131,7 @@ COMPANION_SPECIES: Dict[str, Dict[str, Any]] = {
         "young_size": "Small",
         "mature_size": "Medium",
         "speed": "40 ft",
-        "base_hp": 4,
+        "base_hp": 6,
         "con_mod": 1,
         "str_mod": 2,
         "dex_mod": 3,
@@ -534,6 +534,7 @@ def resolve_companion(
         senses="Low-Light Vision, Scent (Imprecise) 30 ft",
         attributes=companion_attrs,
         skills=companion_skills,
+        languages=[],
         support_benefit=cfg["support_benefit"],
         advanced_maneuver=cfg.get("advanced_maneuver") if is_mature else None
     )
