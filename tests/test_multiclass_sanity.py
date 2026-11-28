@@ -115,3 +115,17 @@ def test_familiar_requires_valid_source_and_no_strikes():
                 assert len(getattr(partner, "strikes", None) or []) == 0, (
                     f"Familiar {partner.name!r} should not carry strike rows"
                 )
+def test_bear_companion_base_stats_and_sheet_traits():
+    gen = PF2eGenerator()
+    sheet = gen.generate(
+        ancestry_name="Leshy",
+        heritage_name="Gourd Leshy",
+        class_name="Ranger",
+        subclass_name="Flurry",
+        level=1,
+    )
+    assert len(sheet.traits or []) >= 2
+    comp = resolve_companion_check = sheet.companion
+    if comp and "bear" in (comp.name or "").lower() and (comp.stage or "").lower() == "young":
+        assert (comp.attributes or {}).get("CON") == "+2"
+        assert (comp.attributes or {}).get("STR") == "+3"

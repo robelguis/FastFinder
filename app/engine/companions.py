@@ -115,7 +115,7 @@ COMPANION_SPECIES: Dict[str, Dict[str, Any]] = {
         "mature_size": "Medium",
         "speed": "35 ft",
         "base_hp": 8,
-        "con_mod": 3,
+        "con_mod": 2,
         "str_mod": 3,
         "dex_mod": 2,
         "wis_mod": 1,

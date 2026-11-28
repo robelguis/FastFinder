@@ -541,6 +541,7 @@
         <div class="banner-block">
           <span class="banner-label">Ancestry & Heritage</span>
           <span class="banner-val" id="sheetAncestry">Human</span>
+          <div id="sheetAncestryTraits" style="display: flex; flex-wrap: wrap; gap: 0.2rem; margin-top: 0.25rem;"></div>
         </div>
         <div class="banner-block">
           <span class="banner-label">Background</span>
@@ -661,9 +662,7 @@
                 <thead><tr><th>Weapon</th><th>Strikes (1st / 2nd / 3rd)</th><th>Damage</th><th>Traits</th></tr></thead>
                 <tbody id="strikesTbody"></tbody>
               </table>
-              <div style="margin-top: 0.35rem; font-size: 0.68rem; color: #475569; line-height: 1.3;">
-                <strong>Table Reminders:</strong> Reload 2 requires two Interact actions before firing again. Hunt Prey (1 action) applies your Hunter's Edge (Flurry reduces MAP vs. hunted prey to -4/-8, or -3/-6 Agile); ancestry, heritage, feat, and class strikes apply alongside equipped weapons.
-              </div>
+              <div id="tableRemindersText" style="margin-top: 0.35rem; font-size: 0.68rem; color: #475569; line-height: 1.3; display: none;"></div>
             </div>
           </div>
 
@@ -1119,6 +1118,14 @@ function updateHeritageDropdown() {
 
       const ancestryText = data.heritage ? `${data.ancestry} (${data.heritage})` : (data.ancestry || "Human");
       document.getElementById('sheetAncestry').textContent = ancestryText;
+      const ancTraitsEl = document.getElementById('sheetAncestryTraits');
+      if (ancTraitsEl) {
+        const traitList = Array.isArray(data.traits) ? data.traits.filter(Boolean) : [];
+        ancTraitsEl.innerHTML = traitList
+          .map(t => `<span style="background: #e2e8f0; color: #1e293b; border: 1px solid #cbd5e1; border-radius: 3px; padding: 0.05rem 0.35rem; font-size: 0.62rem; font-weight: 700; text-transform: uppercase;">${String(t)}</span>`)
+          .join("");
+        ancTraitsEl.style.display = traitList.length > 0 ? "flex" : "none";
+      }
 
       const sheetBgEl = document.getElementById('sheetBackground');
       if (sheetBgEl) sheetBgEl.textContent = data.background || "Farmhand";
@@ -1245,12 +1252,34 @@ function updateHeritageDropdown() {
           if (data.deity.font && data.deity.font.length > 0) {
             metaParts.push(`<strong>Font:</strong> ${data.deity.font.join(" / ")}`);
           }
+          const eqStrikes = (data.equipment && Array.isArray(data.equipment.strikes)) ? data.equipment.strikes : (data.strikes || []);
+          const eqWeapons = (data.equipment && Array.isArray(data.equipment.weapons)) ? data.equipment.weapons : [];
+          const strikesBlob = [
+            ...eqStrikes.map(s => `${String(s.name || '')} ${(Array.isArray(s.traits) ? s.traits.join(' ') : '')}`),
+            ...eqWeapons.map(w => String((w && w.name) || w || '')),
+          ].join(' ').toLowerCase();
+
           if (data.deity.favored_weapon) {
-            const strikesBlob = (data.strikes || []).map(s => String(s.name || '').toLowerCase()).join(' ');
             const fwLow = String(data.deity.favored_weapon).toLowerCase();
             if (!strikesBlob.includes(fwLow)) {
               metaParts.push(`<span style="color:#64748b;">(Favored weapon not currently equipped)</span>`);
             }
+          }
+
+          const reminderEl = document.getElementById('tableRemindersText');
+          if (reminderEl) {
+            const reminders = [];
+            if (strikesBlob.includes('reload 2')) {
+              reminders.push('Reload 2 requires two Interact actions before firing again.');
+            }
+            const clsLow = String(data.character_class || '').toLowerCase();
+            const featBlob = (data.feats || []).map(f => String((f && f.name) || '')).join(' ').toLowerCase();
+            if (clsLow.includes('ranger') || featBlob.includes('hunt prey')) {
+              reminders.push("Hunt Prey (1 action) applies your Hunter's Edge against designated prey.");
+            }
+            reminders.push('Ancestry, heritage, feat, and class strikes apply alongside equipped weapons.');
+            reminderEl.innerHTML = `<strong>Table Reminders:</strong> ${reminders.join(' ')}`;
+            reminderEl.style.display = 'block';
           }
           deityMetaEl.innerHTML = metaParts.join(" &bull; ");
           deityMetaEl.style.display = metaParts.length > 0 ? "block" : "none";
